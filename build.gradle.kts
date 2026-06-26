@@ -6,7 +6,7 @@ group = "com.github.reganjohn"
 version = "1.0-SNAPSHOT"
 
 base {
-    archivesName.set("IAM")
+    archivesName.set("iam")
 }
 
 val javaVersion = JavaVersion.VERSION_11
