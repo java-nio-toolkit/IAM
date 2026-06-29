@@ -49,6 +49,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -437,7 +438,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             String uniqueId = UUIDv7.randomUUID().toString();
             String issuer = api.getJNT().getIdentifierString();
             String subject = objectData.getSubject();
-            AccessOptionData optionData = new AccessOptionData(snapshot.getUniqueId(), ASSERT_TYPE, manager.getSignType());
+            AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ASSERT_TYPE, manager.getSignType());
             AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
             onSessionCreate(context, request, entryData, contextData, json);
         }

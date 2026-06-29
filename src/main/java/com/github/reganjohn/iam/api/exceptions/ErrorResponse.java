@@ -20,7 +20,8 @@ import javax.annotation.Nonnull;
 
 public enum ErrorResponse
 {
-    UNKNOWN_SESSION(10012, "unknown Session"),
+    UNKNOWN_PAIR(10011, "Unknown Pair"), //todo: replace
+    UNKNOWN_SESSION(10012, "Unknown Session"),
     UNKNOWN_USER(10013, "Unknown User"),
 
     MAX_SESSIONS(30001, "Maximum number of Sessions reached (10)"),

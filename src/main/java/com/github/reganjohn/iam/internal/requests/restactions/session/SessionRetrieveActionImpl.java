@@ -94,9 +94,7 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl
         UUID userId = UUID.fromString(json.getSubject());
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID sessionId = UUID.fromString(params.get(SessionAction.SESSION_ID));
-        api.retrieveSessionById(userId, sessionId)
-                
-                .queue(session -> handleSuccess(context, session), context::fireExceptionCaught);
+        api.retrieveSessionById(userId, sessionId).queue(session -> handleSuccess(context, session), context::fireExceptionCaught);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull Session session)

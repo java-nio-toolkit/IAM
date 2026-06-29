@@ -20,6 +20,15 @@ CREATE KEYSPACE IF NOT EXISTS users WITH replication =
         'replication_factor': 1
     };
 
+CREATE TABLE if not exists public_keys
+(
+    kid        uuid PRIMARY KEY,
+    public_key blob,
+    alg        text,
+    created_at timestamp,
+    expires_at timestamp
+);
+
 create table if not exists users.accounts
 (
     user_id  uuid primary key,

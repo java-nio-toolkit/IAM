@@ -32,6 +32,7 @@ import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
+import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditActionImpl;
@@ -44,6 +45,7 @@ import com.reganjohn.jact.api.requests.objaction.InteractionContextAction;
 import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 import com.reganjohn.jact.api.utils.Compression;
 import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.JACTImpl;
 import com.reganjohn.jact.internal.interactions.InteractionImpl;
 import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.jact.internal.managers.SecretAccessManagerImpl;
@@ -114,10 +116,9 @@ public class BuilderExample
                 .addEventListeners(new CacheObjectManagerImpl())
                 .addEventListeners(new CookieObjectManagerImpl())
 
+
                 .addEventListeners(new ContentSecurityOverrideManagerImpl())
-
-                .addEventListeners(new AccessEntryManagerImpl(SignType.EDDSA, 4, 15, TimeUnit.SECONDS, audiences))
-
+                .addEventListeners(new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 4, TimeUnit.SECONDS, audiences))
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
@@ -136,7 +137,6 @@ public class BuilderExample
                 .addEventListenerProvider(() -> new SelfUserRetrieveActionImpl(this))
                 .addEventListenerProvider(() -> new SelfUserDeleteActionImpl(this))
                 .addEventListenerProvider(() -> new SelfUserEditActionImpl(this))
-
                 .addEventListenerProvider(() -> new SessionPaginationActionImpl(this))
                 .addEventListenerProvider(() -> new SessionRetrieveActionImpl(this))
                 .addEventListenerProvider(() -> new SessionCreateActionImpl(this))
@@ -145,7 +145,7 @@ public class BuilderExample
                 .addEventListenerProvider(() -> new SessionDeleteActionImpl(this))
                 .addEventListenerProvider(() -> new SessionLogoutActionImpl(this))
 
-                .addEventListeners(new ErrorObjectManagerImpl(true))
+                .addEventListeners(new ErrorObjectManagerImpl(false))
                 .build();
 
         TimeUnit.SECONDS.sleep(2);
@@ -158,6 +158,12 @@ public class BuilderExample
     public JNTImpl getJNT()
     {
         return (JNTImpl) api;
+    }
+
+    @Nonnull
+    public JACTImpl getJACT()
+    {
+        return (JACTImpl) jact;
     }
 
     @Nonnull
@@ -268,8 +274,8 @@ public class BuilderExample
     @CheckReturnValue
     public InteractionContextAction<Session> retrieveSessionById(@Nonnull UUID userId, @Nonnull UUID sessionId)
     {
-        Checks.notNull(userId, "ID");
-        Checks.notNull(userId, "Session ID");
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(sessionId, "Session ID");
         return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.sessions WHERE user_id = ? AND session_id = ?", Arrays.asList(userId, sessionId))
         {
             @Override

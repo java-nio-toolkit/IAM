@@ -67,7 +67,7 @@ public class Routes
         public static final Route GET_SESSION = new Route(GET, "users/@me/sessions/{session_id}");
         public static final Route ADD_SESSION = new Route(POST, "users/@me/sessions");
         public static final Route EDIT_SESSION = new Route(PATCH, "users/@me/sessions/{session_id}");
-        public static final Route UPDATE_SESSION = new Route(PUT, "users/@me/sessions/{session_id}");
+        public static final Route UPDATE_SESSION = new Route(PUT, "users/@me/sessions/{session_id}", true);
         public static final Route REMOVE_SESSION = new Route(DELETE, "users/@me/sessions/{session_id}");
         public static final Route REMOVE_ALL_SESSIONS = new Route(DELETE, "users/@me/sessions");
     }

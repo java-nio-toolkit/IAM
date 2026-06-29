@@ -59,7 +59,7 @@ public class SessionCreateData implements SessionData
         map.put("flags", flags);
         map.put("user_agent", userAgent);
         map.put("alg", entryData.getAccessOption().getMode());
-        map.put("kid", entryData.getUniqueId());
+        map.put("kid", entryData.getName());
         map.put("kty", entryData.getType().name());
         map.put("usage", entryData.getUsage().name().toLowerCase());
         map.put("public_key", entryData.getPublicKey().getEncoded());

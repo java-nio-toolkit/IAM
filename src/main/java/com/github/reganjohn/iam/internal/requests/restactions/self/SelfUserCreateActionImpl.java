@@ -160,7 +160,7 @@ public class SelfUserCreateActionImpl extends AbstractSelfUserActionImpl impleme
             String issuer = api.getJNT().getIdentifierString();
             String subject = UUIDv7.randomUUID().toString();
 
-            AccessOptionData optionData = new AccessOptionData(snapshot.getUniqueId(), ASSERT_TYPE, manager.getSignType());
+            AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ASSERT_TYPE, manager.getSignType());
             AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
             onSelfCreate(context, request, contextData, json, data, rawBody);
         }
