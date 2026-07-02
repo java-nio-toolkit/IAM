@@ -17,13 +17,14 @@
 package com.github.reganjohn.iam.internal.requests.restactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.requests.*;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.User;
@@ -42,12 +43,12 @@ public class UserRetrieveActionImpl extends AbstractUserActionImpl implements Us
 {
     public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-    public UserRetrieveActionImpl(@Nonnull BuilderExample api)
+    public UserRetrieveActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Users.GET_USER);
     }
 
-    protected UserRetrieveActionImpl(@Nonnull BuilderExample api, @Nonnull Route route)
+    protected UserRetrieveActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {
         super(api, route);
     }
@@ -55,49 +56,40 @@ public class UserRetrieveActionImpl extends AbstractUserActionImpl implements Us
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        String userId = request.getRoute().getMajorParameters().get(USER_ID);
-        handleInternally(context, userId, new ArrayList<>());
+        handleRequest(context, request, new ArrayList<>());
     }
 
-    protected void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull String userId,
-                                    @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
+    protected void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
     {
+        String userId = request.getRoute().getMajorParameters().get(USER_ID);
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
-            checkUser(userId);
+            checkUserId(userId);
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse(USER_ID, ex, schemaErrors);
+            handleErrorResponse("user_id", ex, schemaErrors);
         }
         finally
         {
-            handleException(context, userId, schemaErrors);
+            handleInternally(context, userId, schemaErrors);
         }
     }
 
-    private void checkUser(@Nonnull String id)
+    public void checkUserId(@Nonnull String id)
     {
         if (Helpers.isEmpty(id))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!MiscUtil.isUUID(id))
-            throw new DataObjectParsingException(UUID_TYPE_COERCE, Helpers.format("The \"%s\" value is not uuid.", USER_ID));
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"user_id\" value is not uuid.");
     }
 
-    private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull String userId,
-                                 @Nonnull List<InvalidResponseException.SchemaError> errors)
+    protected void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull String userId, @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
         if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50035, "Invalid Form Body", errors);
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         else
-            handleInternally(context, userId);
-    }
-
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull String userId)
-    {
-        api.retrieveUserById(UUID.fromString(userId))
-                
-                .queue(user -> handleSuccess(context, user), context::fireExceptionCaught);
+            api.retrieveUserById(UUID.fromString(userId)).queue(user -> handleSuccess(context, user), context::fireExceptionCaught);
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull User user)

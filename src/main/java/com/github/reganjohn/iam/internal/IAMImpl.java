@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api;
+package com.github.reganjohn.iam.internal;
 
 import com.github.adamorgan.jnt.api.ConnectionType;
 import com.github.adamorgan.jnt.api.JNT;
@@ -32,7 +32,7 @@ import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
-import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
+import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditActionImpl;
@@ -70,7 +70,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class BuilderExample
+public class IAMImpl
 {
     static
     {
@@ -89,7 +89,7 @@ public class BuilderExample
     {
         String host = "localhost";
         int port = 8080;
-        new BuilderExample(host, port);
+        new IAMImpl(host, port);
     }
 
     public static JACT buildInstance()
@@ -103,7 +103,7 @@ public class BuilderExample
                 .build();
     }
 
-    public BuilderExample(String host, int port) throws Exception
+    public IAMImpl(String host, int port) throws Exception
     {
         List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jact = buildInstance();
@@ -116,9 +116,8 @@ public class BuilderExample
                 .addEventListeners(new CacheObjectManagerImpl())
                 .addEventListeners(new CookieObjectManagerImpl())
 
-
                 .addEventListeners(new ContentSecurityOverrideManagerImpl())
-                .addEventListeners(new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 4, TimeUnit.SECONDS, audiences))
+                .addEventListeners(new GlobalAccessEntryManagerImpl(this, SignType.EDDSA, 2, 6, TimeUnit.SECONDS, audiences))
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
@@ -174,7 +173,8 @@ public class BuilderExample
         return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.accounts WHERE user_id = ?", Collections.singletonList(id))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<User> request, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<User> request, @Nonnull BufferArray array)
             {
                 if (!array.isEmpty())
                     request.onSuccess(EntityBuilder.createUser(array.getObject(0)));
@@ -200,32 +200,13 @@ public class BuilderExample
         return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("create_account.cql"), map)
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (array.isEmpty())
                     request.onSuccess(null);
                 else
-                    request.onFailure(new ErrorResponseException(0, "")); //todo: add message!
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionMappingAction<Void> editUser(@Nonnull UserEditData user)
-    {
-        Checks.notNull(user, "User");
-        String content = Helpers.format("UPDATE users.accounts SET %s WHERE user_id = :user_id IF EXISTS",
-                InteractionUtil.join(user.toData().keys(), true));
-        return new InteractionMappingActionImpl<>(jact, content, Helpers.unnullableMap(user.toMap()))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
-            {
-                if (InteractionUtil.isDone(array))
-                    request.onSuccess(null);
-                else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
+                    request.onFailure(new ErrorResponseException(ErrorResponse.SESSION_ALREADY_EXISTS));
             }
         };
     }
@@ -238,7 +219,8 @@ public class BuilderExample
         return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("delete_account.cql"), Collections.singletonMap("user_id", userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (!array.isEmpty())
                     request.onSuccess(null);
@@ -256,16 +238,11 @@ public class BuilderExample
         return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<List<Session>> interaction, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<Session>> interaction,
+                                      @Nonnull BufferArray array) throws Exception
             {
-                try
-                {
-                    interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : EntityBuilder.createSessions(array));
-                }
-                catch (Exception error)
-                {
-                    interaction.onFailure(error);
-                }
+                interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : EntityBuilder.createSessions(array));
             }
         };
     }
@@ -279,19 +256,14 @@ public class BuilderExample
         return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.sessions WHERE user_id = ? AND session_id = ?", Arrays.asList(userId, sessionId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Session> interaction, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Session> interaction,
+                                      @Nonnull BufferArray array) throws Exception
             {
-                try
-                {
-                    if (array.isEmpty())
-                        interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
-                    else
-                        interaction.onSuccess(EntityBuilder.createSession(array.getObject(0)));
-                }
-                catch (Exception error)
-                {
-                    interaction.onFailure(error);
-                }
+                if (array.isEmpty())
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
+                else
+                    interaction.onSuccess(EntityBuilder.createSession(array.getObject(0)));
             }
         };
 
@@ -314,12 +286,13 @@ public class BuilderExample
         return new InteractionMappingActionImpl<>(jact, content, map)
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (InteractionUtil.isDone(array))
                     request.onSuccess(null);
                 else
-                    request.onFailure(new IllegalStateException("")); //todo: add message
+                    request.onFailure(new ErrorResponseException(ErrorResponse.SESSION_ALREADY_EXISTS));
             }
         };
     }
@@ -332,7 +305,8 @@ public class BuilderExample
         return new InteractionContextActionImpl<>(jact, "SELECT COUNT(*) FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
                 request.onSuccess((int) InteractionUtil.count(array));
             }
@@ -349,7 +323,8 @@ public class BuilderExample
         return new InteractionMappingActionImpl<>(jact, content, session.toMap())
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (InteractionUtil.isDone(array))
                     request.onSuccess(null);
@@ -368,7 +343,8 @@ public class BuilderExample
         return new InteractionContextActionImpl<>(jact, "DELETE FROM users.sessions WHERE user_id = ? AND session_id = ? IF EXISTS", Arrays.asList(userId, sessionId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (InteractionUtil.isDone(array))
                     request.onSuccess(null);

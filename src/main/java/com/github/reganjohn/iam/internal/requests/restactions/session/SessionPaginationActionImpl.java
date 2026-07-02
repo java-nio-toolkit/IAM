@@ -27,7 +27,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Session;
@@ -47,7 +47,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl
 {
     public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-    public SessionPaginationActionImpl(@Nonnull BuilderExample api)
+    public SessionPaginationActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Session.GET_SESSIONS);
     }

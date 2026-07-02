@@ -18,9 +18,9 @@ CREATE KEYSPACE IF NOT EXISTS users WITH replication =
     {
         'class': 'SimpleStrategy',
         'replication_factor': 1
-    };
+        };
 
-CREATE TABLE if not exists public_keys
+CREATE TABLE if not exists users.public_keys
 (
     kid        uuid PRIMARY KEY,
     public_key blob,
@@ -38,17 +38,16 @@ create table if not exists users.accounts
 
 create table if not exists users.sessions
 (
-    user_id            uuid,
-    session_id         uuid,
-    creator_session_id uuid,
-    flags              int,
-    user_agent         text,
-    key_alg            text,
-    key_id             text,
-    key_type           text,
-    key_usage          text,
-    public_key         text,
-    thumbprint         text,
+    user_id    uuid,
+    session_id uuid,
+    flags      int,
+    user_agent text,
+    alg        text,
+    kid        text,
+    kty        text,
+    usage      text,
+    thumbprint text,
+    public_key blob,
     primary key (user_id, session_id)
 ) WITH transactional_mode = 'full';
 

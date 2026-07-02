@@ -24,7 +24,7 @@ import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionAction;
@@ -40,9 +40,9 @@ import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_
 public abstract class AbstractSessionActionImpl extends RestActionImpl implements SessionAction
 {
     protected static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
-    protected final BuilderExample api;
+    protected final IAMImpl api;
 
-    public AbstractSessionActionImpl(BuilderExample api, @Nonnull Route route)
+    public AbstractSessionActionImpl(IAMImpl api, @Nonnull Route route)
     {
         super(route);
         this.api = api;

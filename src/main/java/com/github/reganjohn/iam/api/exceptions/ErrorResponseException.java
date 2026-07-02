@@ -13,12 +13,12 @@ public class ErrorResponseException extends InvalidResponseException
         this(errorResponse.getCode(), errorResponse.getMeaning());
     }
 
-    public ErrorResponseException(@Nonnull ErrorResponse errorResponse, @NotNull SchemaError schemaError)
+    public ErrorResponseException(@Nonnull ErrorResponse errorResponse, @Nonnull SchemaError schemaError)
     {
         this(errorResponse.getCode(), errorResponse.getMeaning(), schemaError);
     }
 
-    public ErrorResponseException(@Nonnull ErrorResponse errorResponse, @NotNull List<SchemaError> schemaErrors)
+    public ErrorResponseException(@Nonnull ErrorResponse errorResponse, @Nonnull List<SchemaError> schemaErrors)
     {
         this(errorResponse.getCode(), errorResponse.getMeaning(), schemaErrors);
     }
@@ -28,12 +28,12 @@ public class ErrorResponseException extends InvalidResponseException
         super(code, meaning);
     }
 
-    public ErrorResponseException(int code, String meaning, @NotNull SchemaError schemaError)
+    public ErrorResponseException(int code, String meaning, @Nonnull SchemaError schemaError)
     {
         super(code, meaning, schemaError);
     }
 
-    public ErrorResponseException(int code, String meaning, @NotNull List<SchemaError> schemaErrors)
+    public ErrorResponseException(int code, String meaning, @Nonnull List<SchemaError> schemaErrors)
     {
         super(code, meaning, schemaErrors);
     }

@@ -21,7 +21,6 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.EntityString;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.SessionFlag;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -70,13 +69,6 @@ public class SessionImpl implements Session
         return entryData;
     }
 
-    @Nonnull
-    @Override
-    public EnumSet<SessionFlag> getFlags()
-    {
-        return SessionFlag.getFlags(flags);
-    }
-
     @Override
     public int getFlagsRaw()
     {
@@ -95,25 +87,6 @@ public class SessionImpl implements Session
     public String getUserAgent()
     {
         return userAgent;
-    }
-
-    @Nonnull
-    private DataObject toData()
-    {
-        DataObject rawUser = DataObject.empty()
-                .put("id", userId);
-
-        if (Helpers.nonEmpty(userAgent))
-            rawUser.put("user_agent", userAgent);
-
-        DataObject json = DataObject.empty()
-                .put("session_id", sessionId);
-
-        return json
-                .put("user", rawUser)
-                .put("jwk", entryData)
-                .put("flags", flags)
-                .toData();
     }
 
     @Override

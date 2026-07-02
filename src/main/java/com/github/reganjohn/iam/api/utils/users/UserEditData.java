@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.utils.users;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 
 import javax.annotation.Nonnull;
@@ -26,14 +27,13 @@ import java.util.*;
 public class UserEditData implements UserData
 {
     private final UUID id;
-    private final String name;
-    private final int flags;
+    private String name;
 
-    public UserEditData(@Nonnull UUID id, String name, int flags)
+    private Integer flags;
+
+    public UserEditData(@Nonnull UUID id)
     {
         this.id = id;
-        this.name = name;
-        this.flags = flags;
     }
 
     @Nonnull
@@ -44,33 +44,35 @@ public class UserEditData implements UserData
     }
 
     @Nullable
-    @Override
     public String getName()
     {
         return name;
     }
 
-    @Override
-    public int getFlagsRaw()
+    @Nonnull
+    public UserEditData setName(@Nonnull String name)
     {
-        return flags;
+        Checks.notEmpty(name, "Name");
+        Checks.inRange(2, 32, "Name");
+        this.name = name;
+        return this;
     }
 
-    @Override
-    public boolean isEmpty()
+    @Nonnull
+    public UserEditData setFlags(int flags)
     {
-        return toData().size() == 0;
+        this.flags = flags;
+        return this;
     }
 
     @Nonnull
     public Map<String, Object> toMap()
     {
-        Map<String, Object> map = new HashMap<>(Collections.singletonMap("user_id", id));
+        Map<String, Object> map = new HashMap<>();
+        map.put("user_id", id);
         if (Helpers.nonEmpty(name))
             map.put("username", name);
-        if (flags != 0)
-            map.put("flags", flags);
-        return map;
+        return Collections.unmodifiableMap(map);
     }
 
     @Nonnull
@@ -80,8 +82,6 @@ public class UserEditData implements UserData
         DataObject data = DataObject.empty();
         if (Helpers.nonEmpty(name))
             data.put("username", name);
-        if (flags != 0)
-            data.put("flags", flags);
         return data;
     }
 }

@@ -7,10 +7,10 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessOptionData;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
+import com.github.reganjohn.iam.api.managers.GlobalAccessEntryManager;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.api.utils.data.BufferObject;
@@ -20,7 +20,6 @@ import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionIm
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
 import io.netty.util.HashedWheelTimer;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.security.GeneralSecurityException;
@@ -34,13 +33,13 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements GlobalAccessManager
+public class GlobalAccessEntryManagerImpl extends AccessEntryManagerImpl implements GlobalAccessEntryManager
 {
-    public static final AttributeKey<GlobalAccessManagerImpl> IDENTIFIER = AttributeKey.valueOf("access.entry.manager");
+    public static final AttributeKey<GlobalAccessEntryManagerImpl> IDENTIFIER = AttributeKey.valueOf("access.entry.manager");
 
-    private final BuilderExample api;
+    private final IAMImpl api;
 
-    public GlobalAccessManagerImpl(BuilderExample api, @NotNull SignType type, int limit, long timeout, @NotNull TimeUnit unit, @NotNull List<String> audiences)
+    public GlobalAccessEntryManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout, @Nonnull TimeUnit unit, @Nonnull List<String> audiences)
     {
         super(new HashedWheelTimer(1L, unit), type, limit, timeout, unit, audiences);
         this.api = api;
@@ -70,12 +69,12 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM users.public_keys WHERE kid = ?", Collections.singletonList(kid))
         {
             @Override
-            public void handleSuccess(@NotNull InteractionCallbackResponseImpl response, @NotNull InteractionImpl<Boolean> interaction, @NotNull BufferArray array)
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response, @Nonnull InteractionImpl<Boolean> interaction, @Nonnull BufferArray array)
             {
                 try
                 {
                     if (array.isEmpty())
-                        interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_PAIR));
+                        interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SIGNER));
                     else
                         interaction.onSuccess(hasAccess(array.getObject(0)));
                 }
@@ -85,7 +84,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                 }
             }
 
-            private boolean hasAccess(@NotNull BufferObject successObj) throws GeneralSecurityException
+            private boolean hasAccess(@Nonnull BufferObject successObj) throws GeneralSecurityException
             {
                 String header = rawData.getRawHeaders();
                 String body = rawData.getRawBody();
@@ -101,7 +100,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     }
 
     @Override
-    protected void onCreateSnapshot(@NotNull AccessEntrySnapshot snapshot)
+    protected void onCreateSnapshot(@Nonnull AccessEntrySnapshot snapshot)
     {
         UUID uniqueId = snapshot.getUniqueId();
         byte[] publicKey = snapshot.getPublicKey().getEncoded();

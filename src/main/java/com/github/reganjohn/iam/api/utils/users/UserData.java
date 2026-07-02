@@ -16,21 +16,17 @@
 
 package com.github.reganjohn.iam.api.utils.users;
 
+import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
+import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import java.util.Map;
 import java.util.UUID;
 
-public interface UserData extends SerializableData
+public interface UserData extends SerializableData, IUnique
 {
     @Nonnull
-    UUID getUniqueId();
-
-    @Nullable
-    String getName();
-
-    int getFlagsRaw();
-
-    boolean isEmpty();
+    @Unmodifiable
+    Map<String, Object> toMap();
 }

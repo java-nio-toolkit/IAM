@@ -20,13 +20,14 @@ import javax.annotation.Nonnull;
 
 public enum ErrorResponse
 {
-    UNKNOWN_PAIR(10011, "Unknown Pair"), //todo: replace
+    UNKNOWN_SIGNER(10011, "Unknown Signer"),
     UNKNOWN_SESSION(10012, "Unknown Session"),
     UNKNOWN_USER(10013, "Unknown User"),
 
     MAX_SESSIONS(30001, "Maximum number of Sessions reached (10)"),
 
     UNAUTHORIZED(40001, "Unauthorized"),
+    SESSION_ALREADY_EXISTS(40122, "An session with that key already exists"),
 
     INVALID_FORM_URL(50034, "Invalid Form URL"),
     INVALID_FORM_BODY(50035, "Invalid Form Body"),

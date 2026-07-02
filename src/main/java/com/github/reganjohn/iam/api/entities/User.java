@@ -17,14 +17,198 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
-import org.bouncycastle.jcajce.provider.asymmetric.util.IESUtil;
+import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.github.reganjohn.iam.api.utils.users.UserEditData;
+import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.util.Collection;
+import java.util.EnumSet;
 
 public interface User extends IUnique
 {
+    /**
+     * The username of the {@link User User}. Length is between 2 and 32 characters (inclusive).
+     *
+     * @return Never-null String containing the {@link User User}'s username.
+     */
     @Nonnull
     String getName();
 
+    /**
+     * Returns the {@link UserFlag UserFlags} of this user.
+     *
+     * @return EnumSet containing the flags of the user.
+     */
+    @Nonnull
+    default EnumSet<UserFlag> getFlags()
+    {
+        return UserFlag.getFlags(getFlagsRaw());
+    }
+
+    /**
+     * Returns the bitmask representation of the {@link UserFlag UserFlags} of this user.
+     *
+     * @return bitmask representation of the user's flags.
+     */
     int getFlagsRaw();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionMappingAction<Void> edit(@Nonnull UserEditData user);
+
+    /**
+     * Represents the bit offsets used for flags.
+     */
+    enum UserFlag
+    {
+        BOT(12, "Bot"),
+
+        UNKNOWN(-1, "Unknown");
+
+        /**
+         * Empty array of UserFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
+         */
+        public static final UserFlag[] EMPTY_FLAGS = new UserFlag[0];
+
+        private final int offset;
+        private final int raw;
+        private final String name;
+
+        UserFlag(int offset, @Nonnull String name)
+        {
+            this.offset = offset;
+            this.raw = 1 << offset;
+            this.name = name;
+        }
+
+        /**
+         * The readable name as used in the client.
+         *
+         * @return The readable name of this {@link UserFlag UserFlag}.
+         */
+        @Nonnull
+        public String getName()
+        {
+            return this.name;
+        }
+
+        /**
+         * The binary offset of the flag.
+         *
+         * @return The offset that represents this {@link UserFlag UserFlag}.
+         */
+        public int getOffset()
+        {
+            return offset;
+        }
+
+        /**
+         * The value of this flag when viewed as raw value.
+         * <br>This is equivalent to: <code>1 {@literal <<} {@link #getOffset()}</code>
+         *
+         * @return The raw value of this specific flag.
+         */
+        public int getRawValue()
+        {
+            return raw;
+        }
+
+        /**
+         * Gets the first UserFlag relating to the provided offset.
+         * <br>If there is no UserFlag that matches the provided offset,
+         * {@link #UNKNOWN} is returned.
+         *
+         * @param  offset
+         *         The offset to match a UserFlag to.
+         *
+         * @return UserFlag relating to the provided offset.
+         */
+        @Nonnull
+        public static UserFlag getFromOffset(int offset)
+        {
+            for (UserFlag flag : values())
+            {
+                if (flag.offset == offset)
+                {
+                    return flag;
+                }
+            }
+            return UNKNOWN;
+        }
+
+        /**
+         * A set of all UserFlags that are specified by this raw int representation of
+         * flags.
+         *
+         * @param  flags
+         *         The raw {@code int} representation if flags.
+         *
+         * @return Possibly-empty EnumSet of UserFlags.
+         */
+        @Nonnull
+        public static EnumSet<UserFlag> getFlags(int flags)
+        {
+            EnumSet<UserFlag> foundFlags = EnumSet.noneOf(UserFlag.class);
+            if (flags == 0)
+            {
+                return foundFlags; // empty
+            }
+            for (UserFlag flag : values())
+            {
+                if (flag != UNKNOWN && (flags & flag.raw) == flag.raw)
+                {
+                    foundFlags.add(flag);
+                }
+            }
+
+            return foundFlags;
+        }
+
+        /**
+         * This is effectively the opposite of {@link #getFlags(int)}, this takes 1 or more UserFlags
+         * and returns the bitmask representation of the flags.
+         *
+         * @param  flags
+         *         The array of flags of which to form into the raw int representation.
+         *
+         * @throws java.lang.IllegalArgumentException
+         *         When the provided UserFlags are null.
+         *
+         * @return bitmask representing the provided flags.
+         */
+        public static int getRaw(@Nonnull UserFlag... flags)
+        {
+            Checks.noneNull(flags, "UserFlags");
+            int raw = 0;
+            for (UserFlag flag : flags)
+            {
+                if (flag != null && flag != UNKNOWN)
+                {
+                    raw |= flag.raw;
+                }
+            }
+
+            return raw;
+        }
+
+        /**
+         * This is effectively the opposite of {@link #getFlags(int)}. This takes a collection of UserFlags
+         * and returns the bitmask representation of the flags.
+         *
+         * @param  flags
+         *         The flags to convert
+         *
+         * @throws java.lang.IllegalArgumentException
+         *         When the provided UserFLags are null.
+         *
+         * @return bitmask representing the provided flags.
+         */
+        public static int getRaw(@Nonnull Collection<UserFlag> flags)
+        {
+            Checks.notNull(flags, "Flag Collection");
+            return getRaw(flags.toArray(EMPTY_FLAGS));
+        }
+    }
 }

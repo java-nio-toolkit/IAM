@@ -16,32 +16,55 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.self;
 
-import com.github.adamorgan.jnt.api.requests.MediaType;
+import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.internal.IAMImpl;
+import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserRetrieveAction;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
+import java.util.List;
 
 public class SelfUserRetrieveActionImpl extends UserRetrieveActionImpl implements SelfUserRetrieveAction
 {
-    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
-
-    public SelfUserRetrieveActionImpl(@Nonnull BuilderExample api)
+    public SelfUserRetrieveActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Self.GET_SELF);
     }
 
     @Override
-    public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
+    protected void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                 @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
     {
-        AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        handleInternally(context, objectData.getSubject(), new ArrayList<>());
+        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkUserId(data.getSubject());
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("sub", ex, schemaErrors);
+        }
+        finally
+        {
+            handleInternally(context, data.getSubject(), schemaErrors);
+        }
+    }
+
+    @Override
+    public void checkUserId(@Nonnull String id)
+    {
+        if (Helpers.isEmpty(id))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!MiscUtil.isUUID(id))
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"sub\" value is not uuid.");
     }
 }

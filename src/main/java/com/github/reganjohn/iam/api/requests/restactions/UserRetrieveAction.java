@@ -16,6 +16,9 @@
 
 package com.github.reganjohn.iam.api.requests.restactions;
 
+/**
+ * Attempts to retrieve a {@link com.github.reganjohn.iam.api.entities.User User} object based on the provided id.
+ */
 public interface UserRetrieveAction extends UserAction
 {
 }

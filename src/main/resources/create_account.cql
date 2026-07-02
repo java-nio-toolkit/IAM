@@ -22,8 +22,8 @@ BEGIN TRANSACTION
 
     IF session_data IS NULL THEN
         INSERT INTO users.sessions (user_id, session_id, flags, user_agent, alg, kid, kty, usage, public_key, thumbprint)
-        VALUES (:user_id, :session_id, :flags, :user_agent, :alg, :kid, :kty, :usage, :public_key, :thumbprint);
+        VALUES (:user_id, :session_id, :session_flags, :user_agent, :alg, :kid, :kty, :usage, :public_key, :thumbprint);
         INSERT INTO users.accounts (user_id, username, flags)
-        VALUES (:user_id, :username, :flags);
+        VALUES (:user_id, :username, :user_flags);
     END IF
 COMMIT TRANSACTION;

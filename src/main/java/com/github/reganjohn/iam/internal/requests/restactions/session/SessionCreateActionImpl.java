@@ -38,7 +38,7 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -49,7 +49,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.*;
@@ -76,7 +75,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
 
     private static final String ASSERT_TYPE = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
 
-    public SessionCreateActionImpl(@Nonnull BuilderExample api)
+    public SessionCreateActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Session.ADD_SESSION);
     }

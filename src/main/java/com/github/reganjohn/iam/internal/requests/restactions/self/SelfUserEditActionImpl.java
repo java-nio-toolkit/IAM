@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.internal.requests.restactions.self;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -28,7 +29,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -42,10 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SelfUserEditActionImpl extends AbstractSelfUserActionImpl implements SelfUserEditAction
 {
-    public static final List<String> MAJOR_PARAMETER_NAMES =
-            Helpers.listOf("username", "flags");
-
-    public SelfUserEditActionImpl(@Nonnull BuilderExample api)
+    public SelfUserEditActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Self.MODIFY_SELF);
     }
@@ -56,16 +54,16 @@ public class SelfUserEditActionImpl extends AbstractSelfUserActionImpl implement
         if (!(request.getBody() instanceof JacksonRequestBody && ((JacksonRequestBody) request.getBody()).isObject()))
             throw new ErrorResponseException(ErrorResponse.INVALID_FROM_OBJECT_BODY);
         else
-            handleUser(context, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
+            handleName(context, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
     }
 
-    private void handleUser(@Nonnull ChannelHandlerContext context,
-                            @Nonnull DataObject rawData, @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
+    private void handleName(@Nonnull ChannelHandlerContext context,
+                            @Nonnull DataObject rawData,
+                            @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
     {
-        rawData.retain(MAJOR_PARAMETER_NAMES);
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
-            checkUser(rawData);
+            checkName(rawData);
         }
         catch (DataObjectParsingException ex)
         {
@@ -75,6 +73,18 @@ public class SelfUserEditActionImpl extends AbstractSelfUserActionImpl implement
         {
             handleFlags(context, rawData, schemaErrors);
         }
+    }
+
+    private void checkName(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("username"))
+            return;
+        else if (!body.isType("username", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"username\" value is not string.");
+        else if (body.getString("username").length() < MIN_NAME_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MIN, Helpers.format("The \"username\" value may not be less than %f characters.", MIN_NAME_LENGTH));
+        else if (body.getString("username").length() > MAX_NAME_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX, Helpers.format("The \"username\" may not be longer than %d characters.", MAX_NAME_LENGTH));
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawData,
@@ -94,31 +104,14 @@ public class SelfUserEditActionImpl extends AbstractSelfUserActionImpl implement
         }
     }
 
-    private void checkUser(@Nonnull DataObject body)
-    {
-        if (!body.hasKey(NAME))
-            return;
-        else if (!body.isType(NAME, DataType.STRING))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE,
-                    Helpers.format("Value \"%s\" is not string.", NAME));
-        else if (body.getString(NAME).length() < MIN_NAME_LENGTH)
-            throw new DataObjectParsingException(STRING_TYPE_MIN,
-                    Helpers.format("The \"%s\" value may not be less than %f characters.", NAME, MIN_NAME_LENGTH));
-        else if (body.getString(NAME).length() > MAX_NAME_LENGTH)
-            throw new DataObjectParsingException(STRING_TYPE_MAX,
-                    Helpers.format("The \"%s\" may not be longer than %d characters.", NAME, MAX_NAME_LENGTH));
-    }
-
-    private void checkFlags(DataObject body)
+    private void checkFlags(@Nonnull DataObject body)
     {
         if (!body.hasKey("flags"))
             return;
         else if (!body.isType("flags", DataType.INT))
-            throw new DataObjectParsingException(NUMBER_TYPE_COERCE,
-                    Helpers.format("Value \"%s\" is not number.", NAME));
-        else if (body.getInt(NAME) < 0)
-            throw new DataObjectParsingException(NUMBER_TYPE_MIN,
-                    Helpers.format("flags value should be greater than or equal to 0.", NAME));
+            throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"flags\" is not number.");
+        else if (body.getInt("flags") < 0)
+            throw new DataObjectParsingException(NUMBER_TYPE_MIN, Helpers.format("Value \"flags\" should be greater than or equal to 0."));
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject json,
@@ -126,13 +119,26 @@ public class SelfUserEditActionImpl extends AbstractSelfUserActionImpl implement
     {
         AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(objectData.getSubject());
-        String username = json.getString(NAME, null);
-        int flags = json.getInt("flags", 0);
-        UserEditData user = new UserEditData(userId, username, flags);
+        api.retrieveUserById(userId).queue(user ->
+        {
+            //todo: add a check for permissions to modify flags
+            handleInternally(context, user, json, errors);
+        });
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull User user,
+                                  @Nonnull DataObject json,
+                                  @Nonnull List<InvalidResponseException.SchemaError> errors)
+    {
         if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50035, "Invalid Form Body", errors);
-        else
-            api.editUser(user).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+        String name = json.getString("username");
+        UserEditData data = new UserEditData(user.getUniqueId());
+        if (json.hasKey("username", DataType.STRING))
+            data.setName(name);
+        if (json.hasKey("flags", DataType.INT))
+            data.setFlags(json.getInt("flags"));
+        user.edit(data).queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

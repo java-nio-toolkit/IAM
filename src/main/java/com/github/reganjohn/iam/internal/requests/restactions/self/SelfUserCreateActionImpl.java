@@ -34,7 +34,7 @@ import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -51,18 +51,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.JKT;
-
 public class SelfUserCreateActionImpl extends AbstractSelfUserActionImpl implements SelfUserCreateAction
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
 
-    public static final List<String> MAJOR_PARAMETER_NAMES =
-            Helpers.listOf("username", "flags");
-
-    private static final String ASSERT_TYPE = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
-
-    public SelfUserCreateActionImpl(@Nonnull BuilderExample api)
+    public SelfUserCreateActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Self.CREATE_SELF);
     }
@@ -73,16 +66,16 @@ public class SelfUserCreateActionImpl extends AbstractSelfUserActionImpl impleme
         if (!(request.getBody() instanceof JacksonRequestBody && ((JacksonRequestBody) request.getBody()).isObject()))
             throw new ErrorResponseException(ErrorResponse.INVALID_FROM_OBJECT_BODY);
         else
-            handleUser(context, request, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
+            handleName(context, request, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
     }
 
-    private void handleUser(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                            @Nonnull DataObject rawData, @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    private void handleName(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                            @Nonnull DataObject rawData,
+                            @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
-        rawData.retain(MAJOR_PARAMETER_NAMES);
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
-            checkUser(rawData);
+            checkName(rawData);
         }
         catch (DataObjectParsingException ex)
         {
@@ -94,8 +87,21 @@ public class SelfUserCreateActionImpl extends AbstractSelfUserActionImpl impleme
         }
     }
 
+    private void checkName(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("username"))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!body.isType("username", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"username\" value is not string.");
+        else if (body.getString("username").length() < MIN_NAME_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MIN, Helpers.format("The \"username\" value may not be less than %f characters.", MIN_NAME_LENGTH));
+        else if (body.getString("username").length() > MAX_NAME_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX, Helpers.format("The \"username\" may not be longer than %d characters.", MAX_NAME_LENGTH));
+    }
+
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                             @Nonnull DataObject rawData, @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+                             @Nonnull DataObject rawData,
+                             @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
@@ -107,85 +113,83 @@ public class SelfUserCreateActionImpl extends AbstractSelfUserActionImpl impleme
         }
         finally
         {
-            handleInternally(context, request, rawData, schemaErrors);
+            handleSession(context, request, rawData, rawData.getObject("session", DataObject.empty()), schemaErrors);
         }
     }
 
-    private void checkUser(@Nonnull DataObject body)
-    {
-        if (!body.hasKey(NAME))
-            return;
-        else if (!body.isType(NAME, DataType.STRING))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE,
-                    Helpers.format("Value \"%s\" is not string.", NAME));
-        else if (body.getString(NAME).length() < MIN_NAME_LENGTH)
-            throw new DataObjectParsingException(STRING_TYPE_MIN,
-                    Helpers.format("The \"%s\" value may not be less than %f characters.", NAME, MIN_NAME_LENGTH));
-        else if (body.getString(NAME).length() > MAX_NAME_LENGTH)
-            throw new DataObjectParsingException(STRING_TYPE_MAX,
-                    Helpers.format("The \"%s\" may not be longer than %d characters.", NAME, MAX_NAME_LENGTH));
-    }
-
-    private void checkFlags(DataObject body)
+    private void checkFlags(@Nonnull DataObject body)
     {
         if (!body.hasKey("flags"))
             return;
         else if (!body.isType("flags", DataType.INT))
-            throw new DataObjectParsingException(NUMBER_TYPE_COERCE,
-                    Helpers.format("Value \"%s\" is not number.", NAME));
-        else if (body.getInt(NAME) < 0)
-            throw new DataObjectParsingException(NUMBER_TYPE_MIN,
-                    Helpers.format("flags value should be greater than or equal to 0.", NAME));
+            throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"flags\" is not number.");
+        else if (body.getInt("flags") < 0)
+            throw new DataObjectParsingException(NUMBER_TYPE_MIN, Helpers.format("Value \"flags\" should be greater than or equal to 0."));
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                  @Nonnull DataObject rawData, @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
+    private void handleSession(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                               @Nonnull DataObject rawData, @Nonnull DataObject sessionData,
+                               @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
-        if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50035, "Invalid Form Body", errors);
-        else
-            handleAccessToken(context, request, rawData);
-    }
-
-    private void handleAccessToken(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                   @Nonnull DataObject rawBody) throws Exception
-    {
-        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
-        AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
-        AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
-
-        try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
-            String uniqueId = UUIDv7.randomUUID().toString();
-            String issuer = api.getJNT().getIdentifierString();
-            String subject = UUIDv7.randomUUID().toString();
-
-            AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ASSERT_TYPE, manager.getSignType());
-            AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
-            onSelfCreate(context, request, contextData, json, data, rawBody);
+            checkSessionFlags(sessionData);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("session.flags", ex, schemaErrors);
+        }
+        finally
+        {
+            handleInternally(context, request, rawData, sessionData, schemaErrors);
         }
     }
 
-    private void onSelfCreate(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                              @Nonnull AccessContextData contextData, @Nonnull AccessObjectData objectData,
-                              @Nonnull ProofObjectData assertData, @Nonnull DataObject content)
+    private void checkSessionFlags(@Nonnull DataObject body)
     {
-        UUID userId = UUID.fromString(objectData.getSubject());
-        String name = content.getString("username");
-        int flags = content.getInt("flags");
+        if (!body.hasKey("flags"))
+            return;
+        else if (!body.isType("flags", DataType.INT))
+            throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"flags\" is not number.");
+        else if (body.getInt("flags") < 0)
+            throw new DataObjectParsingException(NUMBER_TYPE_MIN, Helpers.format("Value \"flags\" should be greater than or equal to 0."));
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                  @Nonnull DataObject rawBody, @Nonnull DataObject sessionData,
+                                  @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
+    {
+        if (Helpers.nonEmpty(errors))
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
+        AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
+        AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
+        try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
+        {
+            String uniqueId = UUIDv7.randomUUID().toString();
+            String identifier = api.getJNT().getIdentifierString();
+            UUIDv7 userId = UUIDv7.randomUUID();
+
+            AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, manager.getSignType());
+            AccessObjectData json = EntityBuilder.createObjectData(uniqueId, identifier, userId.toString(), manager, contextData, optionData, snapshot);
+            handleInternally(context, request, userId.toUUID(), contextData, json, data, rawBody, sessionData);
+        }
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                  @Nonnull UUID userId, @Nonnull AccessContextData contextData,
+                                  @Nonnull AccessObjectData objectData, @Nonnull ProofObjectData assertData,
+                                  @Nonnull DataObject rawData, @Nonnull DataObject sessionData)
+    {
+        String name = rawData.getString("username");
         String thumbprint = contextData.digest();
         AccessEntryData entryData = assertData.getEntryData();
-        UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublicKey().getEncoded());
-        DataObject rawData = objectData.getContextData();
-        if (rawData == null)
-            throw new IllegalStateException("The confirmation is required option and cannot be missing!");
-        else if (!rawData.hasKey(JKT))
-            throw new IllegalArgumentException("The thumbprint is required option and cannot be missing!");
-        else if (!rawData.isType(JKT, DataType.STRING))
-            throw new IllegalArgumentException("The JWK Thumbprint within the confirmation object must be a string!");
-
+        byte[] rawPublicKey = entryData.getPublicKey().getEncoded();
+        UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(rawPublicKey);
         String userAgent = request.getHeaders().get("User-Agent");
-        UserCreateData data = new UserCreateData(userId, sessionId.toUUID(), name, userAgent, entryData, flags, thumbprint);
+        int userFlags = rawData.getInt("flags", 0);
+        int sessionFlags = sessionData.getInt("flags", 0);
+        UserCreateData data = new UserCreateData(userId, sessionId.toUUID(), name, userAgent, entryData, userFlags, sessionFlags, thumbprint);
         api.createUser(data).queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);
     }
 

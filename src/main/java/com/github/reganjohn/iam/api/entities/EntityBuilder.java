@@ -66,9 +66,8 @@ public class EntityBuilder extends AbstractEntityBuilder
             rawData.put("aud", audiences.stream().collect(Helpers.toDataArray()));
         String header = IOUtil.encodeURL(optionData.toString().getBytes(StandardCharsets.UTF_8));
         String payload = IOUtil.encodeURL(rawData.toString().getBytes(StandardCharsets.UTF_8));
-        byte[] sign = snapshot.sign(header + "." + payload);
-        return new AccessObjectData(uniqueId, now, optionData, issuer, subject, sign, contextData.toData(),
-                0, expiresAt, audiences);
+        byte[] raw = snapshot.sign(header + "." + payload);
+        return new AccessObjectData(uniqueId, now, optionData, issuer, subject, raw, contextData.toData(), 0, expiresAt, audiences);
     }
 
     @Nonnull

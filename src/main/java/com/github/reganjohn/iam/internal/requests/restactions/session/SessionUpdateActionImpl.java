@@ -33,26 +33,23 @@ import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionAction;
-import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
+import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
 import java.security.MessageDigest;
-import java.security.Signature;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -67,7 +64,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
 
     private static final String ASSERT_TYPE = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
 
-    public SessionUpdateActionImpl(@Nonnull BuilderExample api)
+    public SessionUpdateActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Session.UPDATE_SESSION);
     }
@@ -146,7 +143,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
         api.retrieveSessionById(userId, sessionId).queue(session -> handle(context, contextData, json, session), context::fireExceptionCaught);
     }
 
-    private void handle(ChannelHandlerContext context, AccessContextData data, @NotNull AccessObjectData json, Session session)
+    private void handle(ChannelHandlerContext context, AccessContextData data, @Nonnull AccessObjectData json, Session session)
     {
         DataObject contextData = json.getContextData();
         if (contextData == null)
@@ -162,12 +159,12 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
     }
 
     private void handleAccessToken(@Nonnull ChannelHandlerContext context, @Nonnull AccessContextData contextData,
-                                   @NotNull AccessObjectData old)
+                                   @Nonnull AccessObjectData old)
     {
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
 
-        GlobalAccessManagerImpl accessManager = context.channel().attr(GlobalAccessManagerImpl.IDENTIFIER).get();
+        GlobalAccessEntryManagerImpl accessManager = context.channel().attr(GlobalAccessEntryManagerImpl.IDENTIFIER).get();
         accessManager.hasGlobalAccess(old).queue(hasAccess ->
         {
             try

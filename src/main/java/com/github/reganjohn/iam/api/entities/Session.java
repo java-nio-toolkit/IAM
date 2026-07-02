@@ -18,9 +18,11 @@ package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.UUID;
 
@@ -33,7 +35,10 @@ public interface Session extends IUnique
     AccessEntryData getAccessEntry();
 
     @Nonnull
-    EnumSet<SessionFlag> getFlags();
+    default EnumSet<SessionFlag> getFlags()
+    {
+        return SessionFlag.getFlags(getFlagsRaw());
+    }
 
     int getFlagsRaw();
 
@@ -42,4 +47,153 @@ public interface Session extends IUnique
 
     @Nullable
     String getUserAgent();
+
+    enum SessionFlag
+    {
+        UNKNOWN(-1, "Unknown");
+
+        /**
+         * Empty array of SessionFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
+         */
+        public static final SessionFlag[] EMPTY_FLAGS = new SessionFlag[0];
+
+        private final int offset;
+        private final int raw;
+        private final String name;
+
+        SessionFlag(int offset, @Nonnull String name)
+        {
+            this.offset = offset;
+            this.raw = 1 << offset;
+            this.name = name;
+        }
+
+        /**
+         * The readable name as used in the client.
+         *
+         * @return The readable name of this {@link SessionFlag SessionFlag}.
+         */
+        @Nonnull
+        public String getName()
+        {
+            return this.name;
+        }
+
+        /**
+         * The binary offset of the flag.
+         *
+         * @return The offset that represents this {@link SessionFlag SessionFlag}.
+         */
+        public int getOffset()
+        {
+            return offset;
+        }
+
+        /**
+         * The value of this flag when viewed as raw value.
+         * <br>This is equivalent to: <code>1 {@literal <<} {@link #getOffset()}</code>
+         *
+         * @return The raw value of this specific flag.
+         */
+        public int getRawValue()
+        {
+            return raw;
+        }
+
+        /**
+         * Gets the first SessionFlag relating to the provided offset.
+         * <br>If there is no SessionFlag that matches the provided offset,
+         * {@link #UNKNOWN} is returned.
+         *
+         * @param  offset
+         *         The offset to match a SessionFlag to.
+         *
+         * @return SessionFlag relating to the provided offset.
+         */
+        @Nonnull
+        public static SessionFlag getFromOffset(int offset)
+        {
+            for (SessionFlag flag : values())
+            {
+                if (flag.offset == offset)
+                {
+                    return flag;
+                }
+            }
+            return UNKNOWN;
+        }
+
+        /**
+         * A set of all SessionFlags that are specified by this raw int representation of
+         * flags.
+         *
+         * @param  flags
+         *         The raw {@code int} representation if flags.
+         *
+         * @return Possibly-empty EnumSet of SessionFlags.
+         */
+        @Nonnull
+        public static EnumSet<SessionFlag> getFlags(int flags)
+        {
+            EnumSet<SessionFlag> foundFlags = EnumSet.noneOf(SessionFlag.class);
+            if (flags == 0)
+            {
+                return foundFlags; // empty
+            }
+            for (SessionFlag flag : values())
+            {
+                if (flag != UNKNOWN && (flags & flag.raw) == flag.raw)
+                {
+                    foundFlags.add(flag);
+                }
+            }
+
+            return foundFlags;
+        }
+
+        /**
+         * This is effectively the opposite of {@link #getFlags(int)}, this takes 1 or more SessionFlags
+         * and returns the bitmask representation of the flags.
+         *
+         * @param  flags
+         *         The array of flags of which to form into the raw int representation.
+         *
+         * @throws java.lang.IllegalArgumentException
+         *         When the provided SessionFlags are null.
+         *
+         * @return bitmask representing the provided flags.
+         */
+        public static int getRaw(@Nonnull SessionFlag... flags)
+        {
+            Checks.noneNull(flags, "SessionFlags");
+            int raw = 0;
+            for (SessionFlag flag : flags)
+            {
+                if (flag != null && flag != UNKNOWN)
+                {
+                    raw |= flag.raw;
+                }
+            }
+
+            return raw;
+        }
+
+        /**
+         * This is effectively the opposite of {@link #getFlags(int)}. This takes a collection of SessionFlags
+         * and returns the bitmask representation of the flags.
+         *
+         * @param  flags
+         *         The flags to convert
+         *
+         * @throws java.lang.IllegalArgumentException
+         *         When the provided SessionFlags are null.
+         *
+         * @return bitmask representing the provided flags.
+         */
+        public static int getRaw(@Nonnull Collection<SessionFlag> flags)
+        {
+            Checks.notNull(flags, "Flag Collection");
+            return getRaw(flags.toArray(EMPTY_FLAGS));
+        }
+    }
 }

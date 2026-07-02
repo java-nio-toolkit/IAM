@@ -30,7 +30,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -52,7 +52,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
     public static final List<String> MAJOR_PARAMETER_NAMES =
             Helpers.listOf("flags");
 
-    public SessionEditActionImpl(@Nonnull BuilderExample api)
+    public SessionEditActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Session.EDIT_SESSION);
     }

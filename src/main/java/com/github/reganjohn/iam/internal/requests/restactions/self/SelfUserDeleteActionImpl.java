@@ -23,7 +23,7 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SelfUserDeleteActionImpl extends AbstractSelfUserActionImpl
 {
-    public SelfUserDeleteActionImpl(@Nonnull BuilderExample api)
+    public SelfUserDeleteActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Self.DELETE_SELF);
     }

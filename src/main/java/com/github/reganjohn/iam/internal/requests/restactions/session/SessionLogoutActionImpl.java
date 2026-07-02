@@ -25,7 +25,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -38,7 +38,7 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl
 {
     protected static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-    public SessionLogoutActionImpl(BuilderExample api)
+    public SessionLogoutActionImpl(IAMImpl api)
     {
         super(api, Routes.Session.REMOVE_ALL_SESSIONS);
     }

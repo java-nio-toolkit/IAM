@@ -19,7 +19,7 @@ package com.github.reganjohn.iam.internal.requests.restactions;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
-import com.github.reganjohn.iam.api.BuilderExample;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.restactions.UserAction;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 
@@ -30,18 +30,12 @@ import java.util.List;
 
 public abstract class AbstractUserActionImpl extends RestActionImpl implements UserAction
 {
-    protected final BuilderExample api;
+    protected final IAMImpl api;
 
-    public AbstractUserActionImpl(@Nonnull BuilderExample api, @Nonnull Route route)
+    public AbstractUserActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {
         super(route);
         this.api = api;
-    }
-
-    protected void handleErrorResponse(@Nonnull DataObjectParsingException exception,
-                                       @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
-    {
-        handleErrorResponse(null, exception, schemaErrors);
     }
 
     protected void handleErrorResponse(@Nullable String name, @Nonnull DataObjectParsingException exception,

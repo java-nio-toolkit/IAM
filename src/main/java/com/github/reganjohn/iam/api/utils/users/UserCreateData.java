@@ -20,6 +20,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.*;
 
 public class UserCreateData implements UserData
@@ -29,19 +30,21 @@ public class UserCreateData implements UserData
     private final String name;
     private final String userAgent;
     private final AccessEntryData entryData;
-    private final int flags;
+    private final int userFlags;
+    private final int sessionFlags;
     private final String thumbprint;
 
     public UserCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String name,
-                          @Nonnull String userAgent, @Nonnull AccessEntryData entryData, int flags,
-                          @Nonnull String thumbprint)
+                          @Nullable String userAgent, @Nonnull AccessEntryData entryData,
+                          int userFlags, int sessionFlags, @Nonnull String thumbprint)
     {
         this.sessionId = sessionId;
         this.userId = userId;
         this.name = name;
         this.userAgent = userAgent;
         this.entryData = entryData;
-        this.flags = flags;
+        this.userFlags = userFlags;
+        this.sessionFlags = sessionFlags;
         this.thumbprint = thumbprint;
     }
 
@@ -54,39 +57,22 @@ public class UserCreateData implements UserData
 
     @Nonnull
     @Override
-    public String getName()
-    {
-        return name;
-    }
-
-    @Override
-    public int getFlagsRaw()
-    {
-        return flags;
-    }
-
-    @Override
-    public boolean isEmpty()
-    {
-        return toData().size() == 0;
-    }
-
-    @Nonnull
     public Map<String, Object> toMap()
     {
-        Map<String, Object> map = new HashMap<>();
-        map.put("user_id", userId);
-        map.put("session_id", sessionId);
-        map.put("username", name);
-        map.put("flags", flags);
-        map.put("user_agent", userAgent);
-        map.put("alg", entryData.getAccessOption().getMode());
-        map.put("kid", entryData.getName());
-        map.put("kty", entryData.getType().name());
-        map.put("usage", entryData.getUsage().name().toLowerCase());
-        map.put("public_key", entryData.getPublicKey().getEncoded());
-        map.put("thumbprint", thumbprint);
-        return map;
+        Map<String, Object> data = new HashMap<>();
+        data.put("user_id", userId);
+        data.put("session_id", sessionId);
+        data.put("username", name);
+        data.put("user_flags", userFlags);
+        data.put("user_agent", userAgent);
+        data.put("alg", entryData.getAccessOption().getMode());
+        data.put("kid", entryData.getName());
+        data.put("kty", entryData.getType().name());
+        data.put("session_flags", sessionFlags);
+        data.put("usage", entryData.getUsage().name().toLowerCase());
+        data.put("public_key", entryData.getPublicKey().getEncoded());
+        data.put("thumbprint", thumbprint);
+        return Collections.unmodifiableMap(data);
     }
 
     @Nonnull
@@ -95,8 +81,8 @@ public class UserCreateData implements UserData
     {
         return DataObject.empty()
                 .put("user_id", userId)
+                .put("session_id", sessionId)
                 .put("username", name)
-                .put("flags", flags)
                 .toData();
     }
 }
