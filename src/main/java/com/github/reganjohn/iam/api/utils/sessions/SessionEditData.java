@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,32 +17,67 @@
 package com.github.reganjohn.iam.api.utils.sessions;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class SessionEditData implements SessionData
 {
-    private final UUID userId;
     private final UUID sessionId;
-    private final int flags;
+    private final UUID userId;
     private final String userAgent;
+    private final AccessEntryData entryData;
+    private final int flags;
+    private final String thumbprint;
 
-    public SessionEditData(UUID userId, UUID sessionId, int flags, String userAgent)
+    public SessionEditData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String userAgent,
+                             @Nonnull AccessEntryData entryData, int flags, @Nonnull String thumbprint)
     {
-        this.userId = userId;
         this.sessionId = sessionId;
-        this.flags = flags;
+        this.userId = userId;
         this.userAgent = userAgent;
+        this.entryData = entryData;
+        this.flags = flags;
+        this.thumbprint = thumbprint;
+    }
+
+    @Nonnull
+    @Override
+    public UUID getSessionId()
+    {
+        return sessionId;
+    }
+
+    @Nullable
+    @Override
+    public String getUserAgent()
+    {
+        return userAgent;
+    }
+
+    @Nonnull
+    @Override
+    public AccessEntryData getAccessEntry()
+    {
+        return entryData;
     }
 
     @Override
-    public boolean isEmpty()
+    public int getRawSessionFlags()
     {
-        return toData().size() == 0;
+        return flags;
+    }
+
+    @Nonnull
+    @Override
+    public String getThumbprint()
+    {
+        return thumbprint;
     }
 
     @Nonnull

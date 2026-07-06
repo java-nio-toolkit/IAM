@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -449,27 +449,20 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublicKey().getEncoded());
         String subject = objectData.getSubject();
-        String userAgent = request.getHeaders().get(USER_AGENT);
+        String userAgent = request.getHeaders().get("User-Agent");
         String thumbprint = contextData.digest();
         UUID userId = UUID.fromString(subject);
         SessionCreateData session = new SessionCreateData(userId, sessionId.toUUID(), userAgent, entryData, 0, thumbprint);
         api.retrieveSessionCount(userId)
-                .queue(count ->
+                .flatMap(count ->
                 {
                     if (count == 0)
                         throw new ErrorResponseException(ErrorResponse.UNKNOWN_USER);
                     else if (count <= MAX_SESSION_COUNT)
-                        handle(context, session, objectData);
+                        return api.createSession(session);
                     else
                         throw new ErrorResponseException(ErrorResponse.MAX_SESSIONS);
-                }, context::fireExceptionCaught);
-    }
-
-    private void handle(@Nonnull ChannelHandlerContext context, @Nonnull SessionCreateData session,
-                        @Nonnull AccessObjectData objectData)
-    {
-        api.createSession(session)
-                
+                })
                 .queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);
     }
 

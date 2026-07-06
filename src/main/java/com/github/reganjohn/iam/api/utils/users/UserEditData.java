@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,71 +17,65 @@
 package com.github.reganjohn.iam.api.utils.users;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.internal.utils.Checks;
-import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
+import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Map;
+import java.util.UUID;
 
-public class UserEditData implements UserData
+public class UserEditData implements UserData, InteractionMapping
 {
-    private final UUID id;
-    private String name;
+    private final UUID userId;
+    private final String username;
+    private final int flags;
 
-    private Integer flags;
-
-    public UserEditData(@Nonnull UUID id)
+    public UserEditData(@Nonnull UUID userId, @Nonnull String name, int flags)
     {
-        this.id = id;
+        this.userId = userId;
+        this.username = name;
+        this.flags = flags;
     }
 
     @Nonnull
     @Override
-    public UUID getUniqueId()
+    public UUID getUserId()
     {
-        return id;
+        return userId;
     }
 
-    @Nullable
+    @Nonnull
+    @Override
     public String getName()
     {
-        return name;
+        return username;
     }
 
-    @Nonnull
-    public UserEditData setName(@Nonnull String name)
+    @Override
+    public int getRawUserFlags()
     {
-        Checks.notEmpty(name, "Name");
-        Checks.inRange(2, 32, "Name");
-        this.name = name;
-        return this;
+        return flags;
     }
 
     @Nonnull
-    public UserEditData setFlags(int flags)
-    {
-        this.flags = flags;
-        return this;
-    }
-
-    @Nonnull
+    @Unmodifiable
     public Map<String, Object> toMap()
     {
-        Map<String, Object> map = new HashMap<>();
-        map.put("user_id", id);
-        if (Helpers.nonEmpty(name))
-            map.put("username", name);
-        return Collections.unmodifiableMap(map);
+        return new InteractionMapping.Builder()
+                .put("user_id", userId)
+                .put("username", username)
+                .put("flags", flags)
+                .toMap();
     }
 
     @Nonnull
     @Override
     public DataObject toData()
     {
-        DataObject data = DataObject.empty();
-        if (Helpers.nonEmpty(name))
-            data.put("username", name);
-        return data;
+        return DataObject.empty()
+                .put("user_id", userId)
+                .put("username", username)
+                .put("flags", flags)
+                .toData();
     }
 }

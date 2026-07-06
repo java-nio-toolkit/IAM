@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,9 +59,10 @@ public class UserRetrieveActionImpl extends AbstractUserActionImpl implements Us
         handleRequest(context, request, new ArrayList<>());
     }
 
-    protected void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
+    protected void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                 @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
     {
-        String userId = request.getRoute().getMajorParameters().get(USER_ID);
+        String userId = request.getRoute().getMajorParameters().get("user_id");
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
             checkUserId(userId);
@@ -84,7 +85,8 @@ public class UserRetrieveActionImpl extends AbstractUserActionImpl implements Us
             throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"user_id\" value is not uuid.");
     }
 
-    protected void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull String userId, @Nonnull List<InvalidResponseException.SchemaError> errors)
+    protected void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull String userId,
+                                    @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);

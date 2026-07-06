@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ public interface Session extends IUnique
 
     enum SessionFlag
     {
-        UNKNOWN(-1, "Unknown");
+        UNKNOWN(-1, "Unknown", false);
 
         /**
          * Empty array of SessionFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
@@ -60,12 +60,19 @@ public interface Session extends IUnique
         private final int offset;
         private final int raw;
         private final String name;
+        private final boolean managed;
 
         SessionFlag(int offset, @Nonnull String name)
+        {
+            this(offset, name, true);
+        }
+
+        SessionFlag(int offset, @Nonnull String name, boolean managed)
         {
             this.offset = offset;
             this.raw = 1 << offset;
             this.name = name;
+            this.managed = managed;
         }
 
         /**
@@ -77,6 +84,16 @@ public interface Session extends IUnique
         public String getName()
         {
             return this.name;
+        }
+
+        /**
+         * Whether this {@link User.UserFlag UserFlag} is managed.
+         *
+         * @return True, if this {@link User.UserFlag UserFlag} is managed.
+         */
+        public boolean isManaged()
+        {
+            return managed;
         }
 
         /**

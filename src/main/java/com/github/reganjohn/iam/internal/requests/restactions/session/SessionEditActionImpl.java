@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.utils.jose.*;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -25,7 +27,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
@@ -49,9 +50,6 @@ import static com.github.reganjohn.iam.api.requests.restactions.UserAction.*;
 
 public class SessionEditActionImpl extends AbstractSessionActionImpl implements SessionEditAction
 {
-    public static final List<String> MAJOR_PARAMETER_NAMES =
-            Helpers.listOf("flags");
-
     public SessionEditActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Session.EDIT_SESSION);
@@ -67,12 +65,14 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
             handleBody(context, request, (JacksonRequestBody) body);
     }
 
-    private void handleBody(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull JacksonRequestBody body) throws Exception
+    private void handleBody(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                            @Nonnull JacksonRequestBody body) throws Exception
     {
         handleUniqueID(context, request, body.getObject(), new ArrayList<>());
     }
 
-    private void handleUniqueID(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull DataObject json,
+    private void handleUniqueID(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                @Nonnull DataObject json,
                                 @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
@@ -98,7 +98,8 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
             throw new DataObjectParsingException(UUID_TYPE_COERCE, Helpers.format("The \"%s\" value is not uuid.", SESSION_ID));
     }
 
-    private void handleUserAgent(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull DataObject json,
+    private void handleUserAgent(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                 @Nonnull DataObject json,
                                  @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
@@ -131,19 +132,26 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                  @Nonnull DataObject rawBody, @Nonnull List<InvalidResponseException.SchemaError> errors)
+                                  @Nonnull DataObject rawBody,
+                                  @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(50036, "Invalid Form Body", errors);
+        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        String subject = json.getSubject();
-        UUID userId = UUID.fromString(subject);
-        String rawSessionId = request.getRoute().getMajorParameters().get(SESSION_ID);
-        UUID sessionId = UUID.fromString(rawSessionId);
-        int flags = rawBody.getInt("flags", 0);
-        String userAgent = request.getHeaders().get(USER_AGENT);
-        SessionEditData data = new SessionEditData(userId, sessionId, flags, userAgent);
-        api.editSession(data).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
+        {
+            String subject = json.getSubject();
+            UUID userId = UUID.fromString(subject);
+            String rawSessionId = request.getRoute().getMajorParameters().get(SESSION_ID);
+            UUID sessionId = UUID.fromString(rawSessionId);
+            int flags = rawBody.getInt("flags", 0);
+            String userAgent = request.getHeaders().get(USER_AGENT);
+            AccessEntryData entryData = data.getEntryData();
+            String thumbprint = contextData.digest();
+            SessionEditData session = new SessionEditData(userId, sessionId, userAgent, entryData, flags, thumbprint);
+            api.editSession(session).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        }
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.entities.SessionImpl;
 import com.github.reganjohn.iam.internal.entities.UserImpl;
 import com.reganjohn.jact.api.utils.data.BufferArray;
@@ -43,6 +44,13 @@ import java.util.UUID;
 
 public class EntityBuilder extends AbstractEntityBuilder
 {
+    private final IAMImpl api;
+
+    public EntityBuilder(IAMImpl api)
+    {
+        this.api = api;
+    }
+
     @Nonnull
     public static AccessObjectData createObjectData(@Nonnull String uniqueId, @Nonnull String issuer,
                                                     @Nonnull String subject, @Nonnull AccessEntryManager manager,
@@ -71,12 +79,12 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public static UserImpl createUser(BufferObject data)
+    public UserImpl createUser(BufferObject data)
     {
         UUID userId = data.getUUID("user_id");
         String username = data.getString("username");
         int flags = data.getInt("flags");
-        return new UserImpl(userId, username, flags);
+        return new UserImpl(api, userId, username, flags);
     }
 
     @Nonnull

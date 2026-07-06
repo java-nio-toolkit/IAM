@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,5 +20,4 @@ import com.github.reganjohn.iam.api.requests.restactions.UserAction;
 
 public interface SelfUserAction extends UserAction
 {
-    String NAME = "username";
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -44,10 +45,38 @@ public class SessionCreateData implements SessionData
         this.thumbprint = thumbprint;
     }
 
+    @Nonnull
     @Override
-    public boolean isEmpty()
+    public UUID getSessionId()
     {
-        return toData().size() == 0;
+        return sessionId;
+    }
+
+    @Nullable
+    @Override
+    public String getUserAgent()
+    {
+        return userAgent;
+    }
+
+    @Nonnull
+    @Override
+    public AccessEntryData getAccessEntry()
+    {
+        return entryData;
+    }
+
+    @Override
+    public int getRawSessionFlags()
+    {
+        return flags;
+    }
+
+    @Nonnull
+    @Override
+    public String getThumbprint()
+    {
+        return thumbprint;
     }
 
     @Nonnull

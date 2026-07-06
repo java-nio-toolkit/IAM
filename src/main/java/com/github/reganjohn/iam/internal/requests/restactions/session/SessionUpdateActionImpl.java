@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.requests.MediaType;
@@ -64,6 +65,15 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
 
     private static final String ASSERT_TYPE = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
 
+    public final FastThreadLocal<MessageDigest> SHA256 = new FastThreadLocal<>()
+    {
+        @Override
+        protected MessageDigest initialValue() throws Exception
+        {
+            return MessageDigest.getInstance("SHA-256");
+        }
+    };
+
     public SessionUpdateActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Session.UPDATE_SESSION);
@@ -75,7 +85,8 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
         handleUniqueID(context, request, new ArrayList<>());
     }
 
-    private void handleUniqueID(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull List<ErrorResponseException.SchemaError> schemaErrors) throws Exception
+    private void handleUniqueID(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                @Nonnull List<ErrorResponseException.SchemaError> schemaErrors) throws Exception
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
@@ -91,7 +102,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
         }
     }
 
-    private void checkUniqueID(Map<String, String> params)
+    private void checkUniqueID(@Nonnull Map<String, String> params)
     {
         String id = params.get(SessionAction.SESSION_ID);
         if (Helpers.isEmpty(id))
@@ -100,19 +111,11 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
             throw new DataObjectParsingException(UUID_TYPE_COERCE, Helpers.format("The \"%s\" value is not uuid.", SessionAction.SESSION_ID));
     }
 
-    public final FastThreadLocal<MessageDigest> SHA256 = new FastThreadLocal<>()
-    {
-        @Override
-        protected MessageDigest initialValue() throws Exception
-        {
-            return MessageDigest.getInstance("SHA-256");
-        }
-    };
-
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull List<ErrorResponseException.SchemaError> errors) throws Exception
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                  @Nonnull List<ErrorResponseException.SchemaError> errors) throws Exception
     {
         if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50035, "Invalid Form Body", errors);
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         String accessToken = request.getHeaders().get("Authorization").split(" ")[1];
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessObjectData json = EntityBuilder.createAccessObject(accessToken);
@@ -143,7 +146,8 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
         api.retrieveSessionById(userId, sessionId).queue(session -> handle(context, contextData, json, session), context::fireExceptionCaught);
     }
 
-    private void handle(ChannelHandlerContext context, AccessContextData data, @Nonnull AccessObjectData json, Session session)
+    private void handle(ChannelHandlerContext context, AccessContextData data, @Nonnull AccessObjectData json,
+                        Session session)
     {
         DataObject contextData = json.getContextData();
         if (contextData == null)

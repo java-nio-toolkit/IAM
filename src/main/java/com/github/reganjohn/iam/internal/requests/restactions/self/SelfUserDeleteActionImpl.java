@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,9 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.self;
 
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -42,11 +40,8 @@ public class SelfUserDeleteActionImpl extends AbstractSelfUserActionImpl
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
         AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        String subject = objectData.getSubject();
-        if (MiscUtil.isUUID(subject))
-            handleInternally(context, UUID.fromString(subject));
-        else
-            throw new ErrorResponseException(0, ""); //todo: add message!
+        UUID userId = UUID.fromString(objectData.getSubject());
+        handleInternally(context, userId);
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)

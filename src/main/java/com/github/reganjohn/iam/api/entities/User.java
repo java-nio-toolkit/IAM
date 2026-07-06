@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,10 +18,7 @@ package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.internal.utils.Checks;
-import com.github.reganjohn.iam.api.utils.users.UserEditData;
-import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 
-import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -54,33 +51,40 @@ public interface User extends IUnique
      */
     int getFlagsRaw();
 
-    @Nonnull
-    @CheckReturnValue
-    InteractionMappingAction<Void> edit(@Nonnull UserEditData user);
-
     /**
      * Represents the bit offsets used for flags.
      */
     enum UserFlag
     {
-        BOT(12, "Bot"),
+        BOT(12, "Bot", false),
 
-        UNKNOWN(-1, "Unknown");
+        UNKNOWN(-1, "Unknown", false);
 
         /**
          * Empty array of UserFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
          */
         public static final UserFlag[] EMPTY_FLAGS = new UserFlag[0];
 
+        public static final int ALL = 1 | getRaw(EnumSet.allOf(UserFlag.class));
+
+        public static final int DEFAULT = ALL & ~getRaw(); //todo: rename
+
         private final int offset;
         private final int raw;
         private final String name;
+        private final boolean managed;
 
         UserFlag(int offset, @Nonnull String name)
+        {
+            this(offset, name, true);
+        }
+
+        UserFlag(int offset, @Nonnull String name, boolean managed)
         {
             this.offset = offset;
             this.raw = 1 << offset;
             this.name = name;
+            this.managed = managed;
         }
 
         /**
@@ -92,6 +96,16 @@ public interface User extends IUnique
         public String getName()
         {
             return this.name;
+        }
+
+        /**
+         * Whether this {@link UserFlag UserFlag} is managed.
+         *
+         * @return True, if this {@link UserFlag UserFlag} is managed.
+         */
+        public boolean isManaged()
+        {
+            return managed;
         }
 
         /**

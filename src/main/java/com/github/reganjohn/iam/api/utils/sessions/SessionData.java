@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,34 @@
 package com.github.reganjohn.iam.api.utils.sessions;
 
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.User;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.EnumSet;
+import java.util.UUID;
 
 public interface SessionData extends SerializableData
 {
-    boolean isEmpty();
+    @Nonnull
+    UUID getSessionId();
+
+    @Nullable
+    String getUserAgent();
+
+    @Nonnull
+    AccessEntryData getAccessEntry();
+
+    int getRawSessionFlags();
+
+    @Nonnull
+    default EnumSet<Session.SessionFlag> getSessionFlags()
+    {
+        return Session.SessionFlag.getFlags(getRawSessionFlags());
+    }
+
+    @Nonnull
+    String getThumbprint();
 }

@@ -28,11 +28,14 @@ import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.utils.users.UserCreateData;
+import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.UserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditActionImpl;
@@ -58,8 +61,6 @@ import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveAction
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
-import com.github.reganjohn.iam.api.utils.users.UserCreateData;
-import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -84,6 +85,8 @@ public class IAMImpl
 
     private final JNT api;
     private final JACT jact;
+
+    private final EntityBuilder entityBuilder = new EntityBuilder(this);
 
     public static void main(String[] args) throws Exception
     {
@@ -147,7 +150,7 @@ public class IAMImpl
                 .addEventListeners(new ErrorObjectManagerImpl(false))
                 .build();
 
-        TimeUnit.SECONDS.sleep(2);
+        TimeUnit.SECONDS.sleep(5);
 
         AdaMorganClientV2 client = new AdaMorganClientV2();
         client.startTest();
@@ -177,7 +180,7 @@ public class IAMImpl
                                       @Nonnull InteractionImpl<User> request, @Nonnull BufferArray array)
             {
                 if (!array.isEmpty())
-                    request.onSuccess(EntityBuilder.createUser(array.getObject(0)));
+                    request.onSuccess(entityBuilder.createUser(array.getObject(0)));
                 else
                     request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
             }
@@ -189,15 +192,7 @@ public class IAMImpl
     public InteractionMappingAction<Void> createUser(@Nonnull UserCreateData user)
     {
         Checks.notNull(user, "User");
-        return createUser(user.toMap());
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    private InteractionMappingAction<Void> createUser(@Nonnull Map<String, Object> map)
-    {
-        Checks.notEmpty(map, "Map");
-        return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("create_account.cql"), map)
+        return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("create_account.cql"), user)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -207,6 +202,26 @@ public class IAMImpl
                     request.onSuccess(null);
                 else
                     request.onFailure(new ErrorResponseException(ErrorResponse.SESSION_ALREADY_EXISTS));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionMappingAction<Void> editUserById(@Nonnull UserEditData user)
+    {
+        Checks.notNull(user, "User");
+        String content = Helpers.format("UPDATE users.accounts SET username = :username, flags = :flags WHERE user_id = :user_id IF EXISTS");
+        return new InteractionMappingActionImpl<>(jact, content, user)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
             }
         };
     }

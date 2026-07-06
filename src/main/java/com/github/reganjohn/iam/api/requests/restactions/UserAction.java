@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,6 @@ public interface UserAction extends RestAction
     int MAX_NAME_LENGTH = 32;
 
     int MAX_SESSION_COUNT = 10;
-
-    String USER_ID = "user_id";
-    String USER_AGENT = "User-Agent";
 
     String UUID_TYPE_COERCE = "UUID_TYPE_COERCE";
 

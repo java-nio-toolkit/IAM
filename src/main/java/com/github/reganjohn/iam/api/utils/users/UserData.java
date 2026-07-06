@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,29 @@
 
 package com.github.reganjohn.iam.api.utils.users;
 
-import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
-import org.jetbrains.annotations.Unmodifiable;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.User;
 
 import javax.annotation.Nonnull;
-import java.util.Map;
+import javax.annotation.Nullable;
+import java.util.EnumSet;
 import java.util.UUID;
 
-public interface UserData extends SerializableData, IUnique
+public interface UserData extends SerializableData
 {
     @Nonnull
-    @Unmodifiable
-    Map<String, Object> toMap();
+    UUID getUserId();
+
+    @Nonnull
+    String getName();
+
+    int getRawUserFlags();
+
+    @Nonnull
+    default EnumSet<User.UserFlag> getUserFlags()
+    {
+        return User.UserFlag.getFlags(getRawUserFlags());
+    }
 }

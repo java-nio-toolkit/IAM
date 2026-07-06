@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the JNT contributors
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,4 @@ package com.github.reganjohn.iam.api.requests.restactions.session;
 
 public interface SessionCreateAction extends SessionAction
 {
-    String ALGORITHM_MISMATCH = "ALGORITHM_MISMATCH";
-    String CURVE_MISMATCH = "CURVE_MISMATCH";
-    String UNEXPECTED_FIELD = "UNEXPECTED_FIELD";
-    String PRIVATE_KEY_FORBIDDEN = "PRIVATE_KEY_FORBIDDEN";
 }
