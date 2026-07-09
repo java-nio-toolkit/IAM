@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.api.requests.restactions.session;
 
-public interface SessionEditAction extends SessionAction
+public interface SessionEditAction extends AbstractSessionAction
 {
-    String USER_AGENT = "User-Agent";
 }

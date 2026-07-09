@@ -16,6 +16,8 @@
 
 package com.github.reganjohn.iam.api.requests.restactions.self;
 
-public interface SelfUserEditAction extends SelfUserAction
+import com.github.reganjohn.iam.api.requests.restactions.UserAction;
+
+public interface SelfUserEditAction extends UserAction
 {
 }

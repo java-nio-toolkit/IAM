@@ -16,10 +16,7 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
-import com.github.adamorgan.jnt.internal.utils.IOUtil;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
+import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -33,21 +30,26 @@ import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
-import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
-import com.github.reganjohn.iam.api.requests.restactions.session.SessionAction;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.session.SessionUpdateAction;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -57,9 +59,10 @@ import java.util.Map;
 import java.util.UUID;
 
 import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.JKT;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.*;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
 
-public class SessionUpdateActionImpl extends AbstractSessionActionImpl
+public class SessionUpdateActionImpl extends AbstractSessionActionImpl implements SessionUpdateAction
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
 
@@ -94,7 +97,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse(SessionAction.SESSION_ID, ex, schemaErrors);
+            handleErrorResponse("session_id", ex, schemaErrors);
         }
         finally
         {
@@ -104,11 +107,11 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
 
     private void checkUniqueID(@Nonnull Map<String, String> params)
     {
-        String id = params.get(SessionAction.SESSION_ID);
+        String id = params.get("session_id");
         if (Helpers.isEmpty(id))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!MiscUtil.isUUID(id))
-            throw new DataObjectParsingException(UUID_TYPE_COERCE, Helpers.format("The \"%s\" value is not uuid.", SessionAction.SESSION_ID));
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"session_id\" value is not uuid.");
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -124,9 +127,9 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
         {
             byte[] hash = messageDigest.digest(accessToken.getBytes(StandardCharsets.UTF_8));
             if (!Helpers.equals(json.getThumbprint(), contextData.digest(), false))
-                throw new ErrorResponseException(0, "");//todo: add exception
+                throw new IllegalArgumentException("Provided proof is not in the same public key as access token.");
             else if (!Helpers.equals(IOUtil.encodeURL(hash), data.getAccessTokenHash(), false))
-                throw new ErrorResponseException(0, "");//todo: add exception
+                throw new IllegalArgumentException("Provided proof is not for the same access token.");
             else
                 handleSession(context, request, json, contextData);
         }
@@ -141,13 +144,15 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
     {
         String subject = json.getSubject();
         UUID userId = UUID.fromString(subject);
-        Map<String, String> params = request.getRoute().getMajorParameters();
-        UUID sessionId = UUID.fromString(params.get(SessionAction.SESSION_ID));
-        api.retrieveSessionById(userId, sessionId).queue(session -> handle(context, contextData, json, session), context::fireExceptionCaught);
+        UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
+        api.retrieveSessionById(userId, sessionId).flatMap(session -> update(context, contextData, json, session)).queue(data -> handleSuccess(context, data), context::fireExceptionCaught);
     }
 
-    private void handle(ChannelHandlerContext context, AccessContextData data, @Nonnull AccessObjectData json,
-                        Session session)
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<AccessObjectData> update(@Nonnull ChannelHandlerContext context,
+                                                               @Nonnull AccessContextData data,
+                                                               @Nonnull AccessObjectData json, @Nonnull Session session)
     {
         DataObject contextData = json.getContextData();
         if (contextData == null)
@@ -159,35 +164,43 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl
         else if (!Helpers.equals(contextData.getString(JKT), session.getThumbprint(), false))
             throw new IllegalStateException("The access token thumbprint does not match the session thumbprint.");
         else
-            handleAccessToken(context, data, json);
+            return update(context, data, json);
     }
 
-    private void handleAccessToken(@Nonnull ChannelHandlerContext context, @Nonnull AccessContextData contextData,
-                                   @Nonnull AccessObjectData old)
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<AccessObjectData> update(@Nonnull ChannelHandlerContext context,
+                                                               @Nonnull AccessContextData contextData,
+                                                               @Nonnull AccessObjectData data)
     {
-        AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
+        GlobalAccessEntryManagerImpl manager = context.channel().attr(GlobalAccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
-
-        GlobalAccessEntryManagerImpl accessManager = context.channel().attr(GlobalAccessEntryManagerImpl.IDENTIFIER).get();
-        accessManager.hasGlobalAccess(old).queue(hasAccess ->
+        return manager.hasAccess(data).map(hasAccess ->
         {
             try
             {
-                if (!hasAccess)
-                    throw new ErrorResponseException(0, ""); //todo: add exception!
-                String uniqueId = UUIDv7.randomUUID().toString();
-                String issuer = api.getJNT().getIdentifierString();
-                String subject = old.getSubject();
-
-                AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ASSERT_TYPE, manager.getSignType());
-                AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
-                handleSuccess(context, json);
+                if (hasAccess)
+                    return createObjectData(manager, contextData, data, snapshot);
+                else
+                    throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
             }
             catch (Exception error)
             {
-                context.fireExceptionCaught(error);
+                throw new InvalidTokenException(error);
             }
-        }, context::fireExceptionCaught);
+        });
+    }
+
+    @Nonnull
+    private AccessObjectData createObjectData(@Nonnull GlobalAccessEntryManagerImpl manager,
+                                              @Nonnull AccessContextData contextData, @Nonnull AccessObjectData data,
+                                              @Nonnull AccessEntryManagerImpl.AccessEntrySnapshot snapshot) throws Exception
+    {
+        String uniqueId = UUIDv7.randomUUID().toString();
+        String issuer = api.getJNT().getIdentifierString();
+        String subject = data.getSubject();
+        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ASSERT_TYPE, manager.getSignType());
+        return EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData newAccessData)

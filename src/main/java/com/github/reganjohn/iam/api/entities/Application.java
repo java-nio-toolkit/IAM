@@ -1,0 +1,255 @@
+/*
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.github.reganjohn.iam.api.entities;
+
+import com.github.adamorgan.jnt.api.entities.IUnique;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.github.reganjohn.iam.api.IAM;
+import org.jetbrains.annotations.Unmodifiable;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.UUID;
+
+public interface Application extends IUnique
+{
+    /** The minimum length for an application name ({@value}) */
+    int MIN_NAME_LENGTH = 2;
+    /** The maximum length for an application name ({@value}) */
+    int MAX_NAME_LENGTH = 32;
+    /** The maximum amount of URL that can be set to an application ({@value}) */
+    int MAX_URL_COUNT = 5;
+    /** The maximum length for any URL set on an application ({@value}) */
+    int MAX_URL_LENGTH = 2048;
+    /** The maximum amount of access entry that can be set to an application ({@value}) */
+    int MAX_ACCESS_ENTRY_COUNT = 10;
+
+    /**
+     * The {@link IAM IAM} instance of this Application.
+     *
+     * @return The IAM instance of this Application
+     */
+    @Nonnull
+    IAM getIAM();
+
+    /**
+     * The name of this application.
+     * <br>The application name is <b>not</b> necessarily unique!
+     *
+     * @return The name of this application
+     */
+    @Nonnull
+    String getName();
+
+    /**
+     * The description of this application.
+     *
+     * @return The description of this application or a null if no description is defined
+     */
+    @Nullable
+    String getDescription();
+
+    /**
+     * The id for the user who owns this 
+     *
+     * @return The owner id of this application
+     */
+    @Nonnull
+    UUID getOwnerId();
+
+    /**
+     * A {@link java.util.List} containing the GNAP redirect URIs of this application.
+     *
+     * <p>This List is empty if no redirect URIs are set.
+     *
+     * @return Immutable list containing the GNAP redirect URIs of this application
+     */
+    @Nonnull
+    @Unmodifiable
+    List<String> getRedirectUris();
+
+    /**
+     * The {@link ApplicationFlag Flags} set for the application.
+     * <br>Modifying the returned EnumSet will have not actually change the flags of the application.
+     *
+     * @return {@link EnumSet} of {@link ApplicationFlag}
+     */
+    @Nonnull
+    default EnumSet<ApplicationFlag> getFlags()
+    {
+        return ApplicationFlag.getFlags(getFlagsRaw());
+    }
+
+    /**
+     * The raw bitset representing this application's flags.
+     *
+     * @return The bitset
+     */
+    int getFlagsRaw();
+
+    /**
+     * A {@link java.util.List} containing the public keys of this application.
+     *
+     * @return Immutable list of application public keys
+     */
+    @Nonnull
+    @Unmodifiable
+    List<AccessEntryData> getAccessEntries();
+
+    /**
+     * Represents the bit offsets used for application flags.
+     */
+    enum ApplicationFlag
+    {
+        UNKNOWN(-1);
+
+        /**
+         * Empty array of ApplicationFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
+         */
+        public static final ApplicationFlag[] EMPTY_FLAGS = new ApplicationFlag[0];
+
+        private final int offset;
+        private final int raw;
+
+        ApplicationFlag(int offset)
+        {
+            this.offset = offset;
+            this.raw = 1 << offset;
+        }
+
+        /**
+         * The binary offset of the flag.
+         *
+         * @return The offset that represents this {@link Application.ApplicationFlag ApplicationFlag}.
+         */
+        public int getOffset()
+        {
+            return offset;
+        }
+
+        /**
+         * The value of this flag when viewed as raw value.
+         * <br>This is equivalent to: <code>1 {@literal <<} {@link #getOffset()}</code>
+         *
+         * @return The raw value of this specific flag.
+         */
+        public int getRawValue()
+        {
+            return raw;
+        }
+
+        /**
+         * Gets the first ApplicationFlag relating to the provided offset.
+         * <br>If there is no ApplicationFlag that matches the provided offset,
+         * {@link #UNKNOWN} is returned.
+         *
+         * @param  offset
+         *         The offset to match a ApplicationFlag to.
+         *
+         * @return ApplicationFlag relating to the provided offset.
+         */
+        @Nonnull
+        public static ApplicationFlag getFromOffset(int offset)
+        {
+            for (ApplicationFlag flag : values())
+            {
+                if (flag.offset == offset)
+                {
+                    return flag;
+                }
+            }
+            return UNKNOWN;
+        }
+
+        /**
+         * A set of all ApplicationFlags that are specified by this raw int representation of
+         * flags.
+         *
+         * @param  flags
+         *         The raw {@code int} representation if flags.
+         *
+         * @return Possibly-empty EnumSet of ApplicationFlags.
+         */
+        @Nonnull
+        public static EnumSet<ApplicationFlag> getFlags(int flags)
+        {
+            EnumSet<ApplicationFlag> foundFlags = EnumSet.noneOf(ApplicationFlag.class);
+            if (flags == 0)
+            {
+                return foundFlags; // empty
+            }
+            for (ApplicationFlag flag : values())
+            {
+                if (flag != UNKNOWN && (flags & flag.raw) == flag.raw)
+                {
+                    foundFlags.add(flag);
+                }
+            }
+
+            return foundFlags;
+        }
+
+        /**
+         * This is effectively the opposite of {@link #getFlags(int)}, this takes 1 or more ApplicationFlags
+         * and returns the bitmask representation of the flags.
+         *
+         * @param  flags
+         *         The array of flags of which to form into the raw int representation.
+         *
+         * @throws java.lang.IllegalArgumentException
+         *         When the provided ApplicationFlags are null.
+         *
+         * @return bitmask representing the provided flags.
+         */
+        public static int getRaw(@Nonnull ApplicationFlag... flags)
+        {
+            Checks.noneNull(flags, "ApplicationFlags");
+            int raw = 0;
+            for (ApplicationFlag flag : flags)
+            {
+                if (flag != null && flag != UNKNOWN)
+                {
+                    raw |= flag.raw;
+                }
+            }
+
+            return raw;
+        }
+
+        /**
+         * This is effectively the opposite of {@link #getFlags(int)}. This takes a collection of ApplicationFlags
+         * and returns the bitmask representation of the flags.
+         *
+         * @param  flags
+         *         The flags to convert
+         *
+         * @throws java.lang.IllegalArgumentException
+         *         When the provided UserFLags are null.
+         *
+         * @return bitmask representing the provided flags.
+         */
+        public static int getRaw(@Nonnull Collection<ApplicationFlag> flags)
+        {
+            Checks.notNull(flags, "Flag Collection");
+            return getRaw(flags.toArray(EMPTY_FLAGS));
+        }
+    }
+}

@@ -18,7 +18,6 @@ package com.github.reganjohn.iam.api.utils;
 
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
-import org.jetbrains.annotations.Contract;
 
 import javax.annotation.Nonnull;
 import java.io.FileNotFoundException;

@@ -48,6 +48,9 @@ public interface Session extends IUnique
     @Nullable
     String getUserAgent();
 
+    /**
+     * Represents the bit offsets used for session flags.
+     */
     enum SessionFlag
     {
         UNKNOWN(-1, "Unknown", false);
@@ -56,6 +59,10 @@ public interface Session extends IUnique
          * Empty array of SessionFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
          */
         public static final SessionFlag[] EMPTY_FLAGS = new SessionFlag[0];
+
+        public static final int ALL = 1 | getRaw(EnumSet.allOf(SessionFlag.class));
+
+        public static final int SYSTEM = ALL & ~getRaw();
 
         private final int offset;
         private final int raw;

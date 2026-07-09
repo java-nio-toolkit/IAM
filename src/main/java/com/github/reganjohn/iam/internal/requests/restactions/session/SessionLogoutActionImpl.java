@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
-import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
@@ -25,8 +24,9 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
-import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.session.SessionLogoutAction;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -34,10 +34,8 @@ import javax.annotation.Nonnull;
 import java.security.PublicKey;
 import java.util.UUID;
 
-public class SessionLogoutActionImpl extends AbstractSessionActionImpl
+public class SessionLogoutActionImpl extends AbstractSessionActionImpl implements SessionLogoutAction
 {
-    protected static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
-
     public SessionLogoutActionImpl(IAMImpl api)
     {
         super(api, Routes.Session.REMOVE_ALL_SESSIONS);
@@ -48,8 +46,7 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl
     {
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        String subject = json.getSubject();
-        UUID userId = UUID.fromString(subject);
+        UUID userId = UUID.fromString(json.getSubject());
         PublicKey publicKey = data.getEntryData().getPublicKey();
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(publicKey.getEncoded());
         api.logout(userId, sessionId.toUUID()).queue(success -> handleSuccess(context), context::fireExceptionCaught);

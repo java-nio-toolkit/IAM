@@ -17,29 +17,33 @@
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
-import com.github.adamorgan.jnt.api.utils.jose.*;
-import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
+import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionEditAction;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
+import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,13 +66,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         if (!(body instanceof JacksonRequestBody && ((JacksonRequestBody) body).isObject()))
             throw new ErrorResponseException(ErrorResponse.INVALID_FROM_OBJECT_BODY);
         else
-            handleBody(context, request, (JacksonRequestBody) body);
-    }
-
-    private void handleBody(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                            @Nonnull JacksonRequestBody body) throws Exception
-    {
-        handleUniqueID(context, request, body.getObject(), new ArrayList<>());
+            handleUniqueID(context, request, ((JacksonRequestBody) body).getObject(), new ArrayList<>());
     }
 
     private void handleUniqueID(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -81,7 +79,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse(SESSION_ID, ex, schemaErrors);
+            handleErrorResponse("session_id", ex, schemaErrors);
         }
         finally
         {
@@ -89,13 +87,13 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         }
     }
 
-    private void checkUniqueID(Map<String, String> params)
+    private void checkUniqueID(@Nonnull Map<String, String> params)
     {
-        String id = params.get(SESSION_ID);
+        String id = params.get("session_id");
         if (Helpers.isEmpty(id))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!MiscUtil.isUUID(id))
-            throw new DataObjectParsingException(UUID_TYPE_COERCE, Helpers.format("The \"%s\" value is not uuid.", SESSION_ID));
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"session_id\" value is not uuid.");
     }
 
     private void handleUserAgent(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -108,27 +106,54 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse(USER_AGENT, ex, schemaErrors);
+            handleErrorResponse("user_agent", ex, schemaErrors);
         }
         finally
         {
-            handleInternally(context, request, json, schemaErrors);
+            handleFlags(context, request, json, schemaErrors);
         }
     }
 
     private void checkUserAgent(@Nonnull DataObject json)
     {
-        if (!json.hasKey(USER_AGENT))
+        if (!json.hasKey("user_agent"))
             return;
-        else if (!json.isType(USER_AGENT, DataType.STRING))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE,
-                    Helpers.format("The \"%s\" value is not string.", USER_AGENT));
-        else if (json.getString(USER_AGENT).length() < MIN_NAME_LENGTH)
+        else if (!json.isType("user_agent", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"user_agent\" value is not string.");
+        else if (json.getString("user_agent").length() < User.MIN_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MIN,
-                    Helpers.format("The \"%s\" value may not be less than %f characters.", USER_AGENT, MIN_NAME_LENGTH));
-        else if (json.getString(USER_AGENT).length() > MAX_NAME_LENGTH)
+                    Helpers.format("The \"user_agent\" value may not be less than %f characters.", User.MIN_NAME_LENGTH));
+        else if (json.getString("user_agent").length() > User.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
-                    Helpers.format("The \"%s\" value may not be longer than %f characters.", USER_AGENT, MAX_NAME_LENGTH));
+                    Helpers.format("The \"user_agent\" value may not be longer than %f characters.", User.MAX_NAME_LENGTH));
+    }
+
+    private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                             @Nonnull DataObject rawData,
+                             @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkFlags(rawData);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("flags", ex, schemaErrors);
+        }
+        finally
+        {
+            handleInternally(context, request, rawData, schemaErrors);
+        }
+    }
+
+    private void checkFlags(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("flags"))
+            return;
+        else if (!body.isType("flags", DataType.INT))
+            throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"flags\" is not number.");
+        else if (body.getInt("flags") < 0)
+            throw new DataObjectParsingException(NUMBER_TYPE_MIN, "Value \"flags\" should be greater than or equal to 0.");
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -136,22 +161,32 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
                                   @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
         if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50036, "Invalid Form Body", errors);
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
         {
-            String subject = json.getSubject();
-            UUID userId = UUID.fromString(subject);
-            String rawSessionId = request.getRoute().getMajorParameters().get(SESSION_ID);
-            UUID sessionId = UUID.fromString(rawSessionId);
-            int flags = rawBody.getInt("flags", 0);
-            String userAgent = request.getHeaders().get(USER_AGENT);
-            AccessEntryData entryData = data.getEntryData();
-            String thumbprint = contextData.digest();
-            SessionEditData session = new SessionEditData(userId, sessionId, userAgent, entryData, flags, thumbprint);
-            api.editSession(session).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+            UUID userId = UUID.fromString(json.getSubject());
+            UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
+            api.retrieveSessionById(userId, sessionId)
+                    .flatMap(session -> modify(session, rawBody, data, contextData.digest()))
+                    .queue(success -> handleSuccess(context), context::fireExceptionCaught);
         }
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionMappingAction<Void> modify(@Nonnull Session session, @Nonnull DataObject json,
+                                                  @Nonnull ProofObjectData data, @Nonnull String thumbprint)
+    {
+        UUID sessionId = session.getUniqueId();
+        UUID userId = session.getUserId();
+        String userAgent = json.getString("user_agent", session.getUserAgent());
+        int flags = json.getInt("flags", session.getFlagsRaw());
+        int base = session.getFlagsRaw() & Session.SessionFlag.SYSTEM;
+        int modifiers = flags & ~Session.SessionFlag.SYSTEM;
+        SessionEditData editData = new SessionEditData(userId, sessionId, userAgent, data.getEntryData(), base | modifiers, thumbprint);
+        return api.editSession(editData);
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)

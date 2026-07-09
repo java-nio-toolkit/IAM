@@ -16,8 +16,8 @@
 
 package com.github.reganjohn.iam.api.requests.restactions.self;
 
-import com.github.reganjohn.iam.api.requests.restactions.UserCreateAction;
+import com.github.reganjohn.iam.api.requests.restactions.UserAction;
 
-public interface SelfUserCreateAction extends UserCreateAction
+public interface SelfUserCreateAction extends UserAction
 {
 }

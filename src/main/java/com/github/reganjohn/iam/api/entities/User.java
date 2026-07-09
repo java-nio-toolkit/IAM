@@ -18,6 +18,7 @@ package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.github.reganjohn.iam.api.IAM;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
@@ -25,6 +26,11 @@ import java.util.EnumSet;
 
 public interface User extends IUnique
 {
+    /** The minimum length for a username ({@value}) */
+    int MIN_NAME_LENGTH = 2;
+    /** The maximum length for a username ({@value}) */
+    int MAX_NAME_LENGTH = 32;
+
     /**
      * The username of the {@link User User}. Length is between 2 and 32 characters (inclusive).
      *
@@ -32,6 +38,14 @@ public interface User extends IUnique
      */
     @Nonnull
     String getName();
+
+    /**
+     * The {@link IAM IAM} instance of this User.
+     *
+     * @return The corresponding JDA instance
+     */
+    @Nonnull
+    IAM getIAM();
 
     /**
      * Returns the {@link UserFlag UserFlags} of this user.
@@ -52,12 +66,10 @@ public interface User extends IUnique
     int getFlagsRaw();
 
     /**
-     * Represents the bit offsets used for flags.
+     * Represents the bit offsets used for user flags.
      */
     enum UserFlag
     {
-        BOT(12, "Bot", false),
-
         UNKNOWN(-1, "Unknown", false);
 
         /**
@@ -67,7 +79,7 @@ public interface User extends IUnique
 
         public static final int ALL = 1 | getRaw(EnumSet.allOf(UserFlag.class));
 
-        public static final int DEFAULT = ALL & ~getRaw(); //todo: rename
+        public static final int SYSTEM = ALL & ~getRaw();
 
         private final int offset;
         private final int raw;

@@ -17,12 +17,9 @@
 package com.github.reganjohn.iam.api.utils.users;
 
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.EnumSet;
 import java.util.UUID;
 

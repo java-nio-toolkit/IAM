@@ -29,6 +29,7 @@ public enum ErrorResponse
     UNAUTHORIZED(40001, "Unauthorized"),
     SESSION_ALREADY_EXISTS(40122, "An session with that key already exists"),
 
+    INVALID_TOKEN(50014, "Invalid Authentication Token"),
     INVALID_FORM_URL(50034, "Invalid Form URL"),
     INVALID_FORM_BODY(50035, "Invalid Form Body"),
     INVALID_FROM_OBJECT_BODY(50036, "Only dictionaries may be used in a DictType"),

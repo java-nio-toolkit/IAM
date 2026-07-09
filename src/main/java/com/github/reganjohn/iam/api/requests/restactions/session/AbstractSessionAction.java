@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.self;
+package com.github.reganjohn.iam.api.requests.restactions.session;
 
-import com.github.adamorgan.jnt.api.requests.Route;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserAction;
-import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
+import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
 
-import javax.annotation.Nonnull;
-
-public abstract class AbstractSelfUserActionImpl extends AbstractUserActionImpl implements SelfUserAction
+public interface AbstractSessionAction extends RestAction
 {
-    public AbstractSelfUserActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
-    {
-        super(api, route);
-    }
 }

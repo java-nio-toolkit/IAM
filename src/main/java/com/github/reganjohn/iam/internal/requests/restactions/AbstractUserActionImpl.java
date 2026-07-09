@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,9 +19,9 @@ package com.github.reganjohn.iam.internal.requests.restactions;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.api.requests.restactions.UserAction;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
+import com.github.reganjohn.iam.api.requests.restactions.UserAction;
+import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
@@ -26,12 +25,15 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
-import com.github.reganjohn.iam.api.requests.restactions.session.SessionAction;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.session.AbstractSessionAction;
+import com.github.reganjohn.iam.api.requests.restactions.session.SessionRetrieveAction;
+import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -41,9 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.*;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
 
-public class SessionRetrieveActionImpl extends AbstractSessionActionImpl
+public class SessionRetrieveActionImpl extends AbstractSessionActionImpl implements SessionRetrieveAction
 {
     public SessionRetrieveActionImpl(@Nonnull IAMImpl api)
     {
@@ -66,7 +69,7 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse(SessionAction.SESSION_ID, ex, schemaErrors);
+            handleErrorResponse("session_id", ex, schemaErrors);
         }
         finally
         {
@@ -76,13 +79,13 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl
 
     private void checkUniqueID(String userId, @Nonnull Map<String, String> params)
     {
-        String id = params.get(SessionAction.SESSION_ID);
+        String id = params.get("session_id");
         if (Helpers.isEmpty(id))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!MiscUtil.isUUID(userId))
             throw new DataObjectParsingException(UUID_TYPE_COERCE, "The subject value is not uuid.");
         else if (!MiscUtil.isUUID(id))
-            throw new DataObjectParsingException(UUID_TYPE_COERCE, Helpers.format("The \"%s\" value is not uuid.", SessionAction.SESSION_ID));
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"session_id\" value is not uuid.");
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -90,10 +93,10 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl
                                   @Nonnull List<ErrorResponseException.SchemaError> errors)
     {
         if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50035, "Invalid Form Body", errors);
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         UUID userId = UUID.fromString(json.getSubject());
         Map<String, String> params = request.getRoute().getMajorParameters();
-        UUID sessionId = UUID.fromString(params.get(SessionAction.SESSION_ID));
+        UUID sessionId = UUID.fromString(params.get("session_id"));
         api.retrieveSessionById(userId, sessionId).queue(session -> handleSuccess(context, session), context::fireExceptionCaught);
     }
 

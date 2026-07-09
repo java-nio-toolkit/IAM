@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.internal.entities;
 
 import com.github.adamorgan.jnt.internal.utils.EntityString;
+import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
@@ -50,6 +51,13 @@ public class UserImpl implements User
     public String getName()
     {
         return name;
+    }
+
+    @Nonnull
+    @Override
+    public IAM getIAM()
+    {
+        return api;
     }
 
     @Override

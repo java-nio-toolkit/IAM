@@ -1,7 +1,6 @@
 package com.github.reganjohn.iam.api.exceptions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.List;

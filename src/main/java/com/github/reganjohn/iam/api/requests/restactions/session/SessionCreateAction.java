@@ -16,6 +16,6 @@
 
 package com.github.reganjohn.iam.api.requests.restactions.session;
 
-public interface SessionCreateAction extends SessionAction
+public interface SessionCreateAction extends AbstractSessionAction
 {
 }

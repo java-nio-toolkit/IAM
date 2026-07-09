@@ -69,7 +69,7 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
         else if (error instanceof ProofAccessException)
             handleFailure(context, (ProofAccessException) error);
         else if (error instanceof InvalidTokenException)
-            handleFailure(context, 0, error.getMessage(), StatusReason.UNAUTHORIZED);
+            handleFailure(context, ErrorResponse.INVALID_TOKEN, StatusReason.UNAUTHORIZED);
         else if (error instanceof MissingAccessException)
             handleFailure(context, (MissingAccessException) error);
         else if (error instanceof DetachedEntityException)
@@ -173,6 +173,11 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     {
         ErrorResponseException exception = new ErrorResponseException(50001, error.getMessage());
         handleFailure(context, exception, StatusReason.UNAUTHORIZED);
+    }
+
+    private void handleFailure(@Nonnull ChannelHandlerContext context, ErrorResponse errorResponse, @Nonnull StatusReason reason)
+    {
+        handleFailure(context, new ErrorResponseException(errorResponse), Collections.emptyMap(), reason);
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, int code, @Nonnull String meaning, @Nonnull StatusReason reason)

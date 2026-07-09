@@ -11,5 +11,5 @@ public interface GlobalAccessEntryManager extends AccessEntryManager
 {
     @Nonnull
     @CheckReturnValue
-    InteractionCallbackAction<Boolean> hasGlobalAccess(@Nonnull AccessObjectData rawData);
+    InteractionCallbackAction<Boolean> hasAccess(@Nonnull AccessObjectData rawData);
 }

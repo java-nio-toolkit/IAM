@@ -19,8 +19,6 @@ package com.github.reganjohn.iam.internal;
 import com.github.adamorgan.jnt.api.ConnectionType;
 import com.github.adamorgan.jnt.api.JNT;
 import com.github.adamorgan.jnt.api.JNTBuilder;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.internal.JNTImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicReceiveHandlerImpl;
@@ -28,14 +26,22 @@ import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.IAM;
+import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.User;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
+import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.api.utils.users.UserCreateData;
 import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.UserCreateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditActionImpl;
@@ -55,12 +61,6 @@ import com.reganjohn.jact.internal.managers.SecretAccessManagerImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.jact.internal.utils.InteractionUtil;
-import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
-import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
-import com.github.reganjohn.iam.api.utils.ClassLoader;
-import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
-import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -71,7 +71,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class IAMImpl
+public class IAMImpl implements IAM
 {
     static
     {
@@ -153,7 +153,7 @@ public class IAMImpl
         TimeUnit.SECONDS.sleep(5);
 
         AdaMorganClientV2 client = new AdaMorganClientV2();
-        client.startTest();
+        //client.startTest();
     }
 
     @Nonnull

@@ -21,15 +21,17 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
-import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserDeleteAction;
+import com.github.reganjohn.iam.internal.IAMImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.Nonnull;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SelfUserDeleteActionImpl extends AbstractSelfUserActionImpl
+public class SelfUserDeleteActionImpl extends AbstractUserActionImpl implements SelfUserDeleteAction
 {
     public SelfUserDeleteActionImpl(@Nonnull IAMImpl api)
     {

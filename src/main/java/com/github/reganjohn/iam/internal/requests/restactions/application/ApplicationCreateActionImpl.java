@@ -16,24 +16,16 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
-import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationCreateAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.UserCreateActionImpl;
 
 import javax.annotation.Nonnull;
 
-public class ApplicationCreateActionImpl extends UserCreateActionImpl
+public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl implements ApplicationCreateAction
 {
     public ApplicationCreateActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Applications.CREATE_APPLICATION);
-    }
-
-    @Override
-    public int getUserFlags(@Nonnull DataObject data)
-    {
-        return super.getUserFlags(data) | User.UserFlag.BOT.getRawValue();
     }
 }

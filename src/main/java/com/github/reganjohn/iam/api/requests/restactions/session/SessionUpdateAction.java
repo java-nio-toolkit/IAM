@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.requests.restactions;
+package com.github.reganjohn.iam.api.requests.restactions.session;
 
-public interface UserCreateAction extends UserAction
+public interface SessionUpdateAction extends AbstractSessionAction
 {
-
 }

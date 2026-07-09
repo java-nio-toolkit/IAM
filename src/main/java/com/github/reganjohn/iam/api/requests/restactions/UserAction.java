@@ -20,9 +20,6 @@ import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
 
 public interface UserAction extends RestAction
 {
-    int MIN_NAME_LENGTH = 2;
-    int MAX_NAME_LENGTH = 32;
-
     int MAX_SESSION_COUNT = 10;
 
     String UUID_TYPE_COERCE = "UUID_TYPE_COERCE";

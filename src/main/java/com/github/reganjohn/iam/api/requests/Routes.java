@@ -26,11 +26,13 @@ public class Routes
     {
         public static final Route CREATE_APPLICATION = new Route(POST, "applications");
         public static final Route GET_APPLICATIONS = new Route(GET, "applications");
+        public static final Route GET_SELF_APPLICATIONS = new Route(GET, "users/@me/applications");
         public static final Route GET_APPLICATION = new Route(GET, "applications/{application_id}");
-        public static final Route GET_BOT_APPLICATION = new Route(GET, "applications/@me");
+        public static final Route GET_SELF_APPLICATION = new Route(GET, "users/@me/applications/{application_id}");
         public static final Route EDIT_APPLICATION = new Route(PATCH, "applications/{application_id}");
-        public static final Route EDIT_BOT_APPLICATION = new Route(PATCH, "applications/@me");
+        public static final Route EDIT_SELF_APPLICATION = new Route(PATCH, "users/@me/applications/{application_id}");
         public static final Route DELETE_APPLICATION = new Route(DELETE, "applications/{application_id}");
+        public static final Route DELETE_SELF_APPLICATION = new Route(DELETE, "users/@me/applications/{application_id}");
     }
 
     public static class Teams

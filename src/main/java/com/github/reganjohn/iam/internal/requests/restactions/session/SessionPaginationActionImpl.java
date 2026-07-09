@@ -16,34 +16,29 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
-import com.github.reganjohn.iam.api.requests.restactions.session.SessionAction;
+import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.session.SessionPaginationAction;
+import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
-
-public class SessionPaginationActionImpl extends AbstractSessionActionImpl
+public class SessionPaginationActionImpl extends AbstractSessionActionImpl implements SessionPaginationAction
 {
     public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
@@ -55,43 +50,20 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        handleUniqueId(context, request, new ArrayList<>());
-    }
-
-    private void handleUniqueId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                @Nonnull List<ErrorResponseException.SchemaError> schemaErrors)
-    {
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        String subject = json.getSubject();
-        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
-        {
-            checkUniqueID(subject);
-        }
-        catch (DataObjectParsingException ex)
-        {
-            handleErrorResponse(SessionAction.SESSION_ID, ex, schemaErrors);
-        }
-        finally
-        {
-            handleInternally(context, UUID.fromString(subject), schemaErrors);
-        }
+        handleInternally(context, UUID.fromString(json.getSubject()));
     }
 
-    private void checkUniqueID(String userId)
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        if (!MiscUtil.isUUID(userId))
-            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The subject value is not uuid.");
+        retrieveSession(userId).queue(successObj -> handleSuccess(context, successObj), context::fireExceptionCaught);
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId,
-                                  @Nonnull List<ErrorResponseException.SchemaError> errors)
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<DataArray> retrieveSession(@Nonnull UUID userId)
     {
-        if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50035, "Invalid Form Body", errors);
-        api.retrieveSessions(userId)
-                
-                .map(this::fromJSON)
-                .queue(successObj -> handleSuccess(context, successObj), context::fireExceptionCaught);
+        return api.retrieveSessions(userId).map(this::fromJSON);
     }
 
     @Nonnull
