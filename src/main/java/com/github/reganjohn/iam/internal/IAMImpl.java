@@ -153,7 +153,7 @@ public class IAMImpl implements IAM
         TimeUnit.SECONDS.sleep(5);
 
         AdaMorganClientV2 client = new AdaMorganClientV2();
-        //client.startTest();
+        client.startTest();
     }
 
     @Nonnull

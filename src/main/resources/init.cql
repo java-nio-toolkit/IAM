@@ -22,11 +22,15 @@ CREATE KEYSPACE IF NOT EXISTS users WITH replication =
 
 CREATE TABLE if not exists users.public_keys
 (
-    kid        uuid PRIMARY KEY,
-    public_key blob,
     alg        text,
+    kid        text,
+    kty        text,
+    usage      text,
+    thumbprint text,
+    public_key blob,
     created_at timestamp,
-    expires_at timestamp
+    expires_at timestamp,
+    primary key (kid)
 );
 
 create table if not exists users.accounts
@@ -50,5 +54,22 @@ create table if not exists users.sessions
     public_key blob,
     primary key (user_id, session_id)
 ) WITH transactional_mode = 'full';
+
+create table if not exists users.applications
+(
+    user_id        uuid,
+    application_id uuid,
+    name           text,
+    description    text,
+    flags          int,
+    redirect_uris  list<text>,
+    alg            text,
+    kid            text,
+    kty            text,
+    usage          text,
+    thumbprint     text,
+    public_key     blob,
+    primary key (user_id, application_id)
+)
 
 

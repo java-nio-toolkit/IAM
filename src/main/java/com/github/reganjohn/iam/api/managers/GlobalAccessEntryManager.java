@@ -6,10 +6,11 @@ import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.util.UUID;
 
 public interface GlobalAccessEntryManager extends AccessEntryManager
 {
     @Nonnull
     @CheckReturnValue
-    InteractionCallbackAction<Boolean> hasAccess(@Nonnull AccessObjectData rawData);
+    InteractionCallbackAction<Boolean> hasAccess(@Nonnull UUID id, @Nonnull AccessObjectData data);
 }

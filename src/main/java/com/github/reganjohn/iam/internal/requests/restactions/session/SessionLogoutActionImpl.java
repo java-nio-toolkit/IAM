@@ -36,7 +36,7 @@ import java.util.UUID;
 
 public class SessionLogoutActionImpl extends AbstractSessionActionImpl implements SessionLogoutAction
 {
-    public SessionLogoutActionImpl(IAMImpl api)
+    public SessionLogoutActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Session.REMOVE_ALL_SESSIONS);
     }

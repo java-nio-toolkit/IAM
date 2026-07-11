@@ -83,7 +83,7 @@ public interface Session extends IUnique
         }
 
         /**
-         * The readable name as used in the client.
+         * The readable name as used in client.
          *
          * @return The readable name of this {@link SessionFlag SessionFlag}.
          */

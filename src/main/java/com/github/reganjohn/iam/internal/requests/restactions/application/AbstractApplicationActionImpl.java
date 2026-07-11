@@ -26,7 +26,7 @@ public abstract class AbstractApplicationActionImpl extends RestActionImpl
 {
     protected final IAMImpl api;
 
-    public AbstractApplicationActionImpl(IAMImpl api, @Nonnull Route route)
+    public AbstractApplicationActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {
         super(route);
         this.api = api;

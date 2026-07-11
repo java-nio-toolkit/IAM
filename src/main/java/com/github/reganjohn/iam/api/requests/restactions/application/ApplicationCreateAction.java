@@ -16,8 +16,6 @@
 
 package com.github.reganjohn.iam.api.requests.restactions.application;
 
-import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
-
-public interface ApplicationCreateAction extends RestAction
+public interface ApplicationCreateAction extends ApplicationAction
 {
 }

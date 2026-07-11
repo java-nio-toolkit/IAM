@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.session;
 
-import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -174,27 +173,22 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
                                                                @Nonnull AccessObjectData data)
     {
         GlobalAccessEntryManagerImpl manager = context.channel().attr(GlobalAccessEntryManagerImpl.IDENTIFIER).get();
-        AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
-        return manager.hasAccess(data).map(hasAccess ->
+        String rawUniqueId = data.getOptionData().getName();
+        if (Helpers.isEmpty(rawUniqueId))
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+        return manager.hasAccess(UUID.fromString(rawUniqueId), data).map(hasAccess ->
         {
-            try
-            {
-                if (hasAccess)
-                    return createObjectData(manager, contextData, data, snapshot);
-                else
-                    throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
-            }
-            catch (Exception error)
-            {
-                throw new InvalidTokenException(error);
-            }
+            if (hasAccess)
+                return createObjectData(manager, contextData, data, manager.getCurrentOrder());
+            else
+                throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         });
     }
 
     @Nonnull
     private AccessObjectData createObjectData(@Nonnull GlobalAccessEntryManagerImpl manager,
                                               @Nonnull AccessContextData contextData, @Nonnull AccessObjectData data,
-                                              @Nonnull AccessEntryManagerImpl.AccessEntrySnapshot snapshot) throws Exception
+                                              @Nonnull AccessEntryManagerImpl.AccessEntrySnapshot snapshot)
     {
         String uniqueId = UUIDv7.randomUUID().toString();
         String issuer = api.getJNT().getIdentifierString();

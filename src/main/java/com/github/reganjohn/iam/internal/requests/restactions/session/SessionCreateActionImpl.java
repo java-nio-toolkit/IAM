@@ -38,6 +38,7 @@ import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -45,11 +46,13 @@ import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionCreateAction;
 import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -91,7 +94,8 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     }
 
     private void handleBody(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                            @Nonnull DataObject rawBody, @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+                            @Nonnull DataObject rawBody,
+                            @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
@@ -108,7 +112,8 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     }
 
     private void handleRawBody(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                               @Nonnull DataObject rawBody, @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+                               @Nonnull DataObject rawBody,
+                               @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
         DataObject rawData = rawBody.getObject(ProofObjectManager.KEY, DataObject.empty());
         if (Helpers.nonEmpty(schemaErrors))
@@ -152,7 +157,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         else if (!rawData.hasKey(ProofObjectManager.KTY, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE,
                     Helpers.format("Value \"%s\" is not string.", ProofObjectManager.KTY));
-        else if (!signTypes.containsKey(rawData.getString(ProofObjectManager.KTY)))
+        else if (!Helpers.contains(signTypes.keySet(), rawData.getString(ProofObjectManager.KTY), true))
             throw createParsingException(ProofObjectManager.KTY, signTypes.keySet());
     }
 
@@ -199,38 +204,11 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
                                    @Nonnull DataObject rawBody, @Nonnull DataObject rawData,
                                    @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
-        AccessEntryType type = AccessEntryType.valueOf(rawData.getString(ProofObjectManager.KTY));
+        AccessEntryType type = AccessEntryType.valueOf(rawData.getString(ProofObjectManager.KTY).toUpperCase(Locale.ROOT));
         if (type == AccessEntryType.OKP || type == AccessEntryType.EC)
-            handleExtension(context, request, rawBody, rawData, schemaErrors);
+            handleCanAccess(context, request, rawBody, rawData, schemaErrors);
         else
             handleUniqueId(context, request, rawBody, rawData, schemaErrors);
-    }
-
-    private void handleExtension(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                 @Nonnull DataObject rawBody, @Nonnull DataObject rawData,
-                                 @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
-    {
-        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
-        {
-            checkExtension(rawData);
-        }
-        catch (DataObjectParsingException ex)
-        {
-            handleErrorResponse(ProofObjectManager.CRV, ex, schemaErrors);
-        }
-        finally
-        {
-            handleCanAccess(context, request, rawBody, rawData, schemaErrors);
-        }
-    }
-
-    private void checkExtension(@Nonnull DataObject rawData)
-    {
-        if (!rawData.hasKey(ProofObjectManager.CRV))
-            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required.");
-        else if (!rawData.hasKey(ProofObjectManager.CRV, DataType.STRING))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE,
-                    Helpers.format("Value \"%s\" is not string.", ProofObjectManager.CRV));
     }
 
     private void handleCanAccess(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -243,7 +221,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse(ProofObjectManager.KTY, ex, schemaErrors);
+            handleErrorResponse(ProofObjectManager.CRV, ex, schemaErrors);
         }
         finally
         {
@@ -254,12 +232,17 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     private void checkCanAccess(@Nonnull DataObject rawData)
     {
         if (!rawData.hasKey(ProofObjectManager.CRV))
-            return;
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required.");
         else if (!rawData.hasKey(ProofObjectManager.CRV, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE,
                     Helpers.format("Value \"%s\" is not string.", ProofObjectManager.CRV));
-        else if (!Helpers.contains(signTypes.keySet(), rawData.getString(ProofObjectManager.KTY), true))
-            throw createParsingException(ProofObjectManager.CRV, signTypes.keySet());
+        else if (!canAccess(rawData.getString(ProofObjectManager.KTY), rawData.getString(ProofObjectManager.CRV)))
+            throw createParsingException(ProofObjectManager.CRV, signTypes.get(rawData.getString(ProofObjectManager.KTY)));
+    }
+
+    private boolean canAccess(String type, String crv)
+    {
+        return Helpers.contains(signTypes.get(type), crv, true);
     }
 
     private void handleUniqueId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -323,7 +306,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
                               @Nonnull DataObject rawBody, @Nonnull DataObject rawData,
                               @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
-        AccessEntryType type = AccessEntryType.valueOf(rawData.getString(ProofObjectManager.KTY));
+        AccessEntryType type = AccessEntryType.valueOf(rawData.getString(ProofObjectManager.KTY).toUpperCase(Locale.ROOT));
         for (String key : getFields(type))
             handleField(context, rawData, key, schemaErrors);
         handleAlgorithm(context, request, rawBody, rawData, schemaErrors);
@@ -389,7 +372,9 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         SignType signType = SignType.from(rawData.getString(ProofObjectManager.ALG));
         String type = rawData.getString(ProofObjectManager.KTY);
-        if (!Helpers.equals(signType.getType(), type, true))
+        if (signType == SignType.NONE || signType == SignType.UNKNOWN)
+            throw createParsingException(ProofObjectManager.ALG, signTypes.get(type));
+        else if (!Helpers.equals(signType.getType(), type, true))
             throw createParsingException(ProofObjectManager.ALG, signType);
     }
 
@@ -416,17 +401,18 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         SignType signType = SignType.from(rawData.getString(ProofObjectManager.ALG));
         String type = rawData.getString(ProofObjectManager.KTY);
         String crv = rawData.getString(ProofObjectManager.CRV);
-        if (!Helpers.equals(signType.getType(), type, true))
-            return;
+        if (signType == SignType.NONE || signType == SignType.UNKNOWN)
+            throw createParsingException(ProofObjectManager.CRV, signTypes.get(type));
         else if (signType.hasExtension() && !Helpers.equals(crv, signType.getRawName(), true))
             throw createParsingException(ProofObjectManager.CRV, signType);
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                  @Nonnull DataObject rawBody, @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
+                                  @Nonnull DataObject rawBody,
+                                  @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
         if (Helpers.nonEmpty(errors))
-            throw new ErrorResponseException(50035, "Invalid Form Body", errors);
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         DataObject rawData = rawBody.getObject(ProofObjectManager.KEY);
         AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
@@ -454,17 +440,22 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         UUID userId = UUID.fromString(subject);
         SessionCreateData session = new SessionCreateData(userId, sessionId.toUUID(), userAgent, entryData, 0, thumbprint);
         api.retrieveSessionCount(userId)
-                .flatMap(count ->
-                {
-                    if (count == 0)
-                        throw new ErrorResponseException(ErrorResponse.UNKNOWN_USER);
-                    else if (count <= MAX_SESSION_COUNT)
-                        return api.createSession(session);
-                    else
-                        throw new ErrorResponseException(ErrorResponse.MAX_SESSIONS);
-                })
+                .flatMap(count -> create(session, count))
                 .queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);
     }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionMappingAction<Void> create(SessionCreateData session, int count)
+    {
+        if (count == 0)
+            throw new ErrorResponseException(ErrorResponse.UNKNOWN_USER);
+        else if (count <= MAX_SESSION_COUNT)
+            return api.createSession(session);
+        else
+            throw new ErrorResponseException(ErrorResponse.MAX_SESSIONS);
+    }
+
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData objectData)
     {

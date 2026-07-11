@@ -46,7 +46,7 @@ public class EntityBuilder extends AbstractEntityBuilder
 {
     private final IAMImpl api;
 
-    public EntityBuilder(IAMImpl api)
+    public EntityBuilder(@Nonnull IAMImpl api)
     {
         this.api = api;
     }
@@ -57,7 +57,6 @@ public class EntityBuilder extends AbstractEntityBuilder
                                                     @Nonnull AccessContextData contextData,
                                                     @Nonnull AccessOptionData optionData,
                                                     @Nonnull AccessEntryManagerImpl.AccessEntrySnapshot snapshot)
-            throws Exception
     {
         long now = System.currentTimeMillis();
         OffsetDateTime offset = Helpers.toOffset(now);
@@ -74,8 +73,16 @@ public class EntityBuilder extends AbstractEntityBuilder
             rawData.put("aud", audiences.stream().collect(Helpers.toDataArray()));
         String header = IOUtil.encodeURL(optionData.toString().getBytes(StandardCharsets.UTF_8));
         String payload = IOUtil.encodeURL(rawData.toString().getBytes(StandardCharsets.UTF_8));
-        byte[] raw = snapshot.sign(header + "." + payload);
-        return new AccessObjectData(uniqueId, now, optionData, issuer, subject, raw, contextData.toData(), 0, expiresAt, audiences);
+
+        try
+        {
+            byte[] raw = snapshot.sign(header + "." + payload);
+            return new AccessObjectData(uniqueId, now, optionData, issuer, subject, raw, contextData.toData(), 0, expiresAt, audiences);
+        }
+        catch (Exception error)
+        {
+            throw new IllegalStateException("Failed to sign access object", error);
+        }
     }
 
     @Nonnull
