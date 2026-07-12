@@ -21,11 +21,12 @@ import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.Permission;
 
 import javax.annotation.Nonnull;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public interface IPermissionHolder
+public interface PermissionOverride
 {
     @Nonnull
     IAM getIAM();
@@ -35,6 +36,12 @@ public interface IPermissionHolder
 
     @Nonnull
     UUID getApplicationId();
+
+    @Nonnull
+    OffsetDateTime getTimeCreated();
+
+    @Nonnull
+    OffsetDateTime getTimeUpdated();
 
     @Nonnull
     default EnumSet<Permission> getPermissions()

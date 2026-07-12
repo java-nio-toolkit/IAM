@@ -70,6 +70,16 @@ create table if not exists users.applications
     thumbprint     text,
     public_key     blob,
     primary key (user_id, application_id)
-)
+) WITH transactional_mode = 'full';
+
+create table if not exists users.permissions
+(
+    user_id        uuid,
+    application_id uuid,
+    permissions    int,
+    created_at     timestamp,
+    updated_at     timestamp,
+    PRIMARY KEY (user_id, application_id)
+) WITH transactional_mode = 'full';
 
 

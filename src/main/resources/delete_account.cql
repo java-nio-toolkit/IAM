@@ -21,6 +21,8 @@ BEGIN TRANSACTION
     SELECT * FROM users.accounts WHERE user_id = :user_id;
 
     IF account_data IS NOT NULL THEN
+        DELETE FROM users.applications WHERE user_id = :user_id;
+        DELETE FROM users.permissions WHERE user_id = :user_id;
         DELETE FROM users.sessions WHERE user_id = :user_id;
         DELETE FROM users.accounts WHERE user_id = :user_id;
     END IF

@@ -151,7 +151,6 @@ public enum Permission
     /**
      * This is effectively the opposite of {@link #getPermissions(int)}, this takes a Collection of {@link com.github.reganjohn.iam.api.Permission Permissions}
      * and returns the raw offset {@code int} representation of the permissions.
-     * <br>Example: {@code getRaw(EnumSet.of(Permission.VIEW_CHANNEL, Permission.MESSAGE_SEND))}
      *
      * @param  permissions
      *         The Collection of permissions of which to form into the raw int representation.

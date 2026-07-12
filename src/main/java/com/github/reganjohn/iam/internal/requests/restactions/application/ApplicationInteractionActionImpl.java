@@ -17,14 +17,13 @@
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationCreateAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public class ApplicationInteractionCreateActionImpl extends AbstractApplicationActionImpl
+public class ApplicationInteractionActionImpl extends AbstractApplicationActionImpl
 {
-    public ApplicationInteractionCreateActionImpl(@Nonnull IAMImpl api)
+    public ApplicationInteractionActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Applications.CREATE_APPLICATION_INTERACTION);
     }
