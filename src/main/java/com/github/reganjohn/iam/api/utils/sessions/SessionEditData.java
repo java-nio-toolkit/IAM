@@ -19,6 +19,8 @@ package com.github.reganjohn.iam.api.utils.sessions;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
+import com.reganjohn.jact.internal.interactions.context.InteractionMappingImpl;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -81,16 +83,16 @@ public class SessionEditData implements SessionData
     }
 
     @Nonnull
-    public Map<String, Object> toMap()
+    public InteractionMapping toMap()
     {
-        Map<String, Object> map = new HashMap<>();
+        InteractionMapping.Builder map = new InteractionMapping.Builder();
         map.put("user_id", userId);
         map.put("session_id", sessionId);
         if (Helpers.nonEmpty(userAgent))
             map.put("user_agent", userAgent);
         if (flags != 0)
             map.put("flags", flags);
-        return map;
+        return map.build();
     }
 
     @Nonnull

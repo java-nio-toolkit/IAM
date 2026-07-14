@@ -18,10 +18,7 @@ package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryKey;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessOptionData;
+import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -95,7 +92,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public static List<Session> createSessions(@Nonnull BufferArray data) throws Exception
+    public List<Session> createSessions(@Nonnull BufferArray data) throws Exception
     {
         List<Session> sessions = new ArrayList<>();
         for (BufferObject obj : data)
@@ -104,13 +101,29 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public static SessionImpl createSession(@Nonnull BufferObject data) throws Exception
+    public SessionImpl createSession(@Nonnull BufferObject data) throws Exception
     {
         UUID userId = data.getUUID("user_id");
         UUID sessionId = data.getUUID("session_id");
         int flags = data.getInt("flags");
         String userAgent = data.getString("user_agent", null);
         String thumbprint = data.getString("thumbprint");
+        String kid = data.getString("kid");
+        return new SessionImpl(api, userId, sessionId, flags, thumbprint, kid, userAgent);
+    }
+
+    @Nonnull
+    public List<AccessEntryData> createAccessEntries(@Nonnull BufferArray data) throws Exception
+    {
+        List<AccessEntryData> entries = new ArrayList<>();
+        for (BufferObject obj : data)
+            entries.add(createAccessEntry(obj));
+        return entries;
+    }
+
+    @Nonnull
+    public AccessEntryData createAccessEntry(@Nonnull BufferObject data) throws Exception
+    {
         byte[] publicKey = data.getBytes("public_key");
         String type = data.getString("kty");
         String alg = data.getString("alg");
@@ -125,6 +138,6 @@ public class EntityBuilder extends AbstractEntityBuilder
                 .put("use", data.getString("usage"))
                 .putAll(rawData)
                 .toData();
-        return new SessionImpl(userId, sessionId, flags, thumbprint, createAccessEntry(rawEntryData), userAgent);
+        return createAccessEntry(rawEntryData);
     }
 }

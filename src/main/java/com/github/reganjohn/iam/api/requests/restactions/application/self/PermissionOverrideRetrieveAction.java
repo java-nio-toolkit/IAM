@@ -14,18 +14,8 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.application.self;
+package com.github.reganjohn.iam.api.requests.restactions.application.self;
 
-import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.application.AbstractApplicationActionImpl;
-
-import javax.annotation.Nonnull;
-
-public class SelfApplicationPaginationActionImpl extends AbstractApplicationActionImpl
+public interface PermissionOverrideRetrieveAction extends PermissionOverrideAction
 {
-    public SelfApplicationPaginationActionImpl(@Nonnull IAMImpl api)
-    {
-        super(api, Routes.Applications.GET_SELF_APPLICATIONS);
-    }
 }

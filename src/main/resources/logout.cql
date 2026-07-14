@@ -14,18 +14,14 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.application.self;
+BEGIN TRANSACTION
+    LET session_data = (SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id != :session_id);
 
-import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.application.AbstractApplicationActionImpl;
+    -- Return data directly from table (must come before DELETE)
+    SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id != :session_id;
 
-import javax.annotation.Nonnull;
-
-public class SelfApplicationEditActionImpl extends AbstractApplicationActionImpl
-{
-    public SelfApplicationEditActionImpl(@Nonnull IAMImpl api)
-    {
-        super(api, Routes.Applications.EDIT_SELF_APPLICATION);
-    }
-}
+    IF session_data IS NOT NULL THEN
+        DELETE FROM users.sessions WHERE user_id = :user_id AND session_id != :session_id;
+        DELETE FROM users.public_keys WHERE user_id = :user_id AND kid != :kid;
+    END IF
+COMMIT TRANSACTION;

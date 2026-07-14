@@ -20,7 +20,6 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -31,7 +30,6 @@ import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.session.AbstractSessionAction;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionRetrieveAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.channel.ChannelHandlerContext;
@@ -102,8 +100,10 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl impleme
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull Session session)
     {
-        DataObject successObj = fromJSON(session);
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        retrieveData(session).queue(successObj ->
+        {
+            BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
+            context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        }, context::fireExceptionCaught);
     }
 }

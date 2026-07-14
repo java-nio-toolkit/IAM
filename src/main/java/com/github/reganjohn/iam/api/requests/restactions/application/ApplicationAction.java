@@ -20,4 +20,5 @@ import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
 
 public interface ApplicationAction extends RestAction
 {
+    int MAX_APPLICATION_COUNT = 32;
 }

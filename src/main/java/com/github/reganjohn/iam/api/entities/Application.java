@@ -38,9 +38,11 @@ public interface Application extends IUnique
     /** The maximum amount of URL that can be set to an application ({@value}) */
     int MAX_URL_COUNT = 5;
     /** The maximum length for any URL set on an application ({@value}) */
-    int MAX_URL_LENGTH = 2048;
+    int MAX_URL_LENGTH = 1 << 11;
     /** The maximum amount of access entry that can be set to an application ({@value}) */
     int MAX_ACCESS_ENTRY_COUNT = 10;
+    /** The maximum length for an application description ({@value}) */
+    int MAX_DESCRIPTION_LENGTH = 1 << 9;
 
     /**
      * The {@link IAM IAM} instance of this Application.
@@ -119,20 +121,26 @@ public interface Application extends IUnique
      */
     enum ApplicationFlag
     {
-        UNKNOWN(-1);
+        UNKNOWN(-1, false);
 
         /**
          * Empty array of ApplicationFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
          */
         public static final ApplicationFlag[] EMPTY_FLAGS = new ApplicationFlag[0];
 
+        public static final int ALL = 1 | getRaw(EnumSet.allOf(ApplicationFlag.class));
+
+        public static final int SYSTEM = ALL & ~getRaw();
+
         private final int offset;
         private final int raw;
+        private final boolean managed;
 
-        ApplicationFlag(int offset)
+        ApplicationFlag(int offset, boolean managed)
         {
             this.offset = offset;
             this.raw = 1 << offset;
+            this.managed = managed;
         }
 
         /**
@@ -154,6 +162,16 @@ public interface Application extends IUnique
         public int getRawValue()
         {
             return raw;
+        }
+
+        /**
+         * Whether this {@link Application.ApplicationFlag ApplicationFlag} is managed.
+         *
+         * @return True, if this {@link Application.ApplicationFlag ApplicationFlag} is managed.
+         */
+        public boolean isManaged()
+        {
+            return managed;
         }
 
         /**

@@ -20,8 +20,6 @@ import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
 
 public interface UserAction extends RestAction
 {
-    int MAX_SESSION_COUNT = 10;
-
     String UUID_TYPE_COERCE = "UUID_TYPE_COERCE";
 
     String CONTENT_TYPE_INVALID = "CONTENT_TYPE_INVALID";
@@ -37,6 +35,7 @@ public interface UserAction extends RestAction
     String LIST_ITEM_VALUE_REQUIRED = "LIST_ITEM_VALUE_REQUIRED";
 
     String DICT_TYPE_CONVERT = "DICT_TYPE_CONVERT";
+    String MODEL_TYPE_CONVERT = "MODEL_TYPE_CONVERT";
 
     String BASE_TYPE_REQUIRED = "BASE_TYPE_REQUIRED";
     String BASE_TYPE_CHOICES = "BASE_TYPE_CHOICES";

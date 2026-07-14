@@ -21,6 +21,8 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -36,7 +38,10 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class SessionPaginationActionImpl extends AbstractSessionActionImpl implements SessionPaginationAction
 {
@@ -56,25 +61,47 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        retrieveSession(userId).queue(successObj -> handleSuccess(context, successObj), context::fireExceptionCaught);
+        retrieveData(userId).queue(successObj ->
+        {
+            BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
+            context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        }, context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<DataArray> retrieveSession(@Nonnull UUID userId)
+    private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId)
     {
-        return api.retrieveSessions(userId).map(this::fromJSON);
+        return api.retrieveSessions(userId).flatMap(sessions -> retrieveData(userId, sessions));
     }
 
     @Nonnull
-    private DataArray fromJSON(@Nonnull List<Session> sessions)
+    @CheckReturnValue
+    private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId, @Nonnull List<Session> sessions)
     {
-        return sessions.stream().map(this::fromJSON).collect(Helpers.toDataArray());
-    }
+        return api.retrieveAccessEntries(userId).map(entries ->
+        {
+            Map<String, DataObject> set = entries.stream().collect(Collectors.toMap(AccessEntryData::getName, AccessEntryData::toData));
+            DataArray array = DataArray.empty();
+            for (Session session : sessions)
+            {
+                DataObject user = DataObject.empty()
+                        .put("user_id", session.getUserId())
+                        .toData();
 
-    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
-    {
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+                if (Helpers.nonEmpty(session.getUserAgent()))
+                    user.put("user_agent", session.getUserAgent());
+
+                DataObject data = DataObject.empty()
+                        .put("session_id", session.getUniqueId())
+                        .put("user", user)
+                        .put("jwk", set.get(session.getKeyId()))
+                        .put("flags", session.getFlagsRaw())
+                        .toData();
+                array.add(data);
+            }
+
+            return array;
+        });
     }
 }

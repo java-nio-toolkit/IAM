@@ -14,16 +14,37 @@
  * limitations under the License.
  */
 
+
+CREATE KEYSPACE IF NOT EXISTS global WITH replication =
+    {
+        'class': 'SimpleStrategy',
+        'replication_factor': 1
+        };
+
 CREATE KEYSPACE IF NOT EXISTS users WITH replication =
     {
         'class': 'SimpleStrategy',
         'replication_factor': 1
         };
 
-CREATE TABLE if not exists users.public_keys
+CREATE KEYSPACE IF NOT EXISTS integrations WITH replication =
+    {
+        'class': 'SimpleStrategy',
+        'replication_factor': 1
+        };
+
+DROP TABLE IF EXISTS global.public_keys;
+DROP TABLE IF EXISTS integrations.public_keys;
+DROP TABLE IF EXISTS integrations.applications;
+DROP TABLE IF EXISTS users.accounts;
+DROP TABLE IF EXISTS users.permissions;
+DROP TABLE IF EXISTS users.public_keys;
+DROP TABLE IF EXISTS users.sessions;
+
+CREATE TABLE if not exists global.public_keys
 (
+    kid        UUID,
     alg        text,
-    kid        text,
     kty        text,
     usage      text,
     thumbprint text,
@@ -32,6 +53,18 @@ CREATE TABLE if not exists users.public_keys
     expires_at timestamp,
     primary key (kid)
 );
+
+CREATE TABLE if not exists users.public_keys
+(
+    user_id    UUID,
+    kid        text,
+    alg        text,
+    kty        text,
+    usage      text,
+    thumbprint text,
+    public_key blob,
+    primary key ((user_id), kid)
+) WITH transactional_mode = 'full';
 
 create table if not exists users.accounts
 (
@@ -46,30 +79,9 @@ create table if not exists users.sessions
     session_id uuid,
     flags      int,
     user_agent text,
-    alg        text,
     kid        text,
-    kty        text,
-    usage      text,
     thumbprint text,
-    public_key blob,
-    primary key (user_id, session_id)
-) WITH transactional_mode = 'full';
-
-create table if not exists users.applications
-(
-    user_id        uuid,
-    application_id uuid,
-    name           text,
-    description    text,
-    flags          int,
-    redirect_uris  list<text>,
-    alg            text,
-    kid            text,
-    kty            text,
-    usage          text,
-    thumbprint     text,
-    public_key     blob,
-    primary key (user_id, application_id)
+    primary key ((user_id), session_id)
 ) WITH transactional_mode = 'full';
 
 create table if not exists users.permissions
@@ -79,7 +91,30 @@ create table if not exists users.permissions
     permissions    int,
     created_at     timestamp,
     updated_at     timestamp,
-    PRIMARY KEY (user_id, application_id)
+    PRIMARY KEY ((user_id), application_id)
+) WITH transactional_mode = 'full';
+
+create table if not exists integrations.applications
+(
+    user_id        uuid,
+    application_id uuid,
+    name           text,
+    description    text,
+    flags          int,
+    redirect_uris  list<text>,
+    primary key ((user_id), application_id)
+) WITH transactional_mode = 'full';
+
+CREATE TABLE if not exists integrations.public_keys
+(
+    user_id        UUID,
+    application_id UUID,
+    kid            UUID,
+    alg            text,
+    kty            text,
+    thumbprint     text,
+    public_key     blob,
+    primary key ((user_id), application_id, kid)
 ) WITH transactional_mode = 'full';
 
 

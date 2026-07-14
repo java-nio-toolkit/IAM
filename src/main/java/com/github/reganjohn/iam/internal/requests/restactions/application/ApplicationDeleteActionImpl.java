@@ -17,11 +17,12 @@
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationDeleteAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl
+public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl implements ApplicationDeleteAction
 {
     public ApplicationDeleteActionImpl(@Nonnull IAMImpl api)
     {

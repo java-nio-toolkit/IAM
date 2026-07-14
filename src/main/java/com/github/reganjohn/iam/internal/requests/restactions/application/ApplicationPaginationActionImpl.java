@@ -17,11 +17,12 @@
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationPaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public class ApplicationPaginationActionImpl extends AbstractApplicationActionImpl
+public class ApplicationPaginationActionImpl extends AbstractApplicationActionImpl implements ApplicationPaginationAction
 {
     public ApplicationPaginationActionImpl(@Nonnull IAMImpl api)
     {

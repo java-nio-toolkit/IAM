@@ -39,6 +39,7 @@ import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionEditAction;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -176,8 +177,8 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
 
     @Nonnull
     @CheckReturnValue
-    private InteractionMappingAction<Void> modify(@Nonnull Session session, @Nonnull DataObject json,
-                                                  @Nonnull ProofObjectData data, @Nonnull String thumbprint)
+    private InteractionCallbackAction<Void> modify(@Nonnull Session session, @Nonnull DataObject json,
+                                                   @Nonnull ProofObjectData data, @Nonnull String thumbprint)
     {
         UUID sessionId = session.getUniqueId();
         UUID userId = session.getUserId();

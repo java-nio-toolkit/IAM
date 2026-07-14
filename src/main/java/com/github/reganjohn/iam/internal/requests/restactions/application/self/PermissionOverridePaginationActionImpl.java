@@ -17,15 +17,16 @@
 package com.github.reganjohn.iam.internal.requests.restactions.application.self;
 
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.application.self.PermissionOverridePaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.application.AbstractApplicationActionImpl;
 
 import javax.annotation.Nonnull;
 
-public class SelfApplicationDeleteActionImpl extends AbstractApplicationActionImpl
+public class PermissionOverridePaginationActionImpl extends AbstractApplicationActionImpl implements PermissionOverridePaginationAction
 {
-    public SelfApplicationDeleteActionImpl(@Nonnull IAMImpl api)
+    public PermissionOverridePaginationActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.DELETE_SELF_APPLICATION);
+        super(api, Routes.Applications.GET_SELF_APPLICATIONS);
     }
 }

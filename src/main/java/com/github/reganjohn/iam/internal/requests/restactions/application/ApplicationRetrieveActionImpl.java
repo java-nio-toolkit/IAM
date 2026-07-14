@@ -18,11 +18,12 @@ package com.github.reganjohn.iam.internal.requests.restactions.application;
 
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationRetrieveAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl
+public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl implements ApplicationRetrieveAction
 {
     public ApplicationRetrieveActionImpl(@Nonnull IAMImpl api)
     {

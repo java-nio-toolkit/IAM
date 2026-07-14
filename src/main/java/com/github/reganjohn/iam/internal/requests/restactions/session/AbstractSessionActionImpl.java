@@ -29,7 +29,9 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.restactions.session.AbstractSessionAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Collections;
@@ -84,20 +86,24 @@ public abstract class AbstractSessionActionImpl extends RestActionImpl implement
     }
 
     @Nonnull
-    protected DataObject fromJSON(@Nonnull Session session)
+    @CheckReturnValue
+    protected InteractionCallbackAction<DataObject> retrieveData(@Nonnull Session session)
     {
-        DataObject user = DataObject.empty()
-                .put("user_id", session.getUserId())
-                .toData();
+        return session.getAccessEntry().map(data ->
+        {
+            DataObject user = DataObject.empty()
+                    .put("user_id", session.getUserId())
+                    .toData();
 
-        if (Helpers.nonEmpty(session.getUserAgent()))
-            user.put("user_agent", session.getUserAgent());
+            if (Helpers.nonEmpty(session.getUserAgent()))
+                user.put("user_agent", session.getUserAgent());
 
-        return DataObject.empty()
-                .put("session_id", session.getUniqueId())
-                .put("user", user)
-                .put("jwk", session.getAccessEntry())
-                .put("flags", session.getFlagsRaw())
-                .toData();
+            return DataObject.empty()
+                    .put("session_id", session.getUniqueId())
+                    .put("user", user)
+                    .put("jwk", data)
+                    .put("flags", session.getFlagsRaw())
+                    .toData();
+        });
     }
 }

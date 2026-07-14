@@ -17,13 +17,15 @@
 BEGIN TRANSACTION
     LET account_data = (SELECT * FROM users.accounts WHERE user_id = :user_id);
 
-    -- Return data directly from table (must come before INSERT)
+    -- Return data directly from table (must come before DELETE)
     SELECT * FROM users.accounts WHERE user_id = :user_id;
 
     IF account_data IS NOT NULL THEN
-        DELETE FROM users.applications WHERE user_id = :user_id;
-        DELETE FROM users.permissions WHERE user_id = :user_id;
-        DELETE FROM users.sessions WHERE user_id = :user_id;
         DELETE FROM users.accounts WHERE user_id = :user_id;
+        DELETE FROM users.sessions WHERE user_id = :user_id;
+        DELETE FROM users.permissions WHERE user_id = :user_id;
+        DELETE FROM users.public_keys WHERE user_id = :user_id;
+        DELETE FROM integrations.applications WHERE user_id = :user_id;
+        DELETE FROM integrations.public_keys WHERE user_id = :user_id;
     END IF
 COMMIT TRANSACTION;

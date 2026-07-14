@@ -18,6 +18,7 @@ package com.github.reganjohn.iam.api.utils.sessions;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -80,20 +81,20 @@ public class SessionCreateData implements SessionData
     }
 
     @Nonnull
-    public Map<String, Object> toMap()
+    public InteractionMapping toMap()
     {
-        Map<String, Object> map = new HashMap<>();
-        map.put("user_id", userId);
-        map.put("session_id", sessionId);
-        map.put("flags", flags);
-        map.put("user_agent", userAgent);
-        map.put("alg", entryData.getAccessOption().getMode());
-        map.put("kid", entryData.getName());
-        map.put("kty", entryData.getType().name());
-        map.put("usage", entryData.getUsage().name().toLowerCase());
-        map.put("public_key", entryData.getPublicKey().getEncoded());
-        map.put("thumbprint", thumbprint);
-        return map;
+        return new InteractionMapping.Builder()
+                .put("user_id", userId)
+                .put("session_id", sessionId)
+                .put("flags", flags)
+                .put("user_agent", userAgent)
+                .put("alg", entryData.getAccessOption().getMode())
+                .put("kid", entryData.getName())
+                .put("kty", entryData.getType().name())
+                .put("usage", entryData.getUsage().name().toLowerCase())
+                .put("public_key", entryData.getPublicKey().getEncoded())
+                .put("thumbprint", thumbprint)
+                .build();
     }
 
     @Nonnull

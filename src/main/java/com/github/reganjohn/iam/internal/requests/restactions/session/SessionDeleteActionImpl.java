@@ -29,10 +29,9 @@ import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.session.AbstractSessionAction;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionDeleteAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionContextAction;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -86,7 +85,7 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
     }
 
     private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                 @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
+                                 @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
@@ -100,20 +99,21 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
         UUID userId = UUID.fromString(json.getSubject());
         UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
         api.retrieveSessionCount(userId)
-                .flatMap(count -> delete(userId, sessionId, count))
+                .flatMap(count ->
+                {
+                    if (count == 1)
+                        throw new ErrorResponseException(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION);
+                    else
+                        return delete(userId, sessionId);
+                })
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionContextAction<Void> delete(UUID userId, UUID sessionId, int count)
+    private InteractionCallbackAction<Void> delete(UUID userId, UUID sessionId)
     {
-        if (count == 0)
-            throw new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION);
-        else if (count == 1)
-            throw new IllegalStateException("Cannot close the last active session as at least one session must remain active.");
-        else
-            return api.deleteSessionById(userId, sessionId);
+        return api.retrieveSessionById(userId, sessionId).flatMap(api::deleteSessionById);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

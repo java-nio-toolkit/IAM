@@ -114,11 +114,11 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse("username", ex, schemaErrors);
+            handleErrorResponse("flags", ex, schemaErrors);
         }
         finally
         {
-            handleSession(context, request, rawData, rawData.getObject("session", DataObject.empty()), schemaErrors);
+            handleSessionFlags(context, request, rawData, rawData.getObject("session", DataObject.empty()), schemaErrors);
         }
     }
 
@@ -133,9 +133,9 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
                     "Value \"flags\" should be greater than or equal to 0.");
     }
 
-    private void handleSession(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                               @Nonnull DataObject rawData, @Nonnull DataObject sessionData,
-                               @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    private void handleSessionFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                    @Nonnull DataObject rawData, @Nonnull DataObject sessionData,
+                                    @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
@@ -193,7 +193,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         byte[] rawPublicKey = entryData.getPublicKey().getEncoded();
         UUID sessionId = UUIDv7.nameUUIDFromBytes(rawPublicKey).toUUID();
         String agent = request.getHeaders().get("User-Agent");
-        int userFlags = rawData.getInt("flags", 0) & ~Session.SessionFlag.SYSTEM;
+        int userFlags = rawData.getInt("flags", 0) & ~User.UserFlag.SYSTEM;
         int sessionFlags = sessionData.getInt("flags", 0) & ~Session.SessionFlag.SYSTEM;
         UserCreateData data = new UserCreateData(userId, sessionId, name, agent, entryData, userFlags, sessionFlags, thumbprint);
         api.createUser(data).queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);

@@ -19,7 +19,10 @@ package com.github.reganjohn.iam.api.entities;
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.requests.objaction.InteractionContextAction;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -32,13 +35,17 @@ public interface Session extends IUnique
     UUID getUserId();
 
     @Nonnull
-    AccessEntryData getAccessEntry();
+    String getKeyId();
 
     @Nonnull
     default EnumSet<SessionFlag> getFlags()
     {
         return SessionFlag.getFlags(getFlagsRaw());
     }
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<AccessEntryData> getAccessEntry();
 
     int getFlagsRaw();
 

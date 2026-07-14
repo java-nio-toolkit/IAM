@@ -79,7 +79,7 @@ public class GlobalAccessEntryManagerImpl extends AccessEntryManagerImpl impleme
     @Override
     public InteractionCallbackAction<Boolean> hasAccess(@Nonnull UUID id, @Nonnull AccessObjectData data)
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM users.public_keys WHERE kid = ?", Collections.singletonList(id))
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM global.public_keys WHERE kid = ?", Collections.singletonList(id))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -113,7 +113,7 @@ public class GlobalAccessEntryManagerImpl extends AccessEntryManagerImpl impleme
     {
         Checks.notNull(snapshot, "Snapshot");
         Checks.notNull(contextMap, "Map");
-        String content = Helpers.format("INSERT INTO users.public_keys (%s) VALUES (%s) IF NOT EXISTS",
+        String content = Helpers.format("INSERT INTO global.public_keys (%s) VALUES (%s) IF NOT EXISTS",
                 Helpers.join(", ", contextMap.keySet()),
                 Helpers.join(", ", InteractionUtil.split(contextMap.keySet(), true)));
         new InteractionMappingActionImpl<Void>(api.getJACT(), content, mapFromData(snapshot))

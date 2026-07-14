@@ -20,15 +20,19 @@ import javax.annotation.Nonnull;
 
 public enum ErrorResponse
 {
-    UNKNOWN_SIGNER(10011, "Unknown Signer"),
+    UNKNOWN_SIGNER(10010, "Unknown Signer"),
+    UNKNOWN_ACCESS(10011, "Unknown Access"),
     UNKNOWN_SESSION(10012, "Unknown Session"),
     UNKNOWN_USER(10013, "Unknown User"),
 
     MAX_SESSIONS(30001, "Maximum number of Sessions reached (10)"),
+    MAX_APPLICATION(30002, "Maximum number of Applications reached (32)"),
 
     UNAUTHORIZED(40001, "Unauthorized"),
-    SESSION_ALREADY_EXISTS(40122, "An session with that key already exists"),
+    SESSION_ALREADY_EXISTS(40122, "An session with that access object already exists"),
+    APPLICATION_ALREADY_EXISTS(40123, "An application with that access object already exists"),
 
+    CANNOT_CLOSE_SINGLE_SESSION(50008, "The single remaining session cannot be closed."),
     INVALID_TOKEN(50014, "Invalid Authentication Token"),
     INVALID_FORM_URL(50034, "Invalid Form URL"),
     INVALID_FORM_BODY(50035, "Invalid Form Body"),

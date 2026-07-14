@@ -36,6 +36,7 @@ import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserEditAction
 import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -131,7 +132,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
 
     @Nonnull
     @CheckReturnValue
-    private InteractionMappingAction<Void> modify(@Nonnull User user, @Nonnull DataObject data)
+    private InteractionCallbackAction<Void> modify(@Nonnull User user, @Nonnull DataObject data)
     {
         UUID userId = user.getUniqueId();
         String name = data.getString("username", user.getName());

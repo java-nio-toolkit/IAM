@@ -17,11 +17,12 @@
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
 import com.github.reganjohn.iam.api.requests.Routes;
+import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationEditAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public class ApplicationEditActionImpl extends AbstractApplicationActionImpl
+public class ApplicationEditActionImpl extends AbstractApplicationActionImpl implements ApplicationEditAction
 {
     public ApplicationEditActionImpl(@Nonnull IAMImpl api)
     {
