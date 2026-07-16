@@ -29,13 +29,16 @@ import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionIm
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.IAM;
+import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.applications.AccessApplicationCreateData;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationCreateData;
+import com.github.reganjohn.iam.api.utils.applications.ApplicationEditData;
 import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.api.utils.users.UserCreateData;
@@ -45,7 +48,7 @@ import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManager
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.application.ApplicationCreateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.*;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditActionImpl;
@@ -156,6 +159,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new SelfUserRetrieveActionImpl(this))
                 .addEventListenerProvider(() -> new SelfUserDeleteActionImpl(this))
                 .addEventListenerProvider(() -> new SelfUserEditActionImpl(this))
+
                 .addEventListenerProvider(() -> new SessionPaginationActionImpl(this))
                 .addEventListenerProvider(() -> new SessionRetrieveActionImpl(this))
                 .addEventListenerProvider(() -> new SessionCreateActionImpl(this))
@@ -165,6 +169,14 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new SessionLogoutActionImpl(this))
 
                 .addEventListenerProvider(() -> new ApplicationCreateActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationPaginationActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationRetrieveActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationEditActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationDeleteActionImpl(this))
+
+                .addEventListenerProvider(() -> new ApplicationAccessActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationSyncActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationRevokeActionImpl(this))
 
                 .addEventListeners(new ErrorObjectManagerImpl(true))
                 .build();
@@ -197,7 +209,7 @@ public class IAMImpl implements IAM
     @CheckReturnValue
     public InteractionCallbackAction<User> retrieveUserById(@Nonnull UUID id)
     {
-        Checks.notNull(id, "ID");
+        Checks.notNull(id, "User ID");
         return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.accounts WHERE user_id = ?", Collections.singletonList(id))
         {
             @Override
@@ -255,7 +267,7 @@ public class IAMImpl implements IAM
     @CheckReturnValue
     public InteractionCallbackAction<Void> deleteUserById(@Nonnull UUID userId)
     {
-        Checks.notNull(userId, "ID");
+        Checks.notNull(userId, "User ID");
         return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("delete_account.cql"), Collections.singletonMap("user_id", userId))
         {
             @Override
@@ -274,7 +286,7 @@ public class IAMImpl implements IAM
     @CheckReturnValue
     public InteractionCallbackAction<List<Session>> retrieveSessions(@Nonnull UUID userId)
     {
-        Checks.notNull(userId, "ID");
+        Checks.notNull(userId, "User ID");
         return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
@@ -310,7 +322,7 @@ public class IAMImpl implements IAM
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccessEntries(@Nonnull UUID userId)
+    public InteractionCallbackAction<List<AccessEntryData>> retrieveUserAccessEntries(@Nonnull UUID userId)
     {
         Checks.notNull(userId, "User ID");
         return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.public_keys WHERE user_id = ?", Collections.singletonList(userId))
@@ -371,7 +383,7 @@ public class IAMImpl implements IAM
     @CheckReturnValue
     public InteractionCallbackAction<Integer> retrieveSessionCount(@Nonnull UUID userId)
     {
-        Checks.notNull(userId, "ID");
+        Checks.notNull(userId, "User ID");
         return new InteractionContextActionImpl<>(jact, "SELECT COUNT(*) FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
@@ -475,6 +487,169 @@ public class IAMImpl implements IAM
                     request.onSuccess(null);
                 else
                     request.onFailure(new ErrorResponseException(ErrorResponse.APPLICATION_ALREADY_EXISTS));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<Application>> retrieveApplications(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(jact, "SELECT * FROM integrations.applications WHERE user_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<Application>> interaction,
+                                      @Nonnull BufferArray array) throws Exception
+            {
+                interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : entityBuilder.createApplications(array));
+            }
+        };
+    }
+
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID userId,
+                                                                          @Nonnull UUID applicationId)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(jact, "SELECT * FROM integrations.applications WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Application> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+                else
+                    interaction.onSuccess(entityBuilder.createApplication(array.getObject(0)));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Integer> retrieveApplicationAccessCount(@Nonnull Application application)
+    {
+        Checks.notNull(application, "Application");
+        return new InteractionContextActionImpl<>(jact, "SELECT COUNT(*) FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(application.getOwnerId(), application.getUniqueId()))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess((int) InteractionUtil.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> createApplicationAccessEntry(@Nonnull AccessApplicationCreateData access)
+    {
+        Checks.notNull(access, "Access Application");
+        return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("create_access_application.cql"), access.toMap())
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    interaction.onSuccess(null);
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<AccessEntryData>> retrieveApplicationAccessEntries(@Nonnull UUID userId,
+                                                                                             @Nonnull UUID applicationId)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(jact, "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
+                                      @Nonnull BufferArray array) throws Exception
+            {
+                interaction.onSuccess(!array.isEmpty() ? entityBuilder.createAccessEntries(array) : Collections.emptyList());
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> deleteApplicationAccessEntry(@Nonnull UUID userId,
+                                                                        @Nonnull UUID applicationId,
+                                                                        @Nonnull String kid)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(jact, "DELETE FROM integrations.public_keys WHERE user_id = ? AND application_id = ? AND kid = ? IF EXISTS", Arrays.asList(userId, applicationId, kid))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    interaction.onSuccess(null);
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> editApplication(@Nonnull ApplicationEditData application)
+    {
+        Checks.notNull(application, "Application");
+        String content = Helpers.format("UPDATE integrations.applications SET %s WHERE user_id = :user_id AND application_id = :application_id IF EXISTS",
+                InteractionUtil.join(application.toData().keys(), true));
+        return new InteractionMappingActionImpl<>(jact, content, application.toMap())
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+            }
+        };
+    }
+
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> deleteApplicationById(@Nonnull Application application)
+    {
+        Checks.notNull(application, "Application");
+        InteractionMapping map = new InteractionMapping.Builder()
+                .put("user_id", application.getOwnerId())
+                .put("application_id", application.getUniqueId())
+                .build();
+        return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("delete_application.cql"), map)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
             }
         };
     }

@@ -16,16 +16,262 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.requests.Response;
+import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
+import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.DataType;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
+import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
+import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationEditAction;
+import com.github.reganjohn.iam.api.utils.applications.ApplicationEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.*;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_CHOICES;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_MAX_LENGTH;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_MIN_LENGTH;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.MODEL_TYPE_CONVERT;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.NUMBER_TYPE_COERCE;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.NUMBER_TYPE_MIN;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.STRING_TYPE_COERCE;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.STRING_TYPE_MAX;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.STRING_TYPE_MIN;
 
 public class ApplicationEditActionImpl extends AbstractApplicationActionImpl implements ApplicationEditAction
 {
     public ApplicationEditActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Applications.EDIT_APPLICATION);
+    }
+
+    @Override
+    public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
+    {
+        RequestBody body = request.getBody();
+        if (!(body instanceof JacksonRequestBody && ((JacksonRequestBody) body).isObject()))
+            throw new ErrorResponseException(ErrorResponse.INVALID_FROM_OBJECT_BODY);
+        else
+            handleUniqueID(context, request, ((JacksonRequestBody) body).getObject(), new ArrayList<>());
+    }
+
+    private void handleUniqueID(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                @Nonnull DataObject json,
+                                @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkUniqueID(request.getRoute().getMajorParameters());
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("application_id", ex, schemaErrors);
+        }
+        finally
+        {
+            handleName(context, request, json, schemaErrors);
+        }
+    }
+
+    private void checkUniqueID(@Nonnull Map<String, String> params)
+    {
+        String id = params.get("application_id");
+        if (Helpers.isEmpty(id))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!MiscUtil.isUUID(id))
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"application_id\" value is not uuid.");
+    }
+
+    private void handleName(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                            @Nonnull DataObject rawBody,
+                            @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkName(rawBody);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("name", ex, schemaErrors);
+        }
+        finally
+        {
+            handleDescription(context, request, rawBody, schemaErrors);
+        }
+    }
+
+    private void checkName(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("name"))
+            return;
+        else if (!body.isType("name", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"name\" value is not string.");
+        else if (body.getString("name").length() < Application.MIN_NAME_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MIN,
+                    Helpers.format("The \"name\" value may not be less than %f characters.", Application.MIN_NAME_LENGTH));
+        else if (body.getString("name").length() > Application.MAX_NAME_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"name\" may not be longer than %d characters.", Application.MAX_NAME_LENGTH));
+    }
+
+    private void handleDescription(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                   @Nonnull DataObject rawBody,
+                                   @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkDescription(rawBody);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("description", ex, schemaErrors);
+        }
+        finally
+        {
+            handleFlags(context, request, rawBody, schemaErrors);
+        }
+    }
+
+    private void checkDescription(@Nonnull DataObject body)
+    {
+        if (body.isEmpty("description"))
+            return;
+        else if (!body.isType("description", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"description\" value is not string.");
+        else if (body.getString("description").length() > Application.MAX_DESCRIPTION_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"description\" may not be longer than %d characters.", Application.MAX_DESCRIPTION_LENGTH));
+    }
+
+    private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                             @Nonnull DataObject rawBody,
+                             @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkFlags(rawBody);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("flags", ex, schemaErrors);
+        }
+        finally
+        {
+            handleRedirectUris(context, request, rawBody, schemaErrors);
+        }
+    }
+
+    private void checkFlags(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("flags"))
+            return;
+        else if (!body.isType("flags", DataType.INT))
+            throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"flags\" is not number.");
+        else if (body.getInt("flags") < 0)
+            throw new DataObjectParsingException(NUMBER_TYPE_MIN,
+                    "Value \"flags\" should be greater than or equal to 0.");
+    }
+
+    private void handleRedirectUris(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                    @Nonnull DataObject rawBody,
+                                    @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            if (!rawBody.hasKey("redirect_uris"))
+                return;
+            else if (!rawBody.isType("redirect_uris", DataType.ARRAY))
+                throw new DataObjectParsingException(MODEL_TYPE_CONVERT, "Expected an object/dictionary.");
+            else
+                checkRedirectUris(rawBody.getArray("redirect_uris"));
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("redirect_uris", ex, schemaErrors);
+        }
+        finally
+        {
+            handleInternally(context, request, rawBody, schemaErrors);
+        }
+    }
+
+    private void checkRedirectUris(@Nonnull DataArray array)
+    {
+        if (array.isEmpty())
+            throw new DataObjectParsingException(BASE_TYPE_MIN_LENGTH, "The \"redirect_uris\" value may not be empty.");
+        else if (array.size() > Application.MAX_URL_COUNT)
+            throw new DataObjectParsingException(BASE_TYPE_MAX_LENGTH,
+                    Helpers.format("Must be %s or fewer in length.", Application.MAX_URL_COUNT));
+        else if (!Helpers.exists(array, JsonNode::isTextual))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"redirect_urls\" contains value which is not a string.");
+        else if (!Helpers.exists(array, node -> MiscUtil.isURL(node.textValue(), false)))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_urls\" contains value which is not a url.");
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                  @Nonnull DataObject rawBody,
+                                  @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
+    {
+        if (Helpers.nonEmpty(errors))
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        UUID userId = UUID.fromString(json.getSubject());
+        UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
+        api.retrieveApplicationById(userId, applicationId)
+                .flatMap(application -> modify(application, rawBody))
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Void> modify(@Nonnull Application application, @Nonnull DataObject json)
+    {
+        UUID applicationId = application.getUniqueId();
+        UUID userId = application.getOwnerId();
+        String name = json.getString("name", application.getName());
+        String description = json.getString("description", application.getDescription());
+        int flags = json.getInt("flags", application.getFlagsRaw());
+        int base = application.getFlagsRaw() & Application.ApplicationFlag.SYSTEM;
+        int modifiers = flags & ~Application.ApplicationFlag.SYSTEM;
+        List<String> redirectUris = editRedirectUris(application, json);
+        ApplicationEditData editData = new ApplicationEditData(userId, applicationId, name, description, base | modifiers, redirectUris);
+        return api.editApplication(editData);
+    }
+
+    @Nonnull
+    private List<String> editRedirectUris(@Nonnull Application application, @Nonnull DataObject body)
+    {
+        return body.hasKey("redirect_uris") ? body.getArray("redirect_uris")
+                .stream(DataArray::getString)
+                .collect(Collectors.toList()) : application.getRedirectUris();
+    }
+    
+    public void handleSuccess(@Nonnull ChannelHandlerContext context)
+    {
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
     }
 }

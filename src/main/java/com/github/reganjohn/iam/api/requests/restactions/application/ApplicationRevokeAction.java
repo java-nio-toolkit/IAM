@@ -14,18 +14,8 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.application;
+package com.github.reganjohn.iam.api.requests.restactions.application;
 
-import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationAttachAction;
-import com.github.reganjohn.iam.internal.IAMImpl;
-
-import javax.annotation.Nonnull;
-
-public class ApplicationAttachActionImpl extends AbstractApplicationActionImpl implements ApplicationAttachAction
+public interface ApplicationRevokeAction extends ApplicationAction
 {
-    public ApplicationAttachActionImpl(@Nonnull IAMImpl api)
-    {
-        super(api, Routes.Applications.CREATE_APPLICATION_ASSET);
-    }
 }

@@ -16,11 +16,8 @@
 
 package com.github.reganjohn.iam.api.utils.applications;
 
-import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.internal.interactions.context.InteractionMappingImpl;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -33,23 +30,18 @@ public class ApplicationCreateData implements ApplicationData
     private final UUID applicationId;
     private final String name;
     private final String description;
-    private final AccessEntryData entryData;
     private final int flags;
     private final List<String> redirectUris;
-    private final String thumbprint;
 
     public ApplicationCreateData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull String name,
-                                 @Nullable String description, @Nonnull AccessEntryData entryData, int flags,
-                                 @Nullable List<String> redirectUris, @Nonnull String thumbprint)
+                                 @Nullable String description, int flags, @Nonnull List<String> redirectUris)
     {
         this.userId = userId;
         this.applicationId = applicationId;
         this.name = name;
         this.description = description;
-        this.entryData = entryData;
         this.flags = flags;
         this.redirectUris = redirectUris;
-        this.thumbprint = thumbprint;
     }
 
     @Nonnull
@@ -62,12 +54,6 @@ public class ApplicationCreateData implements ApplicationData
                 .put("description", description)
                 .put("flags", flags)
                 .put("redirect_uris", redirectUris)
-                .put("kid", entryData.getName())
-                .put("alg", entryData.getAccessOption().getMode())
-                .put("kty", entryData.getType().name())
-                .put("usage", entryData.getUsage().name().toLowerCase())
-                .put("public_key", entryData.getPublicKey().getEncoded())
-                .put("thumbprint", thumbprint)
                 .build();
     }
 
@@ -76,7 +62,12 @@ public class ApplicationCreateData implements ApplicationData
     public DataObject toData()
     {
         return DataObject.empty()
-                .put("jwk", entryData.toData())
+                .put("user_id", userId)
+                .put("application_id", applicationId)
+                .put("name", name)
+                .put("description", description)
+                .put("flags", flags)
+                .put("redirect_uris", redirectUris)
                 .toData();
     }
 }

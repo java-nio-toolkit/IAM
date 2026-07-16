@@ -16,16 +16,79 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
+import com.github.adamorgan.jnt.api.requests.MediaType;
+import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.requests.Response;
+import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
+import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationPaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.util.List;
+import java.util.UUID;
 
 public class ApplicationPaginationActionImpl extends AbstractApplicationActionImpl implements ApplicationPaginationAction
 {
+    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
+
     public ApplicationPaginationActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Applications.GET_APPLICATIONS);
+    }
+
+    @Override
+    public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
+    {
+        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        handleInternally(context, UUID.fromString(json.getSubject()));
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
+    {
+        retrieveData(userId).queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
+    {
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
+        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId)
+    {
+        return api.retrieveApplications(userId).map(this::retrieveData);
+    }
+
+    @Nonnull
+    private DataArray retrieveData(@Nonnull List<Application> applications)
+    {
+        return applications.stream().map(this::retrieveData).collect(Helpers.toDataArray());
+    }
+
+    @Nonnull
+    private DataObject retrieveData(@Nonnull Application application)
+    {
+        return DataObject.empty()
+                .put("user_id", application.getOwnerId())
+                .put("application_id", application.getUniqueId())
+                .put("name", application.getName())
+                .put("description", application.getDescription())
+                .put("flags", application.getFlagsRaw())
+                .put("redirect_uris", application.getRedirectUris())
+                .toData();
     }
 }

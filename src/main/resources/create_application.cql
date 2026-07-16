@@ -16,14 +16,11 @@
 
 BEGIN TRANSACTION
     LET application_data = (SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id);
-    LET access_data = (SELECT * FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id AND kid = :kid);
 
     -- Return data directly from table (must come before INSERT)
-    SELECT * FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id AND kid = :kid;
+    SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id;
 
-    IF application_data IS NULL AND access_data IS NULL THEN
-        INSERT INTO integrations.public_keys (user_id, application_id, kid, alg, kty, usage, thumbprint, public_key)
-        VALUES (:user_id, :application_id, :kid, :alg, :kty, :usage, :thumbprint, :public_key);
+    IF application_data IS NULL THEN
         INSERT INTO integrations.applications (user_id, application_id, name, description, flags, redirect_uris)
         VALUES (:user_id, :application_id, :name, :description, :flags, :redirect_uris);
     END IF

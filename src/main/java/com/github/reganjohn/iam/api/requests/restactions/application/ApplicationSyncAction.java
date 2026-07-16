@@ -16,6 +16,6 @@
 
 package com.github.reganjohn.iam.api.requests.restactions.application;
 
-public interface ApplicationDetachAction extends ApplicationAction
+public interface ApplicationSyncAction extends ApplicationAction
 {
 }

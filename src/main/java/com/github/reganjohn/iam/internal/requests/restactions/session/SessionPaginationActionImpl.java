@@ -39,7 +39,6 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -61,11 +60,13 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        retrieveData(userId).queue(successObj ->
-        {
-            BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-            context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
-        }, context::fireExceptionCaught);
+        retrieveData(userId).queue(successObj -> handleSuccess(context, successObj), context::fireExceptionCaught);
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
+    {
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
+        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }
 
     @Nonnull
@@ -79,29 +80,29 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     @CheckReturnValue
     private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId, @Nonnull List<Session> sessions)
     {
-        return api.retrieveAccessEntries(userId).map(entries ->
+        return api.retrieveUserAccessEntries(userId).map(entries ->
         {
             Map<String, DataObject> set = entries.stream().collect(Collectors.toMap(AccessEntryData::getName, AccessEntryData::toData));
-            DataArray array = DataArray.empty();
-            for (Session session : sessions)
+            return sessions.stream().map(session ->
             {
-                DataObject user = DataObject.empty()
-                        .put("user_id", session.getUserId())
-                        .toData();
-
-                if (Helpers.nonEmpty(session.getUserAgent()))
-                    user.put("user_agent", session.getUserAgent());
-
-                DataObject data = DataObject.empty()
-                        .put("session_id", session.getUniqueId())
-                        .put("user", user)
-                        .put("jwk", set.get(session.getKeyId()))
-                        .put("flags", session.getFlagsRaw())
-                        .toData();
-                array.add(data);
-            }
-
-            return array;
+                return retrieveAccessData(session, set);
+            }).collect(Helpers.toDataArray());
         });
+    }
+
+    @Nonnull
+    public DataObject retrieveAccessData(@Nonnull Session session, @Nonnull Map<String, DataObject> map)
+    {
+        DataObject user = DataObject.empty()
+                .put("user_id", session.getUserId())
+                .toData();
+        if (Helpers.nonEmpty(session.getUserAgent()))
+            user.put("user_agent", session.getUserAgent());
+        return DataObject.empty()
+                .put("session_id", session.getUniqueId())
+                .put("user", user)
+                .put("jwk", map.get(session.getKeyId()))
+                .put("flags", session.getFlagsRaw())
+                .toData();
     }
 }

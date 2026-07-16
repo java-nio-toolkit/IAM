@@ -24,6 +24,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.github.reganjohn.iam.internal.entities.ApplicationImpl;
 import com.github.reganjohn.iam.internal.entities.SessionImpl;
 import com.github.reganjohn.iam.internal.entities.UserImpl;
 import com.reganjohn.jact.api.utils.data.BufferArray;
@@ -139,5 +140,26 @@ public class EntityBuilder extends AbstractEntityBuilder
                 .putAll(rawData)
                 .toData();
         return createAccessEntry(rawEntryData);
+    }
+
+    @Nonnull
+    public List<Application> createApplications(@Nonnull BufferArray data) throws Exception
+    {
+        List<Application> applications = new ArrayList<>();
+        for (BufferObject obj : data)
+            applications.add(createApplication(obj));
+        return applications;
+    }
+
+    @Nonnull
+    public ApplicationImpl createApplication(@Nonnull BufferObject data)
+    {
+        UUID ownerId = data.getUUID("user_id");
+        UUID applicationId = data.getUUID("application_id");
+        String name = data.getString("name");
+        String description = data.getString("description", null);
+        int flags = data.getInt("flags");
+        List<String> redirectUris = data.getList(String.class, "redirect_uris");
+        return new ApplicationImpl(api, applicationId, ownerId, name, description, flags, redirectUris);
     }
 }

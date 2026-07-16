@@ -16,16 +16,100 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
+import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.requests.Response;
+import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationDeleteAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
 
 public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl implements ApplicationDeleteAction
 {
     public ApplicationDeleteActionImpl(@Nonnull IAMImpl api)
     {
         super(api, Routes.Applications.DELETE_APPLICATION);
+    }
+
+    @Override
+    public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
+    {
+        handleUniqueID(context, request, new ArrayList<>());
+    }
+
+    private void handleUniqueID(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkUniqueID(request.getRoute().getMajorParameters());
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("application_id", ex, schemaErrors);
+        }
+        finally
+        {
+            handleException(context, request, schemaErrors);
+        }
+    }
+
+    private void checkUniqueID(@Nonnull Map<String, String> params)
+    {
+        String id = params.get("application_id");
+        if (Helpers.isEmpty(id))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!MiscUtil.isUUID(id))
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"application_id\" value is not uuid.");
+    }
+
+    private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                 @Nonnull List<InvalidResponseException.SchemaError> errors)
+    {
+        if (Helpers.nonEmpty(errors))
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+        else
+            handleInternally(context, request);
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
+    {
+        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        UUID userId = UUID.fromString(json.getSubject());
+        UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
+        delete(userId, applicationId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Void> delete(UUID userId, UUID applicationId)
+    {
+        return api.retrieveApplicationById(userId, applicationId).flatMap(api::deleteApplicationById);
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context)
+    {
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
     }
 }

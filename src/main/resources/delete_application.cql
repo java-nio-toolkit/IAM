@@ -14,18 +14,14 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.application;
+BEGIN TRANSACTION
+    LET application_data = (SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id);
 
-import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationDetachAction;
-import com.github.reganjohn.iam.internal.IAMImpl;
+    -- Return data directly from table (must come before DELETE)
+    SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id;
 
-import javax.annotation.Nonnull;
-
-public class ApplicationDetachActionImpl extends AbstractApplicationActionImpl implements ApplicationDetachAction
-{
-    public ApplicationDetachActionImpl(@Nonnull IAMImpl api)
-    {
-        super(api, Routes.Applications.DELETE_APPLICATION_ASSET);
-    }
-}
+    IF application_data IS NOT NULL THEN
+        DELETE FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id;
+        DELETE FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id;
+    END IF
+COMMIT TRANSACTION;

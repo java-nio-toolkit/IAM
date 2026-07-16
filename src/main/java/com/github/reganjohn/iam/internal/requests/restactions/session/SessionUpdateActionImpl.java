@@ -65,7 +65,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
 
-    private static final String ASSERT_TYPE = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
+    private static final String ACCESS_TYPE = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
 
     public final FastThreadLocal<MessageDigest> SHA256 = new FastThreadLocal<>()
     {
@@ -193,7 +193,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
         String uniqueId = UUIDv7.randomUUID().toString();
         String issuer = api.getJNT().getIdentifierString();
         String subject = data.getSubject();
-        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ASSERT_TYPE, manager.getSignType());
+        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ACCESS_TYPE, manager.getSignType());
         return EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
     }
 

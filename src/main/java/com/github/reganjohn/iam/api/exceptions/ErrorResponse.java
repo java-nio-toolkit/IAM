@@ -24,13 +24,16 @@ public enum ErrorResponse
     UNKNOWN_ACCESS(10011, "Unknown Access"),
     UNKNOWN_SESSION(10012, "Unknown Session"),
     UNKNOWN_USER(10013, "Unknown User"),
+    UNKNOWN_APPLICATION(10014, "Unknown Application"),
 
     MAX_SESSIONS(30001, "Maximum number of Sessions reached (10)"),
     MAX_APPLICATION(30002, "Maximum number of Applications reached (32)"),
+    MAX_ACCESS_APPLICATION(30015, "Maximum number of access in a application (10)"),
 
     UNAUTHORIZED(40001, "Unauthorized"),
     SESSION_ALREADY_EXISTS(40122, "An session with that access object already exists"),
-    APPLICATION_ALREADY_EXISTS(40123, "An application with that access object already exists"),
+    ACCESS_ALREADY_EXISTS(40123, "An access object with that already exists"),
+    APPLICATION_ALREADY_EXISTS(40124, "An application with that access object already exists"),
 
     CANNOT_CLOSE_SINGLE_SESSION(50008, "The single remaining session cannot be closed."),
     INVALID_TOKEN(50014, "Invalid Authentication Token"),

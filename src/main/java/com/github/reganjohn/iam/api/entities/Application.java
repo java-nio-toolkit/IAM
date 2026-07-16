@@ -20,6 +20,7 @@ import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;
@@ -114,7 +115,7 @@ public interface Application extends IUnique
      */
     @Nonnull
     @Unmodifiable
-    List<AccessEntryData> getAccessEntries();
+    InteractionCallbackAction<List<AccessEntryData>> getAccessEntries();
 
     /**
      * Represents the bit offsets used for application flags.
