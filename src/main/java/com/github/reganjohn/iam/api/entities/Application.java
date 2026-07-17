@@ -17,12 +17,12 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import org.jetbrains.annotations.Unmodifiable;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
@@ -109,13 +109,13 @@ public interface Application extends IUnique
     int getFlagsRaw();
 
     /**
-     * A {@link java.util.List} containing the public keys of this application.
+     * A {@link java.util.List} containing the thumbprints of this application.
      *
-     * @return Immutable list of application public keys
+     * @return Immutable list of application thumbprints
      */
     @Nonnull
-    @Unmodifiable
-    InteractionCallbackAction<List<AccessEntryData>> getAccessEntries();
+    @CheckReturnValue
+    InteractionCallbackAction<List<String>> getThumbprints();
 
     /**
      * Represents the bit offsets used for application flags.

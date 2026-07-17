@@ -25,12 +25,14 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.entities.ApplicationImpl;
+import com.github.reganjohn.iam.internal.entities.ApplicationInfoImpl;
 import com.github.reganjohn.iam.internal.entities.SessionImpl;
 import com.github.reganjohn.iam.internal.entities.UserImpl;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.api.utils.data.BufferObject;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -84,6 +86,17 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
+    public static ApplicationInfoImpl createApplicationInfo(@Nonnull Application application, @Nonnull BufferArray array)
+    {
+        List<String> thumbprints = new ArrayList<>();
+        for (BufferObject bufferObject : array)
+        {
+            thumbprints.add(bufferObject.getString("thumbprint"));
+        }
+        return new ApplicationInfoImpl(application, thumbprints);
+    }
+
+    @Nonnull
     public UserImpl createUser(BufferObject data)
     {
         UUID userId = data.getUUID("user_id");
@@ -93,7 +106,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public List<Session> createSessions(@Nonnull BufferArray data) throws Exception
+    public List<Session> createSessions(@Nonnull BufferArray data)
     {
         List<Session> sessions = new ArrayList<>();
         for (BufferObject obj : data)
@@ -102,15 +115,14 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public SessionImpl createSession(@Nonnull BufferObject data) throws Exception
+    public SessionImpl createSession(@Nonnull BufferObject data)
     {
         UUID userId = data.getUUID("user_id");
         UUID sessionId = data.getUUID("session_id");
         int flags = data.getInt("flags");
         String userAgent = data.getString("user_agent", null);
         String thumbprint = data.getString("thumbprint");
-        String kid = data.getString("kid");
-        return new SessionImpl(api, userId, sessionId, flags, thumbprint, kid, userAgent);
+        return new SessionImpl(api, userId, sessionId, flags, thumbprint, userAgent);
     }
 
     @Nonnull
@@ -133,7 +145,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         PublicKey key = keyFactory.generatePublic(keySpec);
         DataObject rawData = AccessEntryKey.fromJSON(type, key);
         DataObject rawEntryData = DataObject.empty()
-                .put("kid",  data.getString("kid"))
+                .put("kid", data.getString("kid"))
                 .put("alg", alg)
                 .put("kty", type)
                 .put("use", data.getString("usage"))
@@ -161,5 +173,22 @@ public class EntityBuilder extends AbstractEntityBuilder
         int flags = data.getInt("flags");
         List<String> redirectUris = data.getList(String.class, "redirect_uris");
         return new ApplicationImpl(api, applicationId, ownerId, name, description, flags, redirectUris);
+    }
+
+    @Nonnull
+    public static List<String> createThumbprints(@Nonnull BufferArray data)
+    {
+        List<String> thumbprints = new ArrayList<>();
+        for (BufferObject obj : data)
+        {
+            thumbprints.add(createThumbprint(obj));
+        }
+        return thumbprints;
+    }
+
+    @Nullable
+    public static String createThumbprint(@Nonnull BufferObject data)
+    {
+        return data.getString("thumbprint", null);
     }
 }

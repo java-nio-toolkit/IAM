@@ -16,8 +16,6 @@
 
 package com.github.reganjohn.iam.api.requests.restactions.application.self;
 
-import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
-
 public interface PermissionOverrideDeleteAction extends PermissionOverrideAction
 {
 }

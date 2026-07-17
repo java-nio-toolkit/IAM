@@ -21,7 +21,7 @@ BEGIN TRANSACTION
     SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id = :session_id;
 
     IF session_data IS NOT NULL THEN
+        DELETE FROM users.public_keys WHERE user_id = :user_id AND thumbprint = :thumbprint;
         DELETE FROM users.sessions WHERE user_id = :user_id AND session_id = :session_id;
-        DELETE FROM users.public_keys WHERE user_id = :user_id AND kid = :kid;
     END IF
 COMMIT TRANSACTION;

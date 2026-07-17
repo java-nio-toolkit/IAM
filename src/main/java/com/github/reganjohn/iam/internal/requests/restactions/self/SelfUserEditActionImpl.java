@@ -37,7 +37,6 @@ import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;

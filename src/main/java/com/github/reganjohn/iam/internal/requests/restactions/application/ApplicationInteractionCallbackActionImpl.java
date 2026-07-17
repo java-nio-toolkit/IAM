@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.internal.requests.restactions.application;
 
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationCreateAction;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationInteractionCallbackAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 

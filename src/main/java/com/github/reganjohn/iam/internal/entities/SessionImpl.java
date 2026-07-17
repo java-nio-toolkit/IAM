@@ -21,7 +21,6 @@ import com.github.adamorgan.jnt.internal.utils.EntityString;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.requests.objaction.InteractionContextAction;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -35,18 +34,16 @@ public class SessionImpl implements Session
     private final UUID userId;
     private final int flags;
     private final String thumbprint;
-    private final String kid;
     private final String userAgent;
 
     public SessionImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID sessionId, int flags,
-                       @Nonnull String thumbprint, @Nonnull String kid, @Nullable String userAgent)
+                       @Nonnull String thumbprint, @Nullable String userAgent)
     {
         this.api = api;
         this.sessionId = sessionId;
         this.userId = userId;
         this.flags = flags;
         this.thumbprint = thumbprint;
-        this.kid = kid;
         this.userAgent = userAgent;
     }
 
@@ -72,16 +69,9 @@ public class SessionImpl implements Session
 
     @Nonnull
     @Override
-    public String getKeyId()
-    {
-        return kid;
-    }
-
-    @Nonnull
-    @Override
     public InteractionCallbackAction<AccessEntryData> getAccessEntry()
     {
-        return api.retrieveAccessEntryById(userId, kid);
+        return api.retrieveAccessEntryById(userId, thumbprint);
     }
 
     @Override

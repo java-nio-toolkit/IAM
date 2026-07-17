@@ -46,7 +46,7 @@ import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
-import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
+import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.application.*;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
@@ -66,6 +66,7 @@ import com.reganjohn.jact.internal.interactions.InteractionImpl;
 import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.jact.internal.managers.SecretAccessManagerImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionCreateActionImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.jact.internal.utils.InteractionUtil;
 import io.netty.util.ResourceLeakDetector;
@@ -140,7 +141,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new CookieObjectManagerImpl())
 
                 .addEventListeners(new ContentSecurityOverrideManagerImpl())
-                .addEventListeners(new GlobalAccessEntryManagerImpl(this, SignType.EDDSA, 2, 30, TimeUnit.SECONDS, audiences))
+                .addEventListeners(new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 30, TimeUnit.SECONDS, audiences))
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
@@ -182,9 +183,33 @@ public class IAMImpl implements IAM
                 .build();
 
         TimeUnit.SECONDS.sleep(5);
+        startup();
+    }
 
-        AdaMorganClientV2 client = new AdaMorganClientV2();
-        client.startTest();
+    public void startup() throws Exception
+    {
+        try
+        {
+            String[] statements = {
+                    "TRUNCATE global.public_keys",
+                    "TRUNCATE users.public_keys",
+                    "TRUNCATE integrations.applications",
+                    "TRUNCATE integrations.public_keys",
+                    "TRUNCATE users.accounts",
+                    "TRUNCATE users.permissions",
+                    "TRUNCATE users.sessions"
+            };
+
+            for (String statement : statements)
+            {
+                new InteractionCreateActionImpl<Void>(jact, statement).queue();
+            }
+        }
+        finally
+        {
+            AdaMorganClientV2 clientV2 = new AdaMorganClientV2();
+            clientV2.startTest();
+        }
     }
 
     @Nonnull
@@ -203,6 +228,32 @@ public class IAMImpl implements IAM
     public EntityBuilder getEntityBuilder()
     {
         return entityBuilder;
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccessEntries(@Nonnull UUID userId, @Nonnull List<String> thumbprints)
+    {
+        Checks.notNull(userId, "User ID");
+        StringJoiner joiner = new StringJoiner(", ");
+        for (int i = 0; i < thumbprints.size(); i++)
+            joiner.add("?");
+        String content = Helpers.format("SELECT * FROM users.public_keys WHERE user_id = ? AND thumbprint IN (%s)", joiner);
+        List<Object> params = new ArrayList<>(Collections.singletonList(userId));
+        params.addAll(thumbprints);
+        return new InteractionContextActionImpl<>(jact, content, params)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
+                                      @Nonnull BufferArray array) throws Exception
+            {
+                if (array.isEmpty())
+                    interaction.onSuccess(Collections.emptyList());
+                else
+                    interaction.onSuccess(entityBuilder.createAccessEntries(array));
+            }
+        };
     }
 
     @Nonnull
@@ -238,7 +289,7 @@ public class IAMImpl implements IAM
                 if (array.isEmpty())
                     request.onSuccess(null);
                 else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.SESSION_ALREADY_EXISTS));
+                    request.onFailure(new ErrorResponseException(ErrorResponse.USER_ALREADY_EXISTS));
             }
         };
     }
@@ -292,7 +343,7 @@ public class IAMImpl implements IAM
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
                                       @Nonnull InteractionImpl<List<Session>> interaction,
-                                      @Nonnull BufferArray array) throws Exception
+                                      @Nonnull BufferArray array)
             {
                 interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : entityBuilder.createSessions(array));
             }
@@ -310,7 +361,7 @@ public class IAMImpl implements IAM
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
                                       @Nonnull InteractionImpl<Session> interaction,
-                                      @Nonnull BufferArray array) throws Exception
+                                      @Nonnull BufferArray array)
             {
                 if (array.isEmpty())
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
@@ -322,31 +373,11 @@ public class IAMImpl implements IAM
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<List<AccessEntryData>> retrieveUserAccessEntries(@Nonnull UUID userId)
+    public InteractionCallbackAction<AccessEntryData> retrieveAccessEntryById(@Nonnull UUID userId, @Nonnull String thumbprint)
     {
         Checks.notNull(userId, "User ID");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.public_keys WHERE user_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
-                                      @Nonnull BufferArray array) throws Exception
-            {
-                if (array.isEmpty())
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
-                else
-                    interaction.onSuccess(entityBuilder.createAccessEntries(array));
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<AccessEntryData> retrieveAccessEntryById(@Nonnull UUID userId, @Nonnull String id)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notEmpty(id, "Access ID");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.public_keys WHERE user_id = ? AND kid = ?", Arrays.asList(userId, id))
+        Checks.notEmpty(thumbprint, "Thumbprint");
+        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.public_keys WHERE user_id = ? AND thumbprint = ?", Arrays.asList(userId, thumbprint))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -424,7 +455,7 @@ public class IAMImpl implements IAM
         InteractionMapping map = new InteractionMapping.Builder()
                 .put("user_id", session.getUserId())
                 .put("session_id", session.getUniqueId())
-                .put("kid", session.getKeyId())
+                .put("thumbprint", session.getThumbprint())
                 .build();
         return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("delete_session.cql"), map)
         {
@@ -440,6 +471,8 @@ public class IAMImpl implements IAM
         };
     }
 
+
+    //todo: add logics!
     @Nonnull
     @CheckReturnValue
     public InteractionCallbackAction<Void> logout(@Nonnull UUID userId, @Nonnull UUID sessionId)
@@ -451,7 +484,7 @@ public class IAMImpl implements IAM
             InteractionMapping map = new InteractionMapping.Builder()
                     .put("user_id", session.getUserId())
                     .put("session_id", session.getUniqueId())
-                    .put("kid", session.getKeyId())
+                    .put("thumbprint", session.getThumbprint())
                     .build();
             return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("logout.cql"), map);
         });
@@ -569,42 +602,26 @@ public class IAMImpl implements IAM
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<List<AccessEntryData>> retrieveApplicationAccessEntries(@Nonnull UUID userId,
-                                                                                             @Nonnull UUID applicationId)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notNull(applicationId, "Application ID");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
-                                      @Nonnull BufferArray array) throws Exception
-            {
-                interaction.onSuccess(!array.isEmpty() ? entityBuilder.createAccessEntries(array) : Collections.emptyList());
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
     public InteractionCallbackAction<Void> deleteApplicationAccessEntry(@Nonnull UUID userId,
                                                                         @Nonnull UUID applicationId,
-                                                                        @Nonnull String kid)
+                                                                        @Nonnull String thumbprint)
     {
         Checks.notNull(userId, "User ID");
         Checks.notNull(applicationId, "Application ID");
-        return new InteractionContextActionImpl<>(jact, "DELETE FROM integrations.public_keys WHERE user_id = ? AND application_id = ? AND kid = ? IF EXISTS", Arrays.asList(userId, applicationId, kid))
+        Checks.notEmpty(thumbprint, "Thumbprint");
+        InteractionMapping map = new InteractionMapping.Builder()
+                .put("user_id", userId)
+                .put("application_id", applicationId)
+                .put("thumbprint", thumbprint)
+                .build();
+        return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("delete_access_application.cql"), map)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
                                       @Nonnull InteractionImpl<Void> interaction,
                                       @Nonnull BufferArray array)
             {
-                if (InteractionUtil.isDone(array))
-                    interaction.onSuccess(null);
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
+                interaction.onSuccess(null);
             }
         };
     }

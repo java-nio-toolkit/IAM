@@ -23,5 +23,6 @@ BEGIN TRANSACTION
     IF application_data IS NOT NULL THEN
         DELETE FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id;
         DELETE FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id;
+        DELETE FROM users.public_keys WHERE user_id = :user_id AND thumbprint IN (%s);
     END IF
 COMMIT TRANSACTION;

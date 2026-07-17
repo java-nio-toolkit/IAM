@@ -22,8 +22,6 @@ import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 public class SessionCreateData implements SessionData

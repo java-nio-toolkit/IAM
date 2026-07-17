@@ -22,6 +22,8 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
@@ -37,6 +39,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -80,13 +83,23 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     @CheckReturnValue
     private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId, @Nonnull List<Session> sessions)
     {
-        return api.retrieveUserAccessEntries(userId).map(entries ->
+        //todo::...
+        List<String> thumbprints = sessions.stream().map(Session::getThumbprint).collect(Collectors.toList());
+        return api.retrieveAccessEntries(userId, thumbprints).map(entries ->
         {
-            Map<String, DataObject> set = entries.stream().collect(Collectors.toMap(AccessEntryData::getName, AccessEntryData::toData));
-            return sessions.stream().map(session ->
+            Map<String, DataObject> map = new HashMap<>();
+            for (AccessEntryData entry : entries)
             {
-                return retrieveAccessData(session, set);
-            }).collect(Helpers.toDataArray());
+                try (AccessContextData context = entry.getContext(AccessContextType.SHA3_256))
+                {
+                    map.put(context.digest(), entry.toData());
+                }
+                catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+            return sessions.stream().map(session -> retrieveAccessData(session, map)).collect(Helpers.toDataArray());
         });
     }
 
@@ -101,7 +114,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
         return DataObject.empty()
                 .put("session_id", session.getUniqueId())
                 .put("user", user)
-                .put("jwk", map.get(session.getKeyId()))
+                .put("jwk", map.get(session.getThumbprint()))
                 .put("flags", session.getFlagsRaw())
                 .toData();
     }

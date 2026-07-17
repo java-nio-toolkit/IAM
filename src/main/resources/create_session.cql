@@ -16,7 +16,7 @@
 
 BEGIN TRANSACTION
     LET session_data = (SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id = :session_id);
-    LET access_data = (SELECT * FROM users.public_keys WHERE user_id = :user_id AND kid = :kid);
+    LET access_data = (SELECT * FROM users.public_keys WHERE user_id = :user_id AND thumbprint = :thumbprint);
 
     -- Return data directly from table (must come before INSERT)
     SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id = :session_id;
@@ -24,7 +24,7 @@ BEGIN TRANSACTION
     IF session_data IS NULL AND access_data IS NULL THEN
         INSERT INTO users.public_keys (user_id, kid, alg, kty, usage, thumbprint, public_key)
         VALUES (:user_id, :kid, :alg, :kty, :usage, :thumbprint, :public_key);
-        INSERT INTO users.sessions (user_id, session_id, flags, user_agent, kid, thumbprint)
-        VALUES (:user_id, :session_id, :flags, :user_agent, :kid, :thumbprint);
+        INSERT INTO users.sessions (user_id, session_id, flags, user_agent, thumbprint)
+        VALUES (:user_id, :session_id, :flags, :user_agent, :thumbprint);
     END IF
 COMMIT TRANSACTION;

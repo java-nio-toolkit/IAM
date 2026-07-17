@@ -29,6 +29,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -102,7 +103,9 @@ public class ApplicationAccessActionImpl extends AbstractApplicationActionImpl i
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveApplicationAccessEntries(userId, applicationId)
+        api.retrieveApplicationById(userId, applicationId)
+                .flatMap(Application::getThumbprints)
+                .flatMap(set -> api.retrieveAccessEntries(userId, set))
                 .map(this::retrieveData)
                 .queue(success -> handleSuccess(context, success), context::fireExceptionCaught);
     }

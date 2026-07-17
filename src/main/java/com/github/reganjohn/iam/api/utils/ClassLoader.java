@@ -45,4 +45,10 @@ public class ClassLoader
             throw new UncheckedIOException(error);
         }
     }
+
+    @Nonnull
+    public static String getResourceAsString(@Nonnull String name, Object... args)
+    {
+        return Helpers.format(getResourceAsString(name), args);
+    }
 }

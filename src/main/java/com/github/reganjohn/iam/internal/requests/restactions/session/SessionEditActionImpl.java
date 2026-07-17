@@ -23,7 +23,10 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.*;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -40,7 +43,6 @@ import com.github.reganjohn.iam.api.requests.restactions.session.SessionEditActi
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.requests.objaction.InteractionMappingAction;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 

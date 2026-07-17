@@ -15,13 +15,13 @@
  */
 
 BEGIN TRANSACTION
-    LET session_data = (SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id != :session_id);
+    LET session_data = (SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id IN (%1$s));
 
     -- Return data directly from table (must come before DELETE)
-    SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id != :session_id;
+    SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id IN (%1$s);
 
     IF session_data IS NOT NULL THEN
-        DELETE FROM users.sessions WHERE user_id = :user_id AND session_id != :session_id;
-        DELETE FROM users.public_keys WHERE user_id = :user_id AND kid != :kid;
+        DELETE FROM users.sessions WHERE user_id = :user_id AND session_id IN (%1$s);
+        DELETE FROM users.public_keys WHERE user_id = :user_id AND thumbprint IN (%2$s);
     END IF
 COMMIT TRANSACTION;

@@ -8,7 +8,7 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.UUID;
 
-public interface GlobalAccessEntryManager extends AccessEntryManager
+public interface GlobalAccessManager extends AccessEntryManager
 {
     @Nonnull
     @CheckReturnValue

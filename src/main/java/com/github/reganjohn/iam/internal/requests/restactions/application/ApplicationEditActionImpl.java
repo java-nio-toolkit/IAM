@@ -52,15 +52,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.*;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_CHOICES;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_MAX_LENGTH;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_MIN_LENGTH;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.MODEL_TYPE_CONVERT;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.NUMBER_TYPE_COERCE;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.NUMBER_TYPE_MIN;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.STRING_TYPE_COERCE;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.STRING_TYPE_MAX;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.STRING_TYPE_MIN;
 
 public class ApplicationEditActionImpl extends AbstractApplicationActionImpl implements ApplicationEditAction
 {

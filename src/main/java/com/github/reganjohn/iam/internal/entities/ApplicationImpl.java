@@ -16,15 +16,19 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -101,8 +105,20 @@ public class ApplicationImpl implements Application
 
     @Nonnull
     @Override
-    public InteractionCallbackAction<List<AccessEntryData>> getAccessEntries()
+    public InteractionCallbackAction<List<String>> getThumbprints()
     {
-        return api.retrieveApplicationAccessEntries(ownerId, id);
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<String>> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    interaction.onSuccess(Collections.emptyList());
+                else
+                    interaction.onSuccess(EntityBuilder.createThumbprints(array));
+            }
+        };
     }
 }

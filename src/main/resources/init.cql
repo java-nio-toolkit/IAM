@@ -34,25 +34,23 @@ CREATE KEYSPACE IF NOT EXISTS integrations WITH replication =
         };
 
 DROP TABLE IF EXISTS global.public_keys;
-DROP TABLE IF EXISTS integrations.public_keys;
-DROP TABLE IF EXISTS integrations.applications;
 DROP TABLE IF EXISTS users.accounts;
 DROP TABLE IF EXISTS users.permissions;
-DROP TABLE IF EXISTS users.public_keys;
 DROP TABLE IF EXISTS users.sessions;
+DROP TABLE IF EXISTS users.public_keys;
+DROP TABLE IF EXISTS integrations.public_keys;
+DROP TABLE IF EXISTS integrations.applications;
 
 CREATE TABLE if not exists global.public_keys
 (
-    kid        UUID,
+    kid        text,
     alg        text,
     kty        text,
     usage      text,
     thumbprint text,
     public_key blob,
-    created_at timestamp,
-    expires_at timestamp,
-    primary key (kid)
-);
+    primary key (thumbprint)
+) WITH transactional_mode = 'full';
 
 CREATE TABLE if not exists users.public_keys
 (
@@ -63,7 +61,7 @@ CREATE TABLE if not exists users.public_keys
     usage      text,
     thumbprint text,
     public_key blob,
-    primary key ((user_id), kid)
+    primary key ((user_id), thumbprint)
 ) WITH transactional_mode = 'full';
 
 create table if not exists users.accounts
@@ -79,7 +77,6 @@ create table if not exists users.sessions
     session_id uuid,
     flags      int,
     user_agent text,
-    kid        text,
     thumbprint text,
     primary key ((user_id), session_id)
 ) WITH transactional_mode = 'full';
@@ -109,12 +106,8 @@ CREATE TABLE if not exists integrations.public_keys
 (
     user_id        UUID,
     application_id UUID,
-    kid            UUID,
-    alg            text,
-    kty            text,
     thumbprint     text,
-    public_key     blob,
-    primary key ((user_id), application_id, kid)
+    primary key ((user_id), application_id, thumbprint)
 ) WITH transactional_mode = 'full';
 
 

@@ -40,7 +40,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionUpdateAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.internal.managers.GlobalAccessEntryManagerImpl;
+import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
@@ -172,7 +172,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
                                                                @Nonnull AccessContextData contextData,
                                                                @Nonnull AccessObjectData data)
     {
-        GlobalAccessEntryManagerImpl manager = context.channel().attr(GlobalAccessEntryManagerImpl.IDENTIFIER).get();
+        GlobalAccessManagerImpl manager = context.channel().attr(GlobalAccessManagerImpl.IDENTIFIER).get();
         String rawUniqueId = data.getOptionData().getName();
         if (Helpers.isEmpty(rawUniqueId))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
@@ -186,7 +186,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
     }
 
     @Nonnull
-    private AccessObjectData createObjectData(@Nonnull GlobalAccessEntryManagerImpl manager,
+    private AccessObjectData createObjectData(@Nonnull GlobalAccessManagerImpl manager,
                                               @Nonnull AccessContextData contextData, @Nonnull AccessObjectData data,
                                               @Nonnull AccessEntryManagerImpl.AccessEntrySnapshot snapshot)
     {

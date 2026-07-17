@@ -26,7 +26,7 @@ import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.*;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
@@ -44,12 +44,12 @@ import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.*;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
-import static com.github.reganjohn.iam.api.requests.restactions.UserAction.STRING_TYPE_COERCE;
 
 public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl implements ApplicationCreateAction
 {

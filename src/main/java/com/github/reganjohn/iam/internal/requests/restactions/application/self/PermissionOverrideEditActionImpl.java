@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.internal.requests.restactions.application.self;
 
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.application.self.PermissionOverrideDeleteAction;
 import com.github.reganjohn.iam.api.requests.restactions.application.self.PermissionOverrideEditAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.application.AbstractApplicationActionImpl;

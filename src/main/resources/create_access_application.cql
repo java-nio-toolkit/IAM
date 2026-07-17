@@ -15,13 +15,16 @@
  */
 
 BEGIN TRANSACTION
-    LET access_data = (SELECT * FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id AND kid = :kty);
+    LET access_data = (SELECT * FROM users.public_keys WHERE user_id = :user_id AND thumbprint = :thumbprint);
+    LET application_data = (SELECT * FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id AND thumbprint = :thumbprint);
 
     -- Return data directly from table (must come before INSERT)
-    SELECT * FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id AND kid = :kty;
+    SELECT * FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id AND thumbprint = :thumbprint;
 
-    IF access_data IS NULL THEN
-        INSERT INTO integrations.public_keys (user_id, application_id, kid, alg, kty, usage, thumbprint, public_key) 
-        VALUES (:user_id, :application_id, :kid, :alg, :kty, :usage, :thumbprint, :public_key);
+    IF access_data IS NULL AND application_data IS NULL THEN
+        INSERT INTO users.public_keys (user_id, kid, alg, kty, usage, thumbprint, public_key)
+        VALUES (:user_id, :kid, :alg, :kty, :usage, :thumbprint, :public_key);
+        INSERT INTO integrations.public_keys (user_id, application_id, thumbprint)
+        VALUES (:user_id, :application_id, :thumbprint);
     END IF
 COMMIT TRANSACTION;

@@ -20,12 +20,9 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.internal.interactions.context.InteractionMappingImpl;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 public class SessionEditData implements SessionData
