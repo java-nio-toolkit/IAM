@@ -45,7 +45,7 @@ public class ApplicationPaginationActionImpl extends AbstractApplicationActionIm
 
     public ApplicationPaginationActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.GET_APPLICATIONS);
+        super(api, Routes.Applications.GET_SELF_APPLICATIONS);
     }
 
     @Override

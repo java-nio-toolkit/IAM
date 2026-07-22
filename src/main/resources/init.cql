@@ -34,80 +34,106 @@ CREATE KEYSPACE IF NOT EXISTS integrations WITH replication =
         };
 
 DROP TABLE IF EXISTS global.public_keys;
-DROP TABLE IF EXISTS users.accounts;
-DROP TABLE IF EXISTS users.permissions;
-DROP TABLE IF EXISTS users.sessions;
-DROP TABLE IF EXISTS users.public_keys;
-DROP TABLE IF EXISTS integrations.public_keys;
-DROP TABLE IF EXISTS integrations.applications;
 
-CREATE TABLE if not exists global.public_keys
+DROP TABLE IF EXISTS users.public_keys;
+DROP TABLE IF EXISTS users.accounts;
+DROP TABLE IF EXISTS users.sessions;
+DROP TABLE IF EXISTS users.entitlements;
+
+DROP TABLE IF EXISTS integrations.applications;
+DROP TABLE IF EXISTS integrations.interactions;
+DROP TABLE IF EXISTS integrations.responses;
+DROP TABLE IF EXISTS integrations.public_keys;
+
+CREATE TABLE IF NOT EXISTS global.public_keys
 (
-    kid        text,
-    alg        text,
-    kty        text,
-    usage      text,
-    thumbprint text,
-    public_key blob,
-    primary key (thumbprint)
+    kid        TEXT,
+    alg        TEXT,
+    kty        TEXT,
+    usage      TEXT,
+    thumbprint TEXT,
+    public_key BLOB,
+    PRIMARY KEY (thumbprint)
 ) WITH transactional_mode = 'full';
 
-CREATE TABLE if not exists users.public_keys
+CREATE TABLE IF NOT EXISTS users.public_keys
 (
     user_id    UUID,
-    kid        text,
-    alg        text,
-    kty        text,
-    usage      text,
-    thumbprint text,
-    public_key blob,
-    primary key ((user_id), thumbprint)
+    kid        TEXT,
+    alg        TEXT,
+    kty        TEXT,
+    usage      TEXT,
+    thumbprint TEXT,
+    public_key BLOB,
+    PRIMARY KEY ((user_id), thumbprint)
 ) WITH transactional_mode = 'full';
 
-create table if not exists users.accounts
+CREATE TABLE IF NOT EXISTS users.accounts
 (
-    user_id  uuid primary key,
-    flags    int,
-    username text
+    user_id  UUID,
+    flags    INT,
+    username TEXT,
+    PRIMARY KEY (user_id)
 ) WITH transactional_mode = 'full';
 
-create table if not exists users.sessions
+CREATE TABLE IF NOT EXISTS users.sessions
 (
-    user_id    uuid,
-    session_id uuid,
-    flags      int,
-    user_agent text,
-    thumbprint text,
-    primary key ((user_id), session_id)
+    user_id    UUID,
+    session_id UUID,
+    flags      INT,
+    user_agent TEXT,
+    thumbprint TEXT,
+    PRIMARY KEY ((user_id), session_id)
 ) WITH transactional_mode = 'full';
 
-create table if not exists users.permissions
-(
-    user_id        uuid,
-    application_id uuid,
-    permissions    int,
-    created_at     timestamp,
-    updated_at     timestamp,
-    PRIMARY KEY ((user_id), application_id)
-) WITH transactional_mode = 'full';
-
-create table if not exists integrations.applications
-(
-    user_id        uuid,
-    application_id uuid,
-    name           text,
-    description    text,
-    flags          int,
-    redirect_uris  list<text>,
-    primary key ((user_id), application_id)
-) WITH transactional_mode = 'full';
-
-CREATE TABLE if not exists integrations.public_keys
+CREATE TABLE IF NOT EXISTS users.entitlements
 (
     user_id        UUID,
     application_id UUID,
-    thumbprint     text,
-    primary key ((user_id), application_id, thumbprint)
+    owner_id       UUID,
+    permissions    INT,
+    updated_at     TIMESTAMP,
+    PRIMARY KEY ((user_id), application_id)
+) WITH transactional_mode = 'full';
+
+CREATE TABLE IF NOT EXISTS integrations.applications
+(
+    user_id        UUID,
+    application_id UUID,
+    name           TEXT,
+    description    TEXT,
+    flags          INT,
+    redirect_uris  LIST<TEXT>,
+    PRIMARY KEY ((user_id), application_id)
+) WITH transactional_mode = 'full';
+
+CREATE TABLE IF NOT EXISTS integrations.interactions
+(
+    user_id        UUID,
+    application_id UUID,
+    interaction_id UUID,
+    permissions    INT,
+    redirect_uri   TEXT,
+    expiry         TIMESTAMP,
+    PRIMARY KEY ((user_id, application_id), interaction_id)
+) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 300;
+
+CREATE TABLE IF NOT EXISTS integrations.responses
+(
+    application_id UUID,
+    interaction_id UUID,
+    user_id        UUID,
+    owner_id       UUID,
+    permissions    INT,
+    PRIMARY KEY ((application_id), interaction_id)
+) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 60;
+
+CREATE TABLE IF NOT EXISTS integrations.public_keys
+(
+    user_id        UUID,
+    application_id UUID,
+    thumbprint     TEXT,
+    PRIMARY KEY ((user_id), application_id, thumbprint)
 ) WITH transactional_mode = 'full';
 
 

@@ -83,7 +83,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     @CheckReturnValue
     private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId, @Nonnull List<Session> sessions)
     {
-        //todo::...
+        //todo:...
         List<String> thumbprints = sessions.stream().map(Session::getThumbprint).collect(Collectors.toList());
         return api.retrieveAccessEntries(userId, thumbprints).map(entries ->
         {

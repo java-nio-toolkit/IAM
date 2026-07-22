@@ -16,17 +16,64 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.application.self;
 
+import com.github.adamorgan.jnt.api.requests.MediaType;
+import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.requests.Response;
+import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
+import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.self.PermissionOverridePaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.application.AbstractApplicationActionImpl;
+import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
+import java.util.*;
 
 public class PermissionOverridePaginationActionImpl extends AbstractApplicationActionImpl implements PermissionOverridePaginationAction
 {
+    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
+
     public PermissionOverridePaginationActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.GET_SELF_APPLICATIONS);
+        super(api, Routes.Applications.GET_ENTITLEMENTS);
+    }
+
+    @Override
+    public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
+    {
+        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        UUID userId = UUID.fromString(data.getSubject());
+        api.retrieveEntitlements(userId).map(this::mapFromData).queue(json -> handleSuccess(context, json));
+    }
+
+    @Nonnull
+    private DataArray mapFromData(@Nonnull List<PermissionOverride> data)
+    {
+        return data.stream().map(this::mapFromData).collect(Helpers.toDataArray());
+    }
+
+    @Nonnull
+    private DataObject mapFromData(@Nonnull PermissionOverride entitlement)
+    {
+        return DataObject.empty()
+                .put("user_id", entitlement.getUserId())
+                .put("application_id", entitlement.getApplicationId())
+                .put("permissions", entitlement.getPermissionsRaw())
+                .put("updated_at", entitlement.getTimeUpdated().toInstant().toEpochMilli())
+                .toData();
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
+    {
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
+        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }
 }

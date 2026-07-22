@@ -16,9 +16,13 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.entities.ApplicationInfo;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.data.BufferArray;
@@ -101,24 +105,5 @@ public class ApplicationImpl implements Application
     public int getFlagsRaw()
     {
         return flags;
-    }
-
-    @Nonnull
-    @Override
-    public InteractionCallbackAction<List<String>> getThumbprints()
-    {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<List<String>> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (array.isEmpty())
-                    interaction.onSuccess(Collections.emptyList());
-                else
-                    interaction.onSuccess(EntityBuilder.createThumbprints(array));
-            }
-        };
     }
 }

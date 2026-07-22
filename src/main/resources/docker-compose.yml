@@ -2,7 +2,7 @@ services:
   cassandra:
     hostname: cassandra
     build: .
-    container_name: apache-cassandra-6.0-alpha2
+    container_name: apache-cassandra-7.0-SNAPSHOT
     ports:
       - "7000:7000"
       - "7001:7001"

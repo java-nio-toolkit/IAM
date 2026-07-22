@@ -24,7 +24,8 @@ import java.util.EnumSet;
 
 public enum Permission
 {
-    UNKNOWN(-1, "Unknown");
+    VIEW_ACCOUNT(1, "account.read"),
+    UNKNOWN(-1, "unknown");
 
     /**
      * Empty array of Permission enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.

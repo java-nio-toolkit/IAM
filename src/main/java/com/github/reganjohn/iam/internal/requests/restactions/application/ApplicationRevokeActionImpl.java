@@ -46,7 +46,7 @@ public class ApplicationRevokeActionImpl extends AbstractApplicationActionImpl i
 {
     public ApplicationRevokeActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.DELETE_APPLICATION_ASSET);
+        super(api, Routes.Applications.DELETE_APPLICATION_ACCESS);
     }
 
     @Override

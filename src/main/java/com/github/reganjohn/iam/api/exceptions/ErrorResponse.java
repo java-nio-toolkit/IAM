@@ -25,6 +25,11 @@ public enum ErrorResponse
     UNKNOWN_SESSION(10012, "Unknown Session"),
     UNKNOWN_USER(10013, "Unknown User"),
     UNKNOWN_APPLICATION(10014, "Unknown Application"),
+    UNKNOWN_INTERACTION(10015, "Unknown Interaction"),
+    UNKNOWN_ENTITLEMENT(10016, "Unknown Entitlement"),
+
+    APPLICATION_NOT_ALLOWED(20001, "Application cannot use this endpoint"),
+    ONLY_APPLICATION_ALLOWED(20002, "Only application can use this endpoint"),
 
     MAX_SESSIONS(30001, "Maximum number of Sessions reached (10)"),
     MAX_APPLICATION(30002, "Maximum number of Applications reached (32)"),
@@ -36,11 +41,14 @@ public enum ErrorResponse
     ACCESS_ALREADY_EXISTS(40123, "An access object with that already exists"),
     APPLICATION_ALREADY_EXISTS(40124, "An application with that access object already exists"),
 
+    MISSING_ACCESS(50001, "Missing Access"),
     CANNOT_CLOSE_SINGLE_SESSION(50008, "The single remaining session cannot be closed."),
     INVALID_TOKEN(50014, "Invalid Authentication Token"),
     INVALID_FORM_URL(50034, "Invalid Form URL"),
     INVALID_FORM_BODY(50035, "Invalid Form Body"),
     INVALID_FROM_OBJECT_BODY(50036, "Only dictionaries may be used in a DictType"),
+    INVALID_REDIRECT_URI(50040, "Invalid GNAP \"redirect_uri\""),
+    INVALID_REQUEST_BODY(50109, "The request body contains invalid JSON."),
 
     SERVER_ERROR(0, "Oops! We've encountered an internal server error! Not good!");
 

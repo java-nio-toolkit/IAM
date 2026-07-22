@@ -28,20 +28,19 @@ public class PermissionOverrideImpl implements PermissionOverride
 {
     private final IAM api;
     private final UUID userId;
+    private final UUID ownerId;
     private final UUID applicationId;
     private final int rawPermissions;
-    private final OffsetDateTime createdAt;
     private final OffsetDateTime updatedAt;
 
-    public PermissionOverrideImpl(@Nonnull IAM api, @Nonnull UUID userId, @Nonnull UUID applicationId,
-                                  int rawPermissions, @Nonnull OffsetDateTime createdAt,
-                                  @Nonnull OffsetDateTime updatedAt)
+    public PermissionOverrideImpl(@Nonnull IAM api, @Nonnull UUID userId, @Nonnull UUID ownerId,
+                                  @Nonnull UUID applicationId, int rawPermissions, @Nonnull OffsetDateTime updatedAt)
     {
         this.api = api;
         this.userId = userId;
+        this.ownerId = ownerId;
         this.applicationId = applicationId;
         this.rawPermissions = rawPermissions;
-        this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
@@ -61,16 +60,16 @@ public class PermissionOverrideImpl implements PermissionOverride
 
     @Nonnull
     @Override
-    public UUID getApplicationId()
+    public UUID getOwnerId()
     {
-        return applicationId;
+        return ownerId;
     }
 
     @Nonnull
     @Override
-    public OffsetDateTime getTimeCreated()
+    public UUID getApplicationId()
     {
-        return createdAt;
+        return applicationId;
     }
 
     @Nonnull

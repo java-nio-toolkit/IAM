@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
+ * Copyright 2026 Ada Morgan, John Regan and the JACT contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.requests.restactions.application;
+BEGIN TRANSACTION
+    LET response = (SELECT * FROM integrations.responses WHERE user_id = :user_id AND interaction_id = :interaction_id);
 
-public interface ApplicationInteractionAction extends ApplicationAction
-{
-}
+    -- Return data directly from table (must come before INSERT)
+    SELECT * FROM integrations.responses WHERE user_id = :user_id AND interaction_id = :interaction_id;
+
+    IF response IS NOT NULL THEN
+        DELETE FROM integrations.responses WHERE user_id = :user_id AND interaction_id = :interaction_id;
+    END IF
+COMMIT TRANSACTION;

@@ -29,10 +29,7 @@ import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionIm
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.IAM;
-import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
-import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
+import com.github.reganjohn.iam.api.entities.*;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
@@ -47,8 +44,17 @@ import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
+import com.github.reganjohn.iam.internal.managers.PermOverrideManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.application.*;
+import com.github.reganjohn.iam.internal.requests.restactions.application.interactions.ApplicationInteractionCreateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.interactions.ApplicationInteractionOverrideActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.interactions.ApplicationInteractionRetrieveActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.interactions.ApplicationInteractionUpdateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.self.PermissionOverrideDeleteActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.self.PermissionOverrideEditActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.self.PermissionOverridePaginationActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.application.self.PermissionOverrideRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditActionImpl;
@@ -133,6 +139,7 @@ public class IAMImpl implements IAM
         this.jact = buildInstance();
         this.api = JNTBuilder.create(host, port, ConnectionType.SERVER)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
+
                 .addEventListeners(new ClockObjectManagerImpl())
                 .addEventListeners(new DigestAccessManagerImpl())
                 .addEventListeners(new DigestObjectManagerImpl())
@@ -153,6 +160,7 @@ public class IAMImpl implements IAM
                 //.addEventListenerProvider(() -> new SequentialRestRateLimiter(10, 10, TimeUnit.SECONDS, "user"))
 
                 .addEventListeners(new AccessEntryActionImpl())
+                .addEventListeners(new PermOverrideManagerImpl())
 
                 .addEventListenerProvider(() -> new UserRetrieveActionImpl(this))
 
@@ -178,12 +186,22 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new ApplicationAccessActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationSyncActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationRevokeActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationInteractionCreateActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationInteractionOverrideActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationInteractionUpdateActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationInteractionRetrieveActionImpl(this))
+
+                .addEventListenerProvider(() -> new PermissionOverridePaginationActionImpl(this))
+                .addEventListenerProvider(() -> new PermissionOverrideRetrieveActionImpl(this))
+                .addEventListenerProvider(() -> new PermissionOverrideEditActionImpl(this))
+                .addEventListenerProvider(() -> new PermissionOverrideDeleteActionImpl(this))
 
                 .addEventListeners(new ErrorObjectManagerImpl(true))
                 .build();
 
         TimeUnit.SECONDS.sleep(5);
-        startup();
+        AdaMorganClientV2 clientV2 = new AdaMorganClientV2();
+        clientV2.startTest();
     }
 
     public void startup() throws Exception
@@ -228,6 +246,14 @@ public class IAMImpl implements IAM
     public EntityBuilder getEntityBuilder()
     {
         return entityBuilder;
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccessEntries(@Nonnull ApplicationInfo application)
+    {
+        Checks.notNull(application, "Application");
+        return retrieveAccessEntries(application.getOwnerId(), application.getThumbprints());
     }
 
     @Nonnull
@@ -471,25 +497,6 @@ public class IAMImpl implements IAM
         };
     }
 
-
-    //todo: add logics!
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<Void> logout(@Nonnull UUID userId, @Nonnull UUID sessionId)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notNull(sessionId, "Session ID");
-        return retrieveSessionById(userId, sessionId).flatMap(session ->
-        {
-            InteractionMapping map = new InteractionMapping.Builder()
-                    .put("user_id", session.getUserId())
-                    .put("session_id", session.getUniqueId())
-                    .put("thumbprint", session.getThumbprint())
-                    .build();
-            return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("logout.cql"), map);
-        });
-    }
-
     @Nonnull
     @CheckReturnValue
     public InteractionCallbackAction<Integer> retrieveApplicationCount(@Nonnull UUID userId)
@@ -534,7 +541,7 @@ public class IAMImpl implements IAM
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
                                       @Nonnull InteractionImpl<List<Application>> interaction,
-                                      @Nonnull BufferArray array) throws Exception
+                                      @Nonnull BufferArray array)
             {
                 interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : entityBuilder.createApplications(array));
             }
@@ -576,6 +583,26 @@ public class IAMImpl implements IAM
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
                 request.onSuccess((int) InteractionUtil.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<ApplicationInfo> retrieveApplicationInfo(@Nonnull Application application)
+    {
+        Checks.notNull(application, "Application");
+        return new InteractionContextActionImpl<>(jact, "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(application.getOwnerId(), application.getUniqueId()))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<ApplicationInfo> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    interaction.onSuccess(EntityBuilder.createApplicationInfo(application, array));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
             }
         };
     }
@@ -647,26 +674,41 @@ public class IAMImpl implements IAM
         };
     }
 
-
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> deleteApplicationById(@Nonnull Application application)
+    public InteractionCallbackAction<PermissionOverride> retrieveEntitlement(@Nonnull UUID userId,
+                                                                             @Nonnull UUID applicationId)
     {
-        Checks.notNull(application, "Application");
-        InteractionMapping map = new InteractionMapping.Builder()
-                .put("user_id", application.getOwnerId())
-                .put("application_id", application.getUniqueId())
-                .build();
-        return new InteractionMappingActionImpl<>(jact, ClassLoader.getResourceAsString("delete_application.cql"), map)
+        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.entitlement WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+                                      @Nonnull InteractionImpl<PermissionOverride> interaction,
+                                      @Nonnull BufferArray array)
             {
                 if (!array.isEmpty())
-                    request.onSuccess(null);
+                    interaction.onSuccess(entityBuilder.createPermissionOverride(array.getObject(0)));
                 else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<PermissionOverride>> retrieveEntitlements(@Nonnull UUID userId)
+    {
+        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.entitlement WHERE user_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<PermissionOverride>> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    interaction.onSuccess(entityBuilder.createPermissionOverrides(array));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
             }
         };
     }

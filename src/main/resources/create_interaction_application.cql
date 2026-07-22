@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
+ * Copyright 2026 Ada Morgan, John Regan and the JACT contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,5 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.requests.restactions.application;
-
-public interface ApplicationInteractionCallbackAction extends ApplicationAction
-{
-}
+INSERT INTO integrations.interactions (user_id, application_id, interaction_id, expiry, permissions, redirect_uri)
+VALUES (:user_id, :application_id, :interaction_id, :expiry, :permissions, :redirect_uri);

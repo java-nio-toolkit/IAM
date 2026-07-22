@@ -50,7 +50,7 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
 {
     public ApplicationSyncActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.CREATE_APPLICATION_ASSET);
+        super(api, Routes.Applications.CREATE_APPLICATION_ACCESS);
     }
 
     @Override
@@ -375,8 +375,8 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
         try (AccessContextData contextData = entryData.getContext(AccessContextType.SHA_256))
         {
             Map<String, String> params = request.getRoute().getMajorParameters();
-            UUID applicationId = UUID.fromString(params.get("application_id"));
             UUID userId = UUID.fromString(objectData.getSubject());
+            UUID applicationId = UUID.fromString(params.get("application_id"));
             api.retrieveApplicationById(userId, applicationId)
                     .flatMap(api::retrieveApplicationAccessCount)
                     .map(count -> create(userId, applicationId, count, entryData, contextData))

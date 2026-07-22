@@ -25,19 +25,21 @@ public class Routes
     public static class Applications
     {
         public static final Route CREATE_APPLICATION = new Route(POST, "applications");
-        public static final Route CREATE_APPLICATION_ASSET = new Route(POST, "applications/{application_id}/access");
+        public static final Route CREATE_APPLICATION_ACCESS = new Route(POST, "applications/{application_id}/access");
         public static final Route CREATE_APPLICATION_INTERACTION = new Route(POST, "applications/{application_id}/interactions");
-        public static final Route EXECUTE_APPLICATION_INTERACTION = new Route(POST, "applications/{application_id}/interactions/{interaction_id}");
-        public static final Route GET_APPLICATION_ASSETS = new Route(GET, "applications/{application_id}/access");
-        public static final Route GET_APPLICATIONS = new Route(GET, "applications");
-        public static final Route GET_APPLICATION = new Route(GET, "applications/{application_id}");
-        public static final Route GET_SELF_APPLICATIONS = new Route(GET, "users/@me/applications");
-        public static final Route GET_SELF_APPLICATION = new Route(GET, "users/@me/applications/{application_id}");
+        public static final Route ACCEPT_APPLICATION_INTERACTION = new Route(PATCH, "users/{user_id}/applications/{application_id}/interactions/{interaction_id}");
+        public static final Route EXECUTE_APPLICATION_INTERACTION = new Route(POST, "applications/{application_id}/interactions/{interaction_id}", true);
+        public static final Route UPDATE_APPLICATION_ACCESS = new Route(PUT, "users/@me/applications/{application_id}", true);
+        public static final Route GET_APPLICATION_ACCESS = new Route(GET, "applications/{application_id}/access");
+        public static final Route GET_SELF_APPLICATIONS = new Route(GET, "applications");
+        public static final Route GET_SELF_APPLICATION = new Route(GET, "applications/{application_id}");
+        public static final Route GET_ENTITLEMENTS = new Route(GET, "users/@me/applications");
+        public static final Route GET_ENTITLEMENT = new Route(GET, "users/@me/applications/{application_id}");
         public static final Route EDIT_APPLICATION = new Route(PATCH, "applications/{application_id}");
-        public static final Route EDIT_SELF_APPLICATION = new Route(PATCH, "users/@me/applications/{application_id}");
+        public static final Route EDIT_ENTITLEMENT = new Route(PATCH, "users/@me/applications/{application_id}");
         public static final Route DELETE_APPLICATION = new Route(DELETE, "applications/{application_id}");
-        public static final Route DELETE_SELF_APPLICATION = new Route(DELETE, "users/@me/applications/{application_id}");
-        public static final Route DELETE_APPLICATION_ASSET = new Route(DELETE, "applications/{application_id}/access/{access_id}");
+        public static final Route DELETE_ENTITLEMENT = new Route(DELETE, "users/@me/applications/{application_id}");
+        public static final Route DELETE_APPLICATION_ACCESS = new Route(DELETE, "applications/{application_id}/access/{access_id}");
     }
 
     public static class Teams
@@ -74,7 +76,7 @@ public class Routes
         public static final Route GET_SESSION = new Route(GET, "users/@me/sessions/{session_id}");
         public static final Route ADD_SESSION = new Route(POST, "users/@me/sessions");
         public static final Route EDIT_SESSION = new Route(PATCH, "users/@me/sessions/{session_id}");
-        public static final Route UPDATE_SESSION = new Route(PUT, "users/@me/sessions/{session_id}", true);
+        public static final Route UPDATE_SESSION_ACCESS = new Route(PUT, "users/@me/sessions/{session_id}", true);
         public static final Route REMOVE_SESSION = new Route(DELETE, "users/@me/sessions/{session_id}");
         public static final Route REMOVE_ALL_SESSIONS = new Route(DELETE, "users/@me/sessions");
     }

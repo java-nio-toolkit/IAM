@@ -35,10 +35,10 @@ public interface PermissionOverride
     UUID getUserId();
 
     @Nonnull
-    UUID getApplicationId();
+    UUID getOwnerId();
 
     @Nonnull
-    OffsetDateTime getTimeCreated();
+    UUID getApplicationId();
 
     @Nonnull
     OffsetDateTime getTimeUpdated();

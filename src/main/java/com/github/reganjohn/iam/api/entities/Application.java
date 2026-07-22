@@ -109,15 +109,6 @@ public interface Application extends IUnique
     int getFlagsRaw();
 
     /**
-     * A {@link java.util.List} containing the thumbprints of this application.
-     *
-     * @return Immutable list of application thumbprints
-     */
-    @Nonnull
-    @CheckReturnValue
-    InteractionCallbackAction<List<String>> getThumbprints();
-
-    /**
      * Represents the bit offsets used for application flags.
      */
     enum ApplicationFlag

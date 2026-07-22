@@ -44,6 +44,12 @@ public abstract class AbstractApplicationActionImpl extends RestActionImpl
         this.api = api;
     }
 
+    @Nonnull
+    public IAMImpl getIAM()
+    {
+        return api;
+    }
+
     protected void handleErrorResponse(@Nonnull String name, @Nonnull DataObjectParsingException exception,
                                        @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
     {

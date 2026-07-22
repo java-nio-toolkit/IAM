@@ -176,8 +176,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
             String uniqueId = UUIDv7.randomUUID().toString();
             String identifier = api.getJNT().getIdentifierString();
             UUIDv7 userId = UUIDv7.randomUUID();
-            AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, manager.getSignType());
-            AccessObjectData json = EntityBuilder.createObjectData(uniqueId, identifier, userId.toString(), manager, contextData, optionData, snapshot);
+            AccessObjectData json = EntityBuilder.createObjectData(uniqueId, identifier, userId.toString(), manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
             handleInternally(context, request, userId.toUUID(), contextData, json, data, rawBody, sessionData);
         }
     }

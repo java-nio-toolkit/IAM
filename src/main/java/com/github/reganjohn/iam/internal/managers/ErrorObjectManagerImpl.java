@@ -63,7 +63,7 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             error.printStackTrace();
 
         if (error instanceof JsonParseException)
-            handleFailure(context, 0, error.getMessage(), StatusReason.BAD_REQUEST);
+            handleFailure(context, ErrorResponse.INVALID_REQUEST_BODY, StatusReason.BAD_REQUEST);
         else if (error instanceof RateLimitedException)
             handleFailure(context, (RateLimitedException) error);
         else if (error instanceof ProofAccessException)
@@ -76,6 +76,8 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, 0, error.getMessage(), StatusReason.NOT_FOUND);
         else if (error instanceof ErrorResponseException)
             handleFailure(context, (ErrorResponseException) error);
+        else if (error instanceof PermissionException)
+            handleFailure(context, ErrorResponse.MISSING_ACCESS, StatusReason.FORBIDDEN);
         else if (error instanceof SignatureException)
             handleFailure(context, (SignatureException) error);
         else if (error instanceof IllegalStateException)

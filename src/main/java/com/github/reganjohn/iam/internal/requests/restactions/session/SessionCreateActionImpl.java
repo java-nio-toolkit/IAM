@@ -358,8 +358,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             String uniqueId = UUIDv7.randomUUID().toString();
             String issuer = api.getJNT().getIdentifierString();
             String subject = objectData.getSubject();
-            AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, manager.getSignType());
-            AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
+            AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
             create(request, entryData, contextData, json).queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);;
         }
     }

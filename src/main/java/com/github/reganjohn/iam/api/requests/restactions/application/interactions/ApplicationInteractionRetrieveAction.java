@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.application;
+package com.github.reganjohn.iam.api.requests.restactions.application.interactions;
 
-import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationInteractionAction;
-import com.github.reganjohn.iam.internal.IAMImpl;
+import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationAction;
 
-import javax.annotation.Nonnull;
-
-public class ApplicationInteractionActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionAction
+public interface ApplicationInteractionRetrieveAction extends ApplicationAction
 {
-    public ApplicationInteractionActionImpl(@Nonnull IAMImpl api)
-    {
-        super(api, Routes.Applications.CREATE_APPLICATION_INTERACTION);
-    }
 }

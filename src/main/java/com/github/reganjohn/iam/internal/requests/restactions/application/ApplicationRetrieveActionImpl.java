@@ -53,7 +53,7 @@ public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl
 
     public ApplicationRetrieveActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.GET_APPLICATION);
+        super(api, Routes.Applications.GET_SELF_APPLICATION);
     }
 
     @Override

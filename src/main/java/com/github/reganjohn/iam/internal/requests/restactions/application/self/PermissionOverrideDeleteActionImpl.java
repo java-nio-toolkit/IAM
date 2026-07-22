@@ -16,17 +16,116 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.application.self;
 
+import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.requests.Response;
+import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.self.PermissionOverrideDeleteAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.application.AbstractApplicationActionImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.jact.internal.utils.InteractionUtil;
+import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.util.*;
+
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
+import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
 
 public class PermissionOverrideDeleteActionImpl extends AbstractApplicationActionImpl implements PermissionOverrideDeleteAction
 {
     public PermissionOverrideDeleteActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.DELETE_SELF_APPLICATION);
+        super(api, Routes.Applications.DELETE_ENTITLEMENT);
+    }
+
+    @Override
+    public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
+    {
+        handleApplicationId(context, request, new ArrayList<>());
+    }
+
+    private void handleApplicationId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                     @Nonnull List<InvalidResponseException.SchemaError> errors)
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkApplicationId(request.getRoute().getMajorParameters());
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("application_id", ex, errors);
+        }
+        finally
+        {
+            handleErrorResponse(context, request, errors);
+        }
+    }
+
+    private void checkApplicationId(@Nonnull Map<String, String> params)
+    {
+        String id = params.get("application_id");
+        if (Helpers.isEmpty(id))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!MiscUtil.isUUID(id))
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"application_id\" value is not uuid.");
+    }
+
+    private void handleErrorResponse(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                     @Nonnull List<InvalidResponseException.SchemaError> errors)
+    {
+        if (errors.isEmpty())
+            handleInternally(context, request);
+        else
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
+    {
+        Map<String, String> params = request.getRoute().getMajorParameters();
+        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        UUID userId = UUID.fromString(data.getSubject());
+        UUID applicationId = UUID.fromString(params.get("application_id"));
+        delete(userId, applicationId).queue(success -> handleSuccess(context));
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Void> delete(@Nonnull UUID userId, @Nonnull UUID applicationId)
+    {
+        return new InteractionContextActionImpl<>(api.getJACT(), "DELETE FROM users.entitlement WHERE user_id = ? AND application_id = ? IF EXISTS", Arrays.asList(userId, applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    interaction.onSuccess(null);
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
+            }
+        };
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context)
+    {
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
     }
 }

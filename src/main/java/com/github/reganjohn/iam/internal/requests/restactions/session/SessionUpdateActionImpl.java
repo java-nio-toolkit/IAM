@@ -65,8 +65,6 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
 
-    private static final String ACCESS_TYPE = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
-
     public final FastThreadLocal<MessageDigest> SHA256 = new FastThreadLocal<>()
     {
         @Override
@@ -78,7 +76,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
 
     public SessionUpdateActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Session.UPDATE_SESSION);
+        super(api, Routes.Session.UPDATE_SESSION_ACCESS);
     }
 
     @Override
@@ -130,7 +128,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
             else if (!Helpers.equals(IOUtil.encodeURL(hash), data.getAccessTokenHash(), false))
                 throw new IllegalArgumentException("Provided proof is not for the same access token.");
             else
-                handleSession(context, request, json, contextData);
+                handleInternally(context, request, json, contextData);
         }
         finally
         {
@@ -138,13 +136,14 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
         }
     }
 
-    private void handleSession(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                               @Nonnull AccessObjectData json, @Nonnull AccessContextData contextData)
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                  @Nonnull AccessObjectData json, @Nonnull AccessContextData contextData)
     {
-        String subject = json.getSubject();
-        UUID userId = UUID.fromString(subject);
+        UUID userId = UUID.fromString(json.getSubject());
         UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
-        api.retrieveSessionById(userId, sessionId).flatMap(session -> update(context, contextData, json, session)).queue(data -> handleSuccess(context, data), context::fireExceptionCaught);
+        api.retrieveSessionById(userId, sessionId)
+                .flatMap(session -> update(context, contextData, json, session))
+                .queue(data -> handleSuccess(context, data), context::fireExceptionCaught);
     }
 
     @Nonnull
@@ -154,7 +153,9 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
                                                                @Nonnull AccessObjectData json, @Nonnull Session session)
     {
         DataObject contextData = json.getContextData();
-        if (contextData == null)
+        if (json.getActor() != null)
+            throw new ErrorResponseException(ErrorResponse.APPLICATION_NOT_ALLOWED);
+        else if (contextData == null)
             throw new IllegalStateException("The confirmation is required option and cannot be missing!");
         else if (!contextData.hasKey(JKT))
             throw new IllegalArgumentException("The thumbprint is required option and cannot be missing!");
@@ -174,7 +175,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
     {
         GlobalAccessManagerImpl manager = context.channel().attr(GlobalAccessManagerImpl.IDENTIFIER).get();
         String rawUniqueId = data.getOptionData().getName();
-        if (Helpers.isEmpty(rawUniqueId))
+        if (Helpers.isEmpty(rawUniqueId) || !MiscUtil.isUUID(rawUniqueId))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         return manager.hasAccess(UUID.fromString(rawUniqueId), data).map(hasAccess ->
         {
@@ -193,13 +194,12 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
         String uniqueId = UUIDv7.randomUUID().toString();
         String issuer = api.getJNT().getIdentifierString();
         String subject = data.getSubject();
-        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), ACCESS_TYPE, manager.getSignType());
-        return EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, optionData, snapshot);
+        return EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
     }
 
-    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData newAccessData)
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData data)
     {
-        ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), newAccessData.getRaw());
+        ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
         context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }

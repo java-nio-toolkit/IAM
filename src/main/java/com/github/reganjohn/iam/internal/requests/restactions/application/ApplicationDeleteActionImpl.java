@@ -23,12 +23,9 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
-import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
-import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.ApplicationInfo;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -41,7 +38,6 @@ import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.internal.interactions.InteractionImpl;
 import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -116,29 +112,9 @@ public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl i
     private InteractionCallbackAction<Void> retrieveApplicationInfo(UUID userId, UUID applicationId)
     {
         return api.retrieveApplicationById(userId, applicationId)
-                .flatMap(this::retrieveApplicationInfo)
+                .flatMap(api::retrieveApplicationInfo)
                 .map(Placeholder::new)
                 .flatMap(this::delete);
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<ApplicationInfo> retrieveApplicationInfo(@Nonnull Application application)
-    {
-        Checks.notNull(application, "Application");
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(application.getOwnerId(), application.getUniqueId()))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<ApplicationInfo> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty())
-                    interaction.onSuccess(EntityBuilder.createApplicationInfo(application, array));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
-            }
-        };
     }
 
     @Nonnull

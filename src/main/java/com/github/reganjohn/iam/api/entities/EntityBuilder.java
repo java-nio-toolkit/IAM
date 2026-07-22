@@ -17,17 +17,19 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
+import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
+import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
+import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.github.reganjohn.iam.internal.entities.ApplicationImpl;
-import com.github.reganjohn.iam.internal.entities.ApplicationInfoImpl;
-import com.github.reganjohn.iam.internal.entities.SessionImpl;
-import com.github.reganjohn.iam.internal.entities.UserImpl;
+import com.github.reganjohn.iam.internal.entities.*;
+import com.github.reganjohn.iam.internal.interactions.ApplicationCallbackResponseImpl;
+import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.api.utils.data.BufferObject;
 
@@ -54,21 +56,35 @@ public class EntityBuilder extends AbstractEntityBuilder
     @Nonnull
     public static AccessObjectData createObjectData(@Nonnull String uniqueId, @Nonnull String issuer,
                                                     @Nonnull String subject, @Nonnull AccessEntryManager manager,
-                                                    @Nonnull AccessContextData contextData,
-                                                    @Nonnull AccessOptionData optionData,
+                                                    @Nonnull AccessContextData contextData, @Nonnull String type,
+                                                    @Nonnull AccessEntryManagerImpl.AccessEntrySnapshot snapshot)
+    {
+        return createObjectData(uniqueId, issuer, subject, null, null, manager, contextData, type, snapshot);
+    }
+
+    @Nonnull
+    public static AccessObjectData createObjectData(@Nonnull String uniqueId, @Nonnull String issuer,
+                                                    @Nonnull String subject, @Nullable UUID rawActor,
+                                                    @Nullable DataArray perm, @Nonnull AccessEntryManager manager,
+                                                    @Nonnull AccessContextData contextData, @Nonnull String type,
                                                     @Nonnull AccessEntryManagerImpl.AccessEntrySnapshot snapshot)
     {
         long now = System.currentTimeMillis();
         OffsetDateTime offset = Helpers.toOffset(now);
         OffsetDateTime expiresAt = snapshot.getTimeExpiresAt();
         List<String> audiences = manager.getAudiences();
+        DataObject actor = rawActor != null ? Helpers.singletonData("sub", rawActor) : null;
+        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), type, manager.getSignType());
         DataObject rawData = DataObject.empty()
                 .put("iss", issuer)
                 .put("sub", subject)
+                .put("act", actor)
+                .put("access", perm)
                 .put("iat", offset.toEpochSecond())
                 .put("exp", expiresAt.toEpochSecond())
                 .put("jti", uniqueId)
                 .put("cnf", contextData.toData());
+
         if (Helpers.nonEmpty(audiences))
             rawData.put("aud", audiences.stream().collect(Helpers.toDataArray()));
         String header = IOUtil.encodeURL(optionData.toString().getBytes(StandardCharsets.UTF_8));
@@ -77,7 +93,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         try
         {
             byte[] raw = snapshot.sign(header + "." + payload);
-            return new AccessObjectData(uniqueId, now, optionData, issuer, subject, raw, contextData.toData(), 0, expiresAt, audiences);
+            return new AccessObjectData(uniqueId, now, optionData, issuer, subject, actor, raw, contextData.toData(), rawData, 0, expiresAt, audiences);
         }
         catch (Exception error)
         {
@@ -86,7 +102,8 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public static ApplicationInfoImpl createApplicationInfo(@Nonnull Application application, @Nonnull BufferArray array)
+    public static ApplicationInfoImpl createApplicationInfo(@Nonnull Application application,
+                                                            @Nonnull BufferArray array)
     {
         List<String> thumbprints = new ArrayList<>();
         for (BufferObject bufferObject : array)
@@ -155,7 +172,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public List<Application> createApplications(@Nonnull BufferArray data) throws Exception
+    public List<Application> createApplications(@Nonnull BufferArray data)
     {
         List<Application> applications = new ArrayList<>();
         for (BufferObject obj : data)
@@ -176,19 +193,47 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public static List<String> createThumbprints(@Nonnull BufferArray data)
+    public ApplicationContextInteraction createContextInteraction(@Nonnull BufferObject data)
     {
-        List<String> thumbprints = new ArrayList<>();
-        for (BufferObject obj : data)
-        {
-            thumbprints.add(createThumbprint(obj));
-        }
-        return thumbprints;
+        UUID ownerId = data.getUUID("user_id");
+        UUID applicationId = data.getUUID("application_id");
+        UUID interactionId = data.getUUID("interaction_id");
+        int rawPermissions = data.getInt("permissions");
+        OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
+        String uri = data.getString("redirect_uri");
+        return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri);
     }
 
-    @Nullable
-    public static String createThumbprint(@Nonnull BufferObject data)
+    @Nonnull
+    public ApplicationCallbackResponse createContextResponse(@Nonnull BufferObject data)
     {
-        return data.getString("thumbprint", null);
+        UUID userId = data.getUUID("user_id");
+        UUID ownerId = data.getUUID("owner_id");
+        UUID applicationId = data.getUUID("application_id");
+        UUID interactionId = data.getUUID("interaction_id");
+        int rawPermissions = data.getInt("permissions");
+        OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
+        String uri = data.getString("redirect_uri");
+        return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri);
+    }
+
+    @Nonnull
+    public List<PermissionOverride> createPermissionOverrides(@Nonnull BufferArray data)
+    {
+        List<PermissionOverride> overrides = new ArrayList<>();
+        for (BufferObject obj : data)
+            overrides.add(createPermissionOverride(obj));
+        return overrides;
+    }
+
+    @Nonnull
+    public PermissionOverrideImpl createPermissionOverride(@Nonnull BufferObject data)
+    {
+        UUID userId = data.getUUID("user_id");
+        UUID applicationId = data.getUUID("application_id");
+        UUID ownerId = data.getUUID("owner_id");
+        int permissions = data.getInt("permissions");
+        OffsetDateTime updatedAt = Helpers.toOffsetDateTime(data.getTimestamp("updated_at"));
+        return new PermissionOverrideImpl(api, userId, ownerId, applicationId, permissions, updatedAt);
     }
 }

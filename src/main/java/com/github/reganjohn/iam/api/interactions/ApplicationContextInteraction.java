@@ -14,18 +14,39 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.application;
+package com.github.reganjohn.iam.api.interactions;
 
-import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationInteractionCallbackAction;
+import com.github.adamorgan.jnt.api.entities.IUnique;
+import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
+import java.time.OffsetDateTime;
+import java.util.EnumSet;
+import java.util.UUID;
 
-public class ApplicationInteractionCallbackActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionCallbackAction
+public interface ApplicationContextInteraction extends IUnique
 {
-    public ApplicationInteractionCallbackActionImpl(@Nonnull IAMImpl api)
+    @Nonnull
+    IAMImpl getIAM();
+
+    @Nonnull
+    UUID getOwnerId();
+
+    @Nonnull
+    UUID getApplicationId();
+
+    @Nonnull
+    OffsetDateTime getTimeExpiresAt();
+
+    int getPermissionsRaw();
+
+    @Nonnull
+    default EnumSet<Permission> getPermissions()
     {
-        super(api, Routes.Applications.EXECUTE_APPLICATION_INTERACTION);
+        return Permission.getPermissions(getPermissionsRaw());
     }
+
+    @Nonnull
+    String getRedirectUri();
 }
