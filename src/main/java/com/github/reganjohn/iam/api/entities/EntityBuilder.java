@@ -118,8 +118,9 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         UUID userId = data.getUUID("user_id");
         String username = data.getString("username");
+        String avatarId = data.getString("avatar_id", null);
         int flags = data.getInt("flags");
-        return new UserImpl(api, userId, username, flags);
+        return new UserImpl(api, userId, username, avatarId, flags);
     }
 
     @Nonnull
@@ -187,9 +188,10 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID applicationId = data.getUUID("application_id");
         String name = data.getString("name");
         String description = data.getString("description", null);
+        String iconId = data.getString("icon_id", null);
         int flags = data.getInt("flags");
         List<String> redirectUris = data.getList(String.class, "redirect_uris");
-        return new ApplicationImpl(api, applicationId, ownerId, name, description, flags, redirectUris);
+        return new ApplicationImpl(api, applicationId, ownerId, name, description, iconId, flags, redirectUris);
     }
 
     @Nonnull

@@ -22,11 +22,13 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.entities.Session;
@@ -39,7 +41,6 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -76,6 +77,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     @CheckReturnValue
     private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId)
     {
+        Checks.notNull(userId, "User ID");
         return api.retrieveSessions(userId).flatMap(sessions -> retrieveData(userId, sessions));
     }
 
@@ -83,24 +85,33 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     @CheckReturnValue
     private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId, @Nonnull List<Session> sessions)
     {
-        //todo:...
-        List<String> thumbprints = sessions.stream().map(Session::getThumbprint).collect(Collectors.toList());
-        return api.retrieveAccessEntries(userId, thumbprints).map(entries ->
-        {
-            Map<String, DataObject> map = new HashMap<>();
-            for (AccessEntryData entry : entries)
-            {
-                try (AccessContextData context = entry.getContext(AccessContextType.SHA3_256))
-                {
-                    map.put(context.digest(), entry.toData());
-                }
-                catch (Exception e)
-                {
-                    throw new RuntimeException(e);
-                }
-            }
-            return sessions.stream().map(session -> retrieveAccessData(session, map)).collect(Helpers.toDataArray());
-        });
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(sessions, "Sessions");
+        return retrieveMap(userId, sessions).map(data -> mapFromData(sessions, data));
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Map<String, DataObject>> retrieveMap(@Nonnull UUID userId, @Nonnull List<Session> sessions)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(sessions, "Sessions");
+        return api.retrieveAccessSessions(userId, sessions).map(this::mapFromData);
+    }
+
+    @Nonnull
+    private Map<String, DataObject> mapFromData(@Nonnull List<AccessEntryData> entries)
+    {
+        Checks.notNull(entries, "Access Entries");
+        return entries.stream().map(SessionOverrideData::new).collect(Collectors.toMap(SessionOverrideData::getThumbprint, SessionOverrideData::toData));
+    }
+
+    @Nonnull
+    private DataArray mapFromData(@Nonnull List<Session> sessions, @Nonnull Map<String, DataObject> map)
+    {
+        Checks.notNull(sessions, "Sessions");
+        Checks.notNull(map, "Map");
+        return sessions.stream().map(session -> retrieveAccessData(session, map)).collect(Helpers.toDataArray());
     }
 
     @Nonnull
@@ -117,5 +128,35 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
                 .put("jwk", map.get(session.getThumbprint()))
                 .put("flags", session.getFlagsRaw())
                 .toData();
+    }
+
+    private static class SessionOverrideData implements SerializableData
+    {
+        private final AccessEntryData entry;
+
+        public SessionOverrideData(@Nonnull AccessEntryData data)
+        {
+            this.entry = data;
+        }
+
+        @Nonnull
+        public String getThumbprint()
+        {
+            try (AccessContextData context = entry.getContext(AccessContextType.SHA_256))
+            {
+                return context.digest();
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Nonnull
+        @Override
+        public DataObject toData()
+        {
+            return entry.toData();
+        }
     }
 }

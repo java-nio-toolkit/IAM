@@ -30,16 +30,18 @@ public class ApplicationEditData implements ApplicationData
     private final UUID applicationId;
     private final String name;
     private final String description;
+    private final String iconId;
     private final int flags;
     private final List<String> redirectUris;
 
     public ApplicationEditData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull String name,
-                               @Nullable String description, int flags, @Nonnull List<String> redirectUris)
+                               @Nullable String description, @Nullable String iconId, int flags, @Nonnull List<String> redirectUris)
     {
         this.userId = userId;
         this.applicationId = applicationId;
         this.name = name;
         this.description = description;
+        this.iconId = iconId;
         this.flags = flags;
         this.redirectUris = redirectUris;
     }
@@ -52,6 +54,7 @@ public class ApplicationEditData implements ApplicationData
                 .put("application_id", applicationId)
                 .put("name", name)
                 .put("description", description)
+                .put("icon_id", iconId)
                 .put("flags", flags)
                 .put("redirect_uris", redirectUris)
                 .build();
@@ -64,6 +67,7 @@ public class ApplicationEditData implements ApplicationData
         return DataObject.empty()
                 .put("name", name)
                 .put("description", description)
+                .put("icon_id", iconId)
                 .put("flags", flags)
                 .put("redirect_uris", redirectUris)
                 .toData();

@@ -113,7 +113,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         }
         finally
         {
-            handleFlags(context, request, rawBody, schemaErrors);
+            handleIconId(context, request, rawBody, schemaErrors);
         }
     }
 
@@ -126,6 +126,35 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         else if (body.getString("description").length() > Application.MAX_DESCRIPTION_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"description\" may not be longer than %d characters.", Application.MAX_DESCRIPTION_LENGTH));
+    }
+
+    private void handleIconId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                              @Nonnull DataObject rawData,
+                              @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkIconId(rawData);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("icon_id", ex, schemaErrors);
+        }
+        finally
+        {
+            handleFlags(context, request, rawData, schemaErrors);
+        }
+    }
+
+    private void checkIconId(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("icon_id"))
+            return;
+        else if (!body.isType("icon_id", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"icon_id\" value is not string.");
+        else if (body.getString("icon_id").length() > Application.ICON_CID_MAX_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"icon_id\" may not be longer than %d characters.", Application.ICON_CID_MAX_LENGTH));
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -209,9 +238,10 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         UUIDv7 applicationId = UUIDv7.randomUUID();
         String name = rawBody.getString("name");
         String description = !rawBody.isEmpty("description") ? rawBody.getString("description") : null;
+        String iconId = rawBody.getString("icon_id", null);
         int flags = rawBody.getInt("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = rawBody.getArray("redirect_uris").stream(DataArray::getString).collect(Collectors.toList());
-        ApplicationCreateData createData = new ApplicationCreateData(userId, applicationId.toUUID(), name, description, flags, redirectUris);
+        ApplicationCreateData createData = new ApplicationCreateData(userId, applicationId.toUUID(), name, description, iconId, flags, redirectUris);
         return api.retrieveApplicationCount(userId).flatMap(count -> create(createData, count));
     }
 

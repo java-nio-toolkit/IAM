@@ -21,6 +21,7 @@ import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,12 +29,14 @@ public class UserEditData implements UserData, InteractionMapping
 {
     private final UUID userId;
     private final String username;
+    private final String avatarId;
     private final int flags;
 
-    public UserEditData(@Nonnull UUID userId, @Nonnull String name, int flags)
+    public UserEditData(@Nonnull UUID userId, @Nonnull String name, @Nullable String avatarId, int flags)
     {
         this.userId = userId;
         this.username = name;
+        this.avatarId = avatarId;
         this.flags = flags;
     }
 
@@ -51,6 +54,13 @@ public class UserEditData implements UserData, InteractionMapping
         return username;
     }
 
+    @Nullable
+    @Override
+    public String getAvatarId()
+    {
+        return avatarId;
+    }
+
     @Override
     public int getRawUserFlags()
     {
@@ -64,6 +74,7 @@ public class UserEditData implements UserData, InteractionMapping
         return new InteractionMapping.Builder()
                 .put("user_id", userId)
                 .put("username", username)
+                .put("avatar_id", avatarId)
                 .put("flags", flags)
                 .toMap();
     }
@@ -75,6 +86,7 @@ public class UserEditData implements UserData, InteractionMapping
         return DataObject.empty()
                 .put("user_id", userId)
                 .put("username", username)
+                .put("avatar_id", avatarId)
                 .put("flags", flags)
                 .toData();
     }

@@ -84,6 +84,7 @@ import java.security.Security;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class IAMImpl implements IAM
 {
@@ -106,9 +107,6 @@ public class IAMImpl implements IAM
             Security.addProvider(new BouncyCastleProvider());
         ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
     }
-
-    public static final Map<UUID, User> users = new ConcurrentHashMap<>();
-    public static final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
 
     private final JNT api;
     private final JACT jact;
@@ -254,6 +252,15 @@ public class IAMImpl implements IAM
     {
         Checks.notNull(application, "Application");
         return retrieveAccessEntries(application.getOwnerId(), application.getThumbprints());
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccessSessions(@Nonnull UUID userId, @Nonnull List<Session> sessions)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(sessions, "Sessions");
+        return retrieveAccessEntries(userId, sessions.stream().map(Session::getThumbprint).collect(Collectors.toList()));
     }
 
     @Nonnull

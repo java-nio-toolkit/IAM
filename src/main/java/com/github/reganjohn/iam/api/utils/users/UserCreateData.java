@@ -32,18 +32,21 @@ public class UserCreateData implements UserData, SessionData, InteractionMapping
     private final UUID userId;
     private final UUID sessionId;
     private final String username;
+    private final String avatarId;
     private final String userAgent;
     private final AccessEntryData data;
     private final int userFlags;
     private final int sessionFlags;
     private final String thumbprint;
 
-    public UserCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String name, @Nullable String agent,
-                          @Nonnull AccessEntryData data, int userFlags, int sessionFlags, @Nonnull String thumbprint)
+    public UserCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String name,
+                          @Nullable String avatarId, @Nullable String agent, @Nonnull AccessEntryData data,
+                          int userFlags, int sessionFlags, @Nonnull String thumbprint)
     {
         this.userId = userId;
         this.sessionId = sessionId;
         this.username = name;
+        this.avatarId = avatarId;
         this.userAgent = agent;
         this.data = data;
         this.userFlags = userFlags;
@@ -70,6 +73,13 @@ public class UserCreateData implements UserData, SessionData, InteractionMapping
     public String getName()
     {
         return username;
+    }
+
+    @Nullable
+    @Override
+    public String getAvatarId()
+    {
+        return avatarId;
     }
 
     @Nullable
@@ -112,6 +122,7 @@ public class UserCreateData implements UserData, SessionData, InteractionMapping
         return new InteractionMapping.Builder()
                 .put("user_id", userId)
                 .put("username", username)
+                .put("avatar_id", avatarId)
                 .put("user_flags", userFlags)
                 .put("session_id", sessionId)
                 .put("user_agent", userAgent)
@@ -144,6 +155,7 @@ public class UserCreateData implements UserData, SessionData, InteractionMapping
         return DataObject.empty()
                 .put("user_id", userId)
                 .put("username", username)
+                .put("avatar_id", avatarId)
                 .put("flags", userFlags)
                 .put("session", sessionData)
                 .toData();

@@ -44,17 +44,20 @@ public class ApplicationImpl implements Application
     private final UUID ownerId;
     private final String name;
     private final String description;
+    private final String iconId;
     private final int flags;
     private final List<String> redirectUris;
 
     public ApplicationImpl(@Nonnull IAMImpl api, @Nonnull UUID id, @Nonnull UUID ownerId, @Nonnull String name,
-                           @Nullable String description, int flags, @Nonnull List<String> redirectUris)
+                           @Nullable String description, @Nullable String iconId, int flags,
+                           @Nonnull List<String> redirectUris)
     {
         this.api = api;
         this.id = id;
         this.ownerId = ownerId;
         this.name = name;
         this.description = description;
+        this.iconId = iconId;
         this.flags = flags;
         this.redirectUris = redirectUris;
     }
@@ -92,6 +95,13 @@ public class ApplicationImpl implements Application
     public String getDescription()
     {
         return description;
+    }
+
+    @Nullable
+    @Override
+    public String getIconId()
+    {
+        return iconId;
     }
 
     @Nonnull

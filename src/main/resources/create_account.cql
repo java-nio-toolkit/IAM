@@ -26,7 +26,7 @@ BEGIN TRANSACTION
         VALUES (:user_id, :kid, :alg, :kty, :usage, :thumbprint, :public_key);
         INSERT INTO users.sessions (user_id, session_id, flags, user_agent, thumbprint)
         VALUES (:user_id, :session_id, :session_flags, :user_agent, :thumbprint);
-        INSERT INTO users.accounts (user_id, username, flags)
-        VALUES (:user_id, :username, :user_flags);
+        INSERT INTO users.accounts (user_id, username, avatar_id, flags)
+        VALUES (:user_id, :username, :avatar_id, :user_flags);
     END IF
 COMMIT TRANSACTION;

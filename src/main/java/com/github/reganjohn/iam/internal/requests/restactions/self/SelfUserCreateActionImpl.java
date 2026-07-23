@@ -50,6 +50,7 @@ import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -86,7 +87,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         }
         finally
         {
-            handleFlags(context, request, rawData, schemaErrors);
+            handleAvatarId(context, request, rawData, schemaErrors);
         }
     }
 
@@ -102,6 +103,35 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         else if (body.getString("username").length() > User.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"username\" may not be longer than %d characters.", User.MAX_NAME_LENGTH));
+    }
+
+    private void handleAvatarId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                                @Nonnull DataObject rawData,
+                                @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkAvatarId(rawData);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("avatar_id", ex, schemaErrors);
+        }
+        finally
+        {
+            handleFlags(context, request, rawData, schemaErrors);
+        }
+    }
+
+    private void checkAvatarId(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("avatar_id"))
+            return;
+        else if (!body.isType("avatar_id", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"avatar_id\" value is not string.");
+        else if (body.getString("avatar_id").length() > User.AVATAR_CID_MAX_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"avatar_id\" may not be longer than %d characters.", User.AVATAR_CID_MAX_LENGTH));
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -191,10 +221,11 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         AccessEntryData entryData = assertData.getEntryData();
         byte[] rawPublicKey = entryData.getPublicKey().getEncoded();
         UUID sessionId = UUIDv7.nameUUIDFromBytes(rawPublicKey).toUUID();
+        String avatarId = rawData.getString("avatar_id", null);
         String agent = request.getHeaders().get("User-Agent");
         int userFlags = rawData.getInt("flags", 0) & ~User.UserFlag.SYSTEM;
         int sessionFlags = sessionData.getInt("flags", 0) & ~Session.SessionFlag.SYSTEM;
-        UserCreateData data = new UserCreateData(userId, sessionId, name, agent, entryData, userFlags, sessionFlags, thumbprint);
+        UserCreateData data = new UserCreateData(userId, sessionId, name, avatarId, agent, entryData, userFlags, sessionFlags, thumbprint);
         api.createUser(data).queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);
     }
 

@@ -70,9 +70,10 @@ CREATE TABLE IF NOT EXISTS users.public_keys
 
 CREATE TABLE IF NOT EXISTS users.accounts
 (
-    user_id  UUID,
-    flags    INT,
-    username TEXT,
+    user_id   UUID,
+    flags     INT,
+    username  TEXT,
+    avatar_id TEXT,
     PRIMARY KEY (user_id)
 ) WITH transactional_mode = 'full';
 
@@ -102,6 +103,7 @@ CREATE TABLE IF NOT EXISTS integrations.applications
     application_id UUID,
     name           TEXT,
     description    TEXT,
+    icon_id        TEXT,
     flags          INT,
     redirect_uris  LIST<TEXT>,
     PRIMARY KEY ((user_id), application_id)

@@ -22,6 +22,7 @@ import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.UUID;
 
 public class UserImpl implements User
@@ -29,13 +30,15 @@ public class UserImpl implements User
     private final IAMImpl api;
     private final UUID uniqueId;
     private final String name;
+    private final String avatarId;
     private final int flags;
 
-    public UserImpl(@Nonnull IAMImpl api, @Nonnull UUID id, @Nonnull String name, int flags)
+    public UserImpl(@Nonnull IAMImpl api, @Nonnull UUID id, @Nonnull String name, @Nullable String avatarId, int flags)
     {
         this.api = api;
         this.uniqueId = id;
         this.name = name;
+        this.avatarId = avatarId;
         this.flags = flags;
     }
 
@@ -58,6 +61,13 @@ public class UserImpl implements User
     public IAM getIAM()
     {
         return api;
+    }
+
+    @Nullable
+    @Override
+    public String getAvatarId()
+    {
+        return avatarId;
     }
 
     @Override

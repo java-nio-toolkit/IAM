@@ -32,6 +32,7 @@ import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -143,7 +144,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         }
         finally
         {
-            handleFlags(context, request, rawBody, schemaErrors);
+            handleIconId(context, request, rawBody, schemaErrors);
         }
     }
 
@@ -156,6 +157,35 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         else if (body.getString("description").length() > Application.MAX_DESCRIPTION_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"description\" may not be longer than %d characters.", Application.MAX_DESCRIPTION_LENGTH));
+    }
+
+    private void handleIconId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                              @Nonnull DataObject rawData,
+                              @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkIconId(rawData);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("icon_id", ex, schemaErrors);
+        }
+        finally
+        {
+            handleFlags(context, request, rawData, schemaErrors);
+        }
+    }
+
+    private void checkIconId(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("icon_id"))
+            return;
+        else if (!body.isType("icon_id", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"icon_id\" value is not string.");
+        else if (body.getString("icon_id").length() > Application.ICON_CID_MAX_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"icon_id\" may not be longer than %d characters.", Application.ICON_CID_MAX_LENGTH));
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -245,11 +275,12 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         UUID userId = application.getOwnerId();
         String name = json.getString("name", application.getName());
         String description = json.getString("description", application.getDescription());
+        String iconId = json.getString("icon_id", application.getIconId());
         int flags = json.getInt("flags", application.getFlagsRaw());
         int base = application.getFlagsRaw() & Application.ApplicationFlag.SYSTEM;
         int modifiers = flags & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = editRedirectUris(application, json);
-        ApplicationEditData editData = new ApplicationEditData(userId, applicationId, name, description, base | modifiers, redirectUris);
+        ApplicationEditData editData = new ApplicationEditData(userId, applicationId, name, description, iconId, base | modifiers, redirectUris);
         return api.editApplication(editData);
     }
 
@@ -260,7 +291,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
                 .stream(DataArray::getString)
                 .collect(Collectors.toList()) : application.getRedirectUris();
     }
-    
+
     public void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
         context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));

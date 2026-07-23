@@ -75,7 +75,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         }
         finally
         {
-            handleFlags(context, rawData, schemaErrors);
+            handleAvatarId(context, rawData, schemaErrors);
         }
     }
 
@@ -91,6 +91,34 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         else if (body.getString("username").length() > User.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"username\" may not be longer than %d characters.", User.MAX_NAME_LENGTH));
+    }
+
+    private void handleAvatarId(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawData,
+                            @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkAvatarId(rawData);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("avatar_id", ex, schemaErrors);
+        }
+        finally
+        {
+            handleFlags(context, rawData, schemaErrors);
+        }
+    }
+
+    private void checkAvatarId(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("avatar_id"))
+            return;
+        else if (!body.isType("avatar_id", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"avatar_id\" value is not string.");
+        else if (body.getString("avatar_id").length() > User.AVATAR_CID_MAX_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"avatar_id\" may not be longer than %d characters.", User.AVATAR_CID_MAX_LENGTH));
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawData,
@@ -135,10 +163,11 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
     {
         UUID userId = user.getUniqueId();
         String name = data.getString("username", user.getName());
+        String avatarId = data.getString("avatar_id", user.getAvatarId());
         int flags = data.getInt("flags", user.getFlagsRaw());
         int base = user.getFlagsRaw() & User.UserFlag.SYSTEM;
         int modifiers = flags & ~User.UserFlag.SYSTEM;
-        UserEditData editData = new UserEditData(userId, name, base | modifiers);
+        UserEditData editData = new UserEditData(userId, name, avatarId, base | modifiers);
         return api.editUserById(editData);
     }
 

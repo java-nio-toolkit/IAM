@@ -36,6 +36,8 @@ public interface Application extends IUnique
     int MIN_NAME_LENGTH = 2;
     /** The maximum length for an application name ({@value}) */
     int MAX_NAME_LENGTH = 32;
+    /** The maximum length for any Icon CID set on an application ({@value}) */
+    int ICON_CID_MAX_LENGTH = 128;
     /** The maximum amount of URL that can be set to an application ({@value}) */
     int MAX_URL_COUNT = 5;
     /** The maximum length for any URL set on an application ({@value}) */
@@ -69,6 +71,14 @@ public interface Application extends IUnique
      */
     @Nullable
     String getDescription();
+
+    /**
+     * The icon id of the application.
+     *
+     * @return The icon id of the application or null if no icon is defined
+     */
+    @Nullable
+    String getIconId();
 
     /**
      * The id for the user who owns this 

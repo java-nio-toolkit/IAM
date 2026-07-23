@@ -20,6 +20,7 @@ import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.reganjohn.iam.api.entities.User;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.EnumSet;
 import java.util.UUID;
 
@@ -30,6 +31,9 @@ public interface UserData extends SerializableData
 
     @Nonnull
     String getName();
+
+    @Nullable
+    String getAvatarId();
 
     int getRawUserFlags();
 

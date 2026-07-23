@@ -21,6 +21,7 @@ import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.EnumSet;
 
@@ -30,6 +31,8 @@ public interface User extends IUnique
     int MIN_NAME_LENGTH = 2;
     /** The maximum length for a username ({@value}) */
     int MAX_NAME_LENGTH = 32;
+    /** The maximum length for a avatar id ({@value}) */
+    int AVATAR_CID_MAX_LENGTH = 128;
 
     /**
      * The username of the {@link User User}. Length is between 2 and 32 characters (inclusive).
@@ -46,6 +49,15 @@ public interface User extends IUnique
      */
     @Nonnull
     IAM getIAM();
+
+    /**
+     * The IPFS CID for this user's avatar image.
+     * If the user has not set an image, this will return null.
+     *
+     * @return Possibly-null String containing the {@link com.github.reganjohn.iam.api.entities.User User} avatar id.
+     */
+    @Nullable
+    String getAvatarId();
 
     /**
      * Returns the {@link UserFlag UserFlags} of this user.
