@@ -29,6 +29,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
@@ -43,6 +44,11 @@ import com.github.reganjohn.iam.api.requests.restactions.session.SessionEditActi
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jact.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -172,15 +178,15 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
             UUID userId = UUID.fromString(json.getSubject());
             UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
             api.retrieveSessionById(userId, sessionId)
-                    .flatMap(session -> modify(session, rawBody, data, contextData.digest()))
+                    .map(session -> fromData(session, rawBody, data, contextData.digest()))
+                    .flatMap(this::modify)
                     .queue(success -> handleSuccess(context), context::fireExceptionCaught);
         }
     }
 
     @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<Void> modify(@Nonnull Session session, @Nonnull DataObject json,
-                                                   @Nonnull ProofObjectData data, @Nonnull String thumbprint)
+    private SessionEditData fromData(@Nonnull Session session, @Nonnull DataObject json,
+                                                     @Nonnull ProofObjectData data, @Nonnull String thumbprint)
     {
         UUID sessionId = session.getUniqueId();
         UUID userId = session.getUserId();
@@ -188,8 +194,28 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         int flags = json.getInt("flags", session.getFlagsRaw());
         int base = session.getFlagsRaw() & Session.SessionFlag.SYSTEM;
         int modifiers = flags & ~Session.SessionFlag.SYSTEM;
-        SessionEditData editData = new SessionEditData(userId, sessionId, userAgent, data.getEntryData(), base | modifiers, thumbprint);
-        return api.editSession(editData);
+        return new SessionEditData(userId, sessionId, userAgent, data.getEntryData(), base | modifiers, thumbprint);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> modify(@Nonnull SessionEditData session)
+    {
+        Checks.notNull(session, "Session");
+        String content = Helpers.format("UPDATE users.sessions SET %s WHERE user_id = :user_id AND session_id = :session_id IF EXISTS",
+                InteractionUtil.join(session.toData().keys(), true));
+        return new InteractionMappingActionImpl<>(api.getJACT(), content, session.toMap())
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
+            }
+        };
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)

@@ -23,15 +23,15 @@ import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import javax.annotation.Nonnull;
 import java.util.UUID;
 
-public class AccessApplicationCreateData implements ApplicationData
+public class AccessCreateData implements ApplicationData
 {
     private final UUID userId;
     private final UUID applicationId;
     private final AccessEntryData entryData;
     private final String thumbprint;
 
-    public AccessApplicationCreateData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull AccessEntryData data,
-                                       @Nonnull String thumbprint)
+    public AccessCreateData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull AccessEntryData data,
+                            @Nonnull String thumbprint)
     {
         this.userId = userId;
         this.applicationId = applicationId;

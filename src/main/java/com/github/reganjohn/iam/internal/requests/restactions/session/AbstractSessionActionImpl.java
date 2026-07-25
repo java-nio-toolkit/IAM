@@ -89,7 +89,7 @@ public abstract class AbstractSessionActionImpl extends RestActionImpl implement
     @CheckReturnValue
     protected InteractionCallbackAction<DataObject> retrieveData(@Nonnull Session session)
     {
-        return session.getAccessEntry().map(data ->
+        return session.retrieveAccess().map(data ->
         {
             DataObject user = DataObject.empty()
                     .put("user_id", session.getUserId())

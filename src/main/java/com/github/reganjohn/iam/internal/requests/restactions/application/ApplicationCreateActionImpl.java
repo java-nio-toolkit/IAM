@@ -28,18 +28,25 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationCreateAction;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -188,7 +195,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
 
     private void handleRedirectUris(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                                     @Nonnull DataObject rawBody,
-                                    @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+                                    @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
@@ -201,11 +208,11 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         }
         catch (DataObjectParsingException ex)
         {
-            handleErrorResponse("redirect_uris", ex, schemaErrors);
+            handleErrorResponse("redirect_uris", ex, errors);
         }
         finally
         {
-            handleInternally(context, rawBody, schemaErrors);
+            handleException(context, rawBody, errors);
         }
     }
 
@@ -222,18 +229,31 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_urls\" contains value which is not a url.");
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody, @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
+    private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody, @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
-        if (Helpers.nonEmpty(errors))
+        if (errors.isEmpty())
+            handleInternally(context, rawBody);
+        else
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        create(rawBody, objectData).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody)
+    {
+        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        UUID userId = UUID.fromString(data.getSubject());
+        api.retrieveUserById(userId)
+                .flatMap(User::retrieveApplicationCount)
+                .map(count -> fromData(rawBody, data, count))
+                .flatMap(this::create)
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> create(@Nonnull DataObject rawBody, @Nonnull AccessObjectData data)
+    private ApplicationCreateData fromData(@Nonnull DataObject rawBody, @Nonnull AccessObjectData data, int count)
     {
+        if (count > MAX_APPLICATION_COUNT)
+            throw new ErrorResponseException(ErrorResponse.MAX_APPLICATION);
         UUID userId = UUID.fromString(data.getSubject());
         UUIDv7 applicationId = UUIDv7.randomUUID();
         String name = rawBody.getString("name");
@@ -241,20 +261,27 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         String iconId = rawBody.getString("icon_id", null);
         int flags = rawBody.getInt("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = rawBody.getArray("redirect_uris").stream(DataArray::getString).collect(Collectors.toList());
-        ApplicationCreateData createData = new ApplicationCreateData(userId, applicationId.toUUID(), name, description, iconId, flags, redirectUris);
-        return api.retrieveApplicationCount(userId).flatMap(count -> create(createData, count));
+        return new ApplicationCreateData(userId, applicationId.toUUID(), name, description, iconId, flags, redirectUris);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> create(ApplicationCreateData application, int count)
+    private InteractionCallbackAction<Void> create(@Nonnull ApplicationCreateData application)
     {
-        if (count <= MAX_APPLICATION_COUNT)
-            return api.createApplication(application);
-        else
-            throw new ErrorResponseException(ErrorResponse.MAX_APPLICATION);
+        Checks.notNull(application, "Application");
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_application.cql"), application.toMap())
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.APPLICATION_ALREADY_EXISTS));
+            }
+        };
     }
-
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {

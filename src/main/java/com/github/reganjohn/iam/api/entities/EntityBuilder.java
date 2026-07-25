@@ -43,6 +43,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 public class EntityBuilder extends AbstractEntityBuilder
 {
@@ -102,15 +103,14 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public static ApplicationInfoImpl createApplicationInfo(@Nonnull Application application,
-                                                            @Nonnull BufferArray array)
+    public ApplicationContextImpl createApplicationAccess(@Nonnull Application application, @Nonnull BufferArray array)
     {
         List<String> thumbprints = new ArrayList<>();
         for (BufferObject bufferObject : array)
         {
             thumbprints.add(bufferObject.getString("thumbprint"));
         }
-        return new ApplicationInfoImpl(application, thumbprints);
+        return new ApplicationContextImpl(api, application, thumbprints);
     }
 
     @Nonnull
@@ -144,11 +144,16 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public List<AccessEntryData> createAccessEntries(@Nonnull BufferArray data) throws Exception
+    public List<AccessEntryData> createAccessEntries(@Nonnull BufferArray data, @Nonnull Predicate<String> filter) throws Exception
     {
         List<AccessEntryData> entries = new ArrayList<>();
         for (BufferObject obj : data)
-            entries.add(createAccessEntry(obj));
+        {
+            if (filter.test(obj.getString("thumbprint", null)))
+            {
+                entries.add(createAccessEntry(obj));
+            }
+        }
         return entries;
     }
 

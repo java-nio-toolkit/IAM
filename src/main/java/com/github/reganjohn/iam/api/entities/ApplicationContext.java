@@ -17,16 +17,21 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import org.jetbrains.annotations.Unmodifiable;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.UUID;
 
-public interface ApplicationInfo extends IUnique
+public interface ApplicationContext extends IUnique
 {
     @Nonnull
-    UUID getOwnerId();
+    IAMImpl getIAM();
 
     @Nonnull
     Application getApplication();
@@ -34,4 +39,8 @@ public interface ApplicationInfo extends IUnique
     @Nonnull
     @Unmodifiable
     List<String> getThumbprints();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<List<AccessEntryData>> retrieveAccessEntries();
 }

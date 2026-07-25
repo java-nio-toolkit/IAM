@@ -16,6 +16,12 @@
 
 package com.github.reganjohn.iam.api;
 
+import com.github.reganjohn.iam.api.entities.EntityBuilder;
+
+import javax.annotation.Nonnull;
+
 public interface IAM
 {
+    @Nonnull
+    EntityBuilder getEntityBuilder();
 }

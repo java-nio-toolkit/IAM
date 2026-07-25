@@ -28,6 +28,9 @@ import java.util.UUID;
 public interface SessionData extends SerializableData
 {
     @Nonnull
+    UUID getUserId();
+
+    @Nonnull
     UUID getSessionId();
 
     @Nullable

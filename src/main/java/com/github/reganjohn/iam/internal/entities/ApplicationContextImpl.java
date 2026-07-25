@@ -16,23 +16,36 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationInfo;
+import com.github.reganjohn.iam.api.entities.ApplicationContext;
+import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-public class ApplicationInfoImpl implements ApplicationInfo
+public class ApplicationContextImpl implements ApplicationContext
 {
+    private final IAMImpl api;
     private final Application application;
     private final List<String> thumbprints;
 
-    public ApplicationInfoImpl(@Nonnull Application application, @Nonnull List<String> thumbprints)
+    public ApplicationContextImpl(@Nonnull IAMImpl api, @Nonnull Application application, @Nonnull List<String> thumbprints)
     {
+        this.api = api;
         this.application = application;
         this.thumbprints = thumbprints;
+    }
+
+    @Nonnull
+    @Override
+    public IAMImpl getIAM()
+    {
+        return api;
     }
 
     @Nonnull
@@ -40,13 +53,6 @@ public class ApplicationInfoImpl implements ApplicationInfo
     public UUID getUniqueId()
     {
         return application.getUniqueId();
-    }
-
-    @Nonnull
-    @Override
-    public UUID getOwnerId()
-    {
-        return application.getOwnerId();
     }
 
     @Nonnull
@@ -61,5 +67,13 @@ public class ApplicationInfoImpl implements ApplicationInfo
     public List<String> getThumbprints()
     {
         return Collections.unmodifiableList(thumbprints);
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccessEntries()
+    {
+        Checks.notNull(application, "Application");
+        return api.retrieveAccessEntries(application.getOwnerId(), getThumbprints());
     }
 }

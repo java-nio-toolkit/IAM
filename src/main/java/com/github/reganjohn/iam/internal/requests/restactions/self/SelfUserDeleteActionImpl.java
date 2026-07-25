@@ -21,6 +21,7 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserDeleteAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -43,12 +44,9 @@ public class SelfUserDeleteActionImpl extends AbstractUserActionImpl implements 
     {
         AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(objectData.getSubject());
-        handleInternally(context, userId);
-    }
-
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
-    {
-        api.deleteUserById(userId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        api.retrieveUserById(userId)
+                .flatMap(User::delete)
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)

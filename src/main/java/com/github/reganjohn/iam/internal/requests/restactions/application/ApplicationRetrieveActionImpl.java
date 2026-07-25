@@ -103,7 +103,7 @@ public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl
         UUID userId = UUID.fromString(data.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
         api.retrieveApplicationById(userId, applicationId)
-                .map(this::retrieveData)
+                .map(this::fromData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }
 
@@ -114,13 +114,14 @@ public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl
     }
 
     @Nonnull
-    private DataObject retrieveData(@Nonnull Application application)
+    private DataObject fromData(@Nonnull Application application)
     {
         return DataObject.empty()
                 .put("user_id", application.getOwnerId())
                 .put("application_id", application.getUniqueId())
                 .put("name", application.getName())
                 .put("description", application.getDescription())
+                .put("icon_id", application.getIconId())
                 .put("flags", application.getFlagsRaw())
                 .put("redirect_uris", application.getRedirectUris())
                 .toData();

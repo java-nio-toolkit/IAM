@@ -37,7 +37,8 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
-import com.github.reganjohn.iam.api.entities.ApplicationInfo;
+import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.entities.ApplicationContext;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -168,7 +169,7 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
                                                                @Nonnull PermissionOverride permission)
     {
         return api.retrieveApplicationById(permission.getOwnerId(), permission.getApplicationId())
-                .flatMap(api::retrieveApplicationInfo)
+                .flatMap(Application::retrieveAccess)
                 .flatMap(info -> update(context, data, json, info, permission));
     }
 
@@ -177,7 +178,7 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
     private InteractionCallbackAction<AccessObjectData> update(@Nonnull ChannelHandlerContext context,
                                                                @Nonnull AccessContextData data,
                                                                @Nonnull AccessObjectData json,
-                                                               @Nonnull ApplicationInfo application,
+                                                               @Nonnull ApplicationContext application,
                                                                @Nonnull PermissionOverride permission)
     {
         DataObject contextData = json.getContextData();

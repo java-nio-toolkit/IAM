@@ -33,23 +33,27 @@ public interface Session extends IUnique
     @Nonnull
     UUID getUserId();
 
+    @Nullable
+    String getUserAgent();
+
+    @Nonnull
+    String getThumbprint();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Void> delete();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<AccessEntryData> retrieveAccess();
+
     @Nonnull
     default EnumSet<SessionFlag> getFlags()
     {
         return SessionFlag.getFlags(getFlagsRaw());
     }
 
-    @Nonnull
-    @CheckReturnValue
-    InteractionCallbackAction<AccessEntryData> getAccessEntry();
-
     int getFlagsRaw();
-
-    @Nonnull
-    String getThumbprint();
-
-    @Nullable
-    String getUserAgent();
 
     /**
      * Represents the bit offsets used for session flags.

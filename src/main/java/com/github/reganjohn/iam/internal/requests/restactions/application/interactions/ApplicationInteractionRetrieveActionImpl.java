@@ -36,7 +36,7 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationInfo;
+import com.github.reganjohn.iam.api.entities.ApplicationContext;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -152,7 +152,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         {
             retrieveCallbackResponse(applicationId, interactionId)
                     .flatMap(ApplicationCallbackResponse::retrieveApplication)
-                    .flatMap(api::retrieveApplicationInfo)
+                    .flatMap(Application::retrieveAccess)
                     .map(application -> retrieveApplication(application, contextData))
                     .flatMap(application -> retrieveCallbackResponse(application.getUniqueId(), interactionId))
                     .map(response -> createObjectData(context, data, response))
@@ -161,7 +161,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     }
 
     @Nonnull
-    private Application retrieveApplication(@Nonnull ApplicationInfo info, @Nonnull AccessContextData context)
+    private Application retrieveApplication(@Nonnull ApplicationContext info, @Nonnull AccessContextData context)
     {
         if (Helpers.contains(info.getThumbprints(), context.digest(), false))
             return info.getApplication();

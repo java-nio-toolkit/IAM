@@ -47,6 +47,13 @@ public class SessionEditData implements SessionData
 
     @Nonnull
     @Override
+    public UUID getUserId()
+    {
+        return userId;
+    }
+
+    @Nonnull
+    @Override
     public UUID getSessionId()
     {
         return sessionId;

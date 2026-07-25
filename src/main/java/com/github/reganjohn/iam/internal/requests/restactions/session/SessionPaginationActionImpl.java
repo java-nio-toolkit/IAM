@@ -32,6 +32,7 @@ import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionPaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -64,7 +65,10 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        retrieveData(userId).queue(successObj -> handleSuccess(context, successObj), context::fireExceptionCaught);
+        api.retrieveUserById(userId)
+                .flatMap(User::retrieveSessions)
+                .flatMap(sessions -> retrieveData(userId, sessions))
+                .queue(successObj -> handleSuccess(context, successObj), context::fireExceptionCaught);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
@@ -75,24 +79,25 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId)
-    {
-        Checks.notNull(userId, "User ID");
-        return api.retrieveSessions(userId).flatMap(sessions -> retrieveData(userId, sessions));
-    }
-
-    @Nonnull
-    @CheckReturnValue
     private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId, @Nonnull List<Session> sessions)
     {
         Checks.notNull(userId, "User ID");
         Checks.notNull(sessions, "Sessions");
-        return retrieveMap(userId, sessions).map(data -> mapFromData(sessions, data));
+        return retrieveMap(userId, sessions).map(data -> mapFromDataArray(sessions, data));
+    }
+
+    @Nonnull
+    private DataArray mapFromDataArray(@Nonnull List<Session> sessions, @Nonnull Map<String, DataObject> map)
+    {
+        Checks.notNull(sessions, "Sessions");
+        Checks.notNull(map, "Map");
+        return sessions.stream().map(session -> retrieveAccessData(session, map)).collect(Helpers.toDataArray());
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Map<String, DataObject>> retrieveMap(@Nonnull UUID userId, @Nonnull List<Session> sessions)
+    private InteractionCallbackAction<Map<String, DataObject>> retrieveMap(@Nonnull UUID userId,
+                                                                           @Nonnull List<Session> sessions)
     {
         Checks.notNull(userId, "User ID");
         Checks.notNull(sessions, "Sessions");
@@ -104,14 +109,6 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     {
         Checks.notNull(entries, "Access Entries");
         return entries.stream().map(SessionOverrideData::new).collect(Collectors.toMap(SessionOverrideData::getThumbprint, SessionOverrideData::toData));
-    }
-
-    @Nonnull
-    private DataArray mapFromData(@Nonnull List<Session> sessions, @Nonnull Map<String, DataObject> map)
-    {
-        Checks.notNull(sessions, "Sessions");
-        Checks.notNull(map, "Map");
-        return sessions.stream().map(session -> retrieveAccessData(session, map)).collect(Helpers.toDataArray());
     }
 
     @Nonnull

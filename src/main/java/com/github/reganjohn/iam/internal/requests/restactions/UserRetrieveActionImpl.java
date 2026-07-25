@@ -105,8 +105,9 @@ public class UserRetrieveActionImpl extends AbstractUserActionImpl implements Us
     private static ByteBuf fromJSON(@Nonnull User user)
     {
         return DataObject.empty()
-                .put("id", user.getId())
+                .put("user_id", user.getUniqueId())
                 .put("username", user.getName())
+                .put("avatar_id", user.getAvatarId())
                 .put("flags", user.getFlagsRaw())
                 .toBinary();
     }

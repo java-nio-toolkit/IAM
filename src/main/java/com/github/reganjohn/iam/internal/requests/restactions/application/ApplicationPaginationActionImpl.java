@@ -27,6 +27,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationPaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -57,7 +58,10 @@ public class ApplicationPaginationActionImpl extends AbstractApplicationActionIm
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        retrieveData(userId).queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
+        api.retrieveUserById(userId)
+                .flatMap(User::retrieveApplications)
+                .map(this::fromData)
+                .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
@@ -67,26 +71,20 @@ public class ApplicationPaginationActionImpl extends AbstractApplicationActionIm
     }
 
     @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<DataArray> retrieveData(@Nonnull UUID userId)
+    private DataArray fromData(@Nonnull List<Application> applications)
     {
-        return api.retrieveApplications(userId).map(this::retrieveData);
+        return applications.stream().map(this::fromData).collect(Helpers.toDataArray());
     }
 
     @Nonnull
-    private DataArray retrieveData(@Nonnull List<Application> applications)
-    {
-        return applications.stream().map(this::retrieveData).collect(Helpers.toDataArray());
-    }
-
-    @Nonnull
-    private DataObject retrieveData(@Nonnull Application application)
+    private DataObject fromData(@Nonnull Application application)
     {
         return DataObject.empty()
                 .put("user_id", application.getOwnerId())
                 .put("application_id", application.getUniqueId())
                 .put("name", application.getName())
                 .put("description", application.getDescription())
+                .put("icon_id", application.getIconId())
                 .put("flags", application.getFlagsRaw())
                 .put("redirect_uris", application.getRedirectUris())
                 .toData();

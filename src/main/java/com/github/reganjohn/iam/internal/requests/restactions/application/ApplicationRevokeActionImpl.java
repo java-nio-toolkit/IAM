@@ -23,6 +23,7 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -30,9 +31,17 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationRevokeAction;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +91,7 @@ public class ApplicationRevokeActionImpl extends AbstractApplicationActionImpl i
     }
 
     private void handleAccessId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                               @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
+                                @Nonnull List<InvalidResponseException.SchemaError> schemaErrors)
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
@@ -120,7 +129,38 @@ public class ApplicationRevokeActionImpl extends AbstractApplicationActionImpl i
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
         String accessId = request.getRoute().getMajorParameters().get("access_id");
-        api.deleteApplicationAccessEntry(userId, applicationId, accessId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        revoke(userId, applicationId, accessId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Void> revoke(@Nonnull UUID userId, @Nonnull UUID applicationId,
+                                                   @Nonnull String thumbprint)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(applicationId, "Application ID");
+        Checks.notEmpty(thumbprint, "Thumbprint");
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("delete_access_application.cql"), mapFromData(userId, applicationId, thumbprint))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                interaction.onSuccess(null);
+            }
+        };
+    }
+
+    @Nonnull
+    private InteractionMapping mapFromData(@Nonnull UUID userId, @Nonnull UUID applicationId,
+                                           @Nonnull String thumbprint)
+    {
+        return new InteractionMapping.Builder()
+                .put("user_id", userId)
+                .put("application_id", applicationId)
+                .put("thumbprint", thumbprint)
+                .build();
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

@@ -19,8 +19,16 @@ package com.github.reganjohn.iam.internal.entities;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.EntityString;
 import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -62,22 +70,39 @@ public class SessionImpl implements Session
 
     @Nonnull
     @Override
-    public UUID getUserId()
-    {
-        return userId;
-    }
-
-    @Nonnull
-    @Override
-    public InteractionCallbackAction<AccessEntryData> getAccessEntry()
+    public InteractionCallbackAction<AccessEntryData> retrieveAccess()
     {
         return api.retrieveAccessEntryById(userId, thumbprint);
     }
 
+    @Nonnull
     @Override
-    public int getFlagsRaw()
+    public InteractionCallbackAction<Void> delete()
     {
-        return flags;
+        InteractionMapping map = new InteractionMapping.Builder()
+                .put("user_id", getUserId())
+                .put("session_id", getUniqueId())
+                .put("thumbprint", getThumbprint())
+                .build();
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("delete_session.cql"), map)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
+            }
+        };
+    }
+
+    @Nullable
+    @Override
+    public String getUserAgent()
+    {
+        return userAgent;
     }
 
     @Nonnull
@@ -87,11 +112,17 @@ public class SessionImpl implements Session
         return thumbprint;
     }
 
-    @Nullable
+    @Nonnull
     @Override
-    public String getUserAgent()
+    public UUID getUserId()
     {
-        return userAgent;
+        return userId;
+    }
+
+    @Override
+    public int getFlagsRaw()
+    {
+        return flags;
     }
 
     @Override

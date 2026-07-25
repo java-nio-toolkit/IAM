@@ -15,14 +15,14 @@
  */
 
 BEGIN TRANSACTION
-    LET application_data = (SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id);
+    LET application_data = (SELECT * FROM integrations.applications WHERE user_id = :owner_id AND application_id = :application_id);
 
     -- Return data directly from table (must come before DELETE)
-    SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id;
+    SELECT * FROM integrations.applications WHERE user_id = :owner_id AND application_id = :application_id;
 
     IF application_data IS NOT NULL THEN
-        DELETE FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id;
-        DELETE FROM integrations.public_keys WHERE user_id = :user_id AND application_id = :application_id;
-        DELETE FROM users.public_keys WHERE user_id = :user_id AND thumbprint IN (%s);
+        DELETE FROM integrations.applications WHERE user_id = :owner_id AND application_id = :application_id;
+        DELETE FROM integrations.public_keys WHERE user_id = :owner_id AND application_id = :application_id;
+        DELETE FROM users.public_keys WHERE user_id = :owner_id AND thumbprint IN (%s);
     END IF
 COMMIT TRANSACTION;

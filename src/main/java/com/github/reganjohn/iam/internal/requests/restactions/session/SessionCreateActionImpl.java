@@ -32,19 +32,26 @@ import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionCreateAction;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
@@ -344,37 +351,46 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                  @Nonnull DataObject rawData,
+                                  @Nonnull DataObject rawBody,
                                   @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
-        AccessEntryData entryData = AbstractEntityBuilder.createAccessEntry(rawData);
+        AccessEntryData entryData = AbstractEntityBuilder.createAccessEntry(rawBody);
         try (AccessContextData contextData = entryData.getContext(AccessContextType.SHA_256))
         {
             String uniqueId = UUIDv7.randomUUID().toString();
             String issuer = api.getJNT().getIdentifierString();
-            String subject = objectData.getSubject();
+            String subject = data.getSubject();
             AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
-            create(request, entryData, contextData, json).queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);;
+            SessionCreateData rawData = fromData(request, entryData, contextData, json);
+            handleInternally(context, json, rawData);
         }
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData data,
+                                  @Nonnull SessionCreateData session)
+    {
+        api.retrieveUserById(session.getUserId())
+                .flatMap(User::retrieveSessionCount)
+                .flatMap(count -> create(session, count))
+                .queue(success -> handleSuccess(context, data), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> create(@Nonnull Request request, @Nonnull AccessEntryData entryData,
-                                                   @Nonnull AccessContextData context, @Nonnull AccessObjectData data)
+    private SessionCreateData fromData(@Nonnull Request request, @Nonnull AccessEntryData entryData,
+                                       @Nonnull AccessContextData context, @Nonnull AccessObjectData data)
     {
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublicKey().getEncoded());
         String subject = data.getSubject();
         String userAgent = request.getHeaders().get("User-Agent");
         String thumbprint = context.digest();
         UUID userId = UUID.fromString(subject);
-        SessionCreateData session = new SessionCreateData(userId, sessionId.toUUID(), userAgent, entryData, 0, thumbprint);
-        return api.retrieveSessionCount(userId).flatMap(count -> create(session, count));
+        return new SessionCreateData(userId, sessionId.toUUID(), userAgent, entryData, 0, thumbprint);
     }
 
     @Nonnull
@@ -383,16 +399,34 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         if (count == 0)
             throw new ErrorResponseException(ErrorResponse.UNKNOWN_USER);
-        else if (count <= MAX_SESSION_COUNT)
-            return api.createSession(session);
-        else
+        else if (count > MAX_SESSION_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_SESSIONS);
+        else
+            return create(session);
     }
 
-
-    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData objectData)
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Void> create(@Nonnull SessionCreateData session)
     {
-        ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), objectData.getRaw());
+        Checks.notNull(session, "Session");
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_session.cql"), session.toMap())
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.SESSION_ALREADY_EXISTS));
+            }
+        };
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData data)
+    {
+        ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
         context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }

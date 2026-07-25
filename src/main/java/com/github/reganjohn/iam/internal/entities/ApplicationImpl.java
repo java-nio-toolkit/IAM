@@ -16,11 +16,8 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
-import com.github.adamorgan.jnt.internal.utils.Checks;
-import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationInfo;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.ApplicationContext;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -29,6 +26,7 @@ import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.internal.interactions.InteractionImpl;
 import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.jact.internal.utils.InteractionUtil;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -64,7 +62,7 @@ public class ApplicationImpl implements Application
 
     @Nonnull
     @Override
-    public IAM getIAM()
+    public IAMImpl getIAM()
     {
         return api;
     }
@@ -109,6 +107,40 @@ public class ApplicationImpl implements Application
     public List<String> getRedirectUris()
     {
         return Collections.unmodifiableList(redirectUris);
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<Integer> retrieveAccessCount()
+    {
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT COUNT(*) FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess((int) InteractionUtil.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<ApplicationContext> retrieveAccess()
+    {
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<ApplicationContext> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(ApplicationImpl.this, array));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+            }
+        };
     }
 
     @Override

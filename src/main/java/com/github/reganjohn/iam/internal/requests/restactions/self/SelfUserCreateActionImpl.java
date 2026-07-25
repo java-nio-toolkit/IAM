@@ -29,6 +29,7 @@ import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
@@ -41,16 +42,22 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserCreateAction;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.users.UserCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -207,17 +214,18 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
             String identifier = api.getJNT().getIdentifierString();
             UUIDv7 userId = UUIDv7.randomUUID();
             AccessObjectData json = EntityBuilder.createObjectData(uniqueId, identifier, userId.toString(), manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
-            handleInternally(context, request, userId.toUUID(), contextData, json, data, rawBody, sessionData);
+            UserCreateData rawData = fromData(request, data, contextData, userId.toUUID(), rawBody, sessionData);
+            create(rawData).queue(success -> handleSuccess(context, json), context::fireExceptionCaught);
         }
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                  @Nonnull UUID userId, @Nonnull AccessContextData contextData,
-                                  @Nonnull AccessObjectData objectData, @Nonnull ProofObjectData assertData,
-                                  @Nonnull DataObject rawData, @Nonnull DataObject sessionData)
+    @Nonnull
+    private UserCreateData fromData(@Nonnull Request request, @Nonnull ProofObjectData assertData,
+                                    @Nonnull AccessContextData context, @Nonnull UUID userId,
+                                    @Nonnull DataObject rawData, @Nonnull DataObject sessionData)
     {
         String name = rawData.getString("username");
-        String thumbprint = contextData.digest();
+        String thumbprint = context.digest();
         AccessEntryData entryData = assertData.getEntryData();
         byte[] rawPublicKey = entryData.getPublicKey().getEncoded();
         UUID sessionId = UUIDv7.nameUUIDFromBytes(rawPublicKey).toUUID();
@@ -225,8 +233,26 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         String agent = request.getHeaders().get("User-Agent");
         int userFlags = rawData.getInt("flags", 0) & ~User.UserFlag.SYSTEM;
         int sessionFlags = sessionData.getInt("flags", 0) & ~Session.SessionFlag.SYSTEM;
-        UserCreateData data = new UserCreateData(userId, sessionId, name, avatarId, agent, entryData, userFlags, sessionFlags, thumbprint);
-        api.createUser(data).queue(success -> handleSuccess(context, objectData), context::fireExceptionCaught);
+        return new UserCreateData(userId, sessionId, name, avatarId, agent, entryData, userFlags, sessionFlags, thumbprint);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> create(@Nonnull UserCreateData user)
+    {
+        Checks.notNull(user, "User");
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_account.cql"), user)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.USER_ALREADY_EXISTS));
+            }
+        };
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData objectData)

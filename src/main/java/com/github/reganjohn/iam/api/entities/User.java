@@ -19,11 +19,14 @@ package com.github.reganjohn.iam.api.entities;
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 
 public interface User extends IUnique
 {
@@ -69,6 +72,30 @@ public interface User extends IUnique
     {
         return UserFlag.getFlags(getFlagsRaw());
     }
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<List<Session>> retrieveSessions();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Integer> retrieveSessionCount();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<List<Application>> retrieveApplications();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Integer> retrieveApplicationCount();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<List<PermissionOverride>> retrieveEntitlements();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Void> delete();
 
     /**
      * Returns the bitmask representation of the {@link UserFlag UserFlags} of this user.

@@ -25,10 +25,7 @@ import org.jetbrains.annotations.Unmodifiable;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public interface Application extends IUnique
 {
@@ -98,6 +95,14 @@ public interface Application extends IUnique
     @Nonnull
     @Unmodifiable
     List<String> getRedirectUris();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Integer> retrieveAccessCount();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<ApplicationContext> retrieveAccess();
 
     /**
      * The {@link ApplicationFlag Flags} set for the application.

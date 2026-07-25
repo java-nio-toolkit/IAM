@@ -50,7 +50,7 @@ public class ContentSecurityOverrideManagerImpl extends AbstractInteractionObjec
     }
 
     @Override
-    public void handlerAdded(@Nonnull ChannelHandlerContext context) throws Exception
+    public void handlerAdded(@Nonnull ChannelHandlerContext context)
     {
         if (!headers.isEmpty())
             this.headers.clear();
@@ -73,7 +73,7 @@ public class ContentSecurityOverrideManagerImpl extends AbstractInteractionObjec
                 .setTimeOutEnd(365, TimeUnit.DAYS, ContentSecurityContext.Type.PRELOAD)
                 .setReferrerPolicy(ReferrerPolicy.STRICT_CROSS)
                 .setHideContentTypeOption(true)
-                .addInteractionEndpointUrl("default", "http://iam.com")
+                .addInteractionEndpointUrl("default", "https://iam.localhost.com")
                 .setInteractionContext(InteractionContextType.NONE, "default")
                 .setInteractionContent(InteractionContentType.REQUIRE, "default")
                 .setInteractionResource(InteractionResourceType.SAME_ORIGIN)

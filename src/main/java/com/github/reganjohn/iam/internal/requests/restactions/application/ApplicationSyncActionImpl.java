@@ -28,6 +28,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -37,10 +38,17 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationSyncAction;
-import com.github.reganjohn.iam.api.utils.applications.AccessApplicationCreateData;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.applications.AccessCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
 
@@ -378,22 +386,42 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
             UUID userId = UUID.fromString(objectData.getSubject());
             UUID applicationId = UUID.fromString(params.get("application_id"));
             api.retrieveApplicationById(userId, applicationId)
-                    .flatMap(api::retrieveApplicationAccessCount)
+                    .flatMap(Application::retrieveAccessCount)
                     .map(count -> create(userId, applicationId, count, entryData, contextData))
-                    .flatMap(api::createApplicationAccessEntry)
+                    .flatMap(this::sync)
                     .queue(success -> handleSuccess(context), context::fireExceptionCaught);
         }
     }
 
     @Nonnull
-    public AccessApplicationCreateData create(@Nonnull UUID userId, @Nonnull UUID applicationId, int count,
-                                              @Nonnull AccessEntryData entryData,
-                                              @Nonnull AccessContextData contextData)
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> sync(@Nonnull AccessCreateData access)
+    {
+        Checks.notNull(access, "Application");
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_access_application.cql"), access.toMap())
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    interaction.onSuccess(null);
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS));
+            }
+        };
+    }
+
+    @Nonnull
+    public AccessCreateData create(@Nonnull UUID userId, @Nonnull UUID applicationId, int count,
+                                   @Nonnull AccessEntryData entryData,
+                                   @Nonnull AccessContextData contextData)
     {
         if (count > Application.MAX_ACCESS_ENTRY_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_ACCESS_APPLICATION);
         else
-            return new AccessApplicationCreateData(userId, applicationId, entryData, contextData.digest());
+            return new AccessCreateData(userId, applicationId, entryData, contextData.digest());
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)

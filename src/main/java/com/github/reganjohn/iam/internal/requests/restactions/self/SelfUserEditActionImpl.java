@@ -24,6 +24,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -37,6 +38,11 @@ import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jact.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -153,13 +159,13 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(objectData.getSubject());
         api.retrieveUserById(userId)
-                .flatMap(user -> modify(user, json))
+                .map(user -> fromData(user, json))
+                .flatMap(this::modify)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<Void> modify(@Nonnull User user, @Nonnull DataObject data)
+    private UserEditData fromData(@Nonnull User user, @Nonnull DataObject data)
     {
         UUID userId = user.getUniqueId();
         String name = data.getString("username", user.getName());
@@ -167,8 +173,26 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         int flags = data.getInt("flags", user.getFlagsRaw());
         int base = user.getFlagsRaw() & User.UserFlag.SYSTEM;
         int modifiers = flags & ~User.UserFlag.SYSTEM;
-        UserEditData editData = new UserEditData(userId, name, avatarId, base | modifiers);
-        return api.editUserById(editData);
+        return new UserEditData(userId, name, avatarId, base | modifiers);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> modify(@Nonnull UserEditData user)
+    {
+        Checks.notNull(user, "User");
+        return new InteractionMappingActionImpl<>(api.getJACT(), "UPDATE users.accounts SET username = :username, flags = :flags WHERE user_id = :user_id IF EXISTS", user)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
+            }
+        };
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

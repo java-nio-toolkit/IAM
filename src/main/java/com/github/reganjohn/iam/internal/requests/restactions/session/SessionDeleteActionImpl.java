@@ -25,6 +25,8 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -98,22 +100,20 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
         UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
-        api.retrieveSessionCount(userId)
-                .flatMap(count ->
-                {
-                    if (count == 1)
-                        throw new ErrorResponseException(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION);
-                    else
-                        return delete(userId, sessionId);
-                })
+        api.retrieveUserById(userId)
+                .flatMap(User::retrieveSessionCount)
+                .map(count -> delete(userId, sessionId, count))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> delete(UUID userId, UUID sessionId)
+    private InteractionCallbackAction<Void> delete(UUID userId, UUID sessionId, int count)
     {
-        return api.retrieveSessionById(userId, sessionId).flatMap(api::deleteSessionById);
+        if (count == 1)
+            throw new ErrorResponseException(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION);
+        else
+            return api.retrieveSessionById(userId, sessionId).flatMap(Session::delete);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

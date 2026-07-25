@@ -27,6 +27,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.self.PermissionOverridePaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -51,7 +52,9 @@ public class PermissionOverridePaginationActionImpl extends AbstractApplicationA
     {
         AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(data.getSubject());
-        api.retrieveEntitlements(userId).map(this::mapFromData).queue(json -> handleSuccess(context, json));
+        api.retrieveUserById(userId)
+                .flatMap(User::retrieveEntitlements)
+                .map(this::mapFromData).queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }
 
     @Nonnull

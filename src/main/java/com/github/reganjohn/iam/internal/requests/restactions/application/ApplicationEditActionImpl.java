@@ -27,12 +27,12 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -41,6 +41,11 @@ import com.github.reganjohn.iam.api.requests.restactions.application.Application
 import com.github.reganjohn.iam.api.utils.applications.ApplicationEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jact.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -255,7 +260,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                                   @Nonnull DataObject rawBody,
-                                  @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
+                                  @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
@@ -263,13 +268,14 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
         api.retrieveApplicationById(userId, applicationId)
-                .flatMap(application -> modify(application, rawBody))
+                .map(application -> fromData(application, rawBody))
+                .flatMap(this::modify)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> modify(@Nonnull Application application, @Nonnull DataObject json)
+    private ApplicationEditData fromData(@Nonnull Application application, @Nonnull DataObject json)
     {
         UUID applicationId = application.getUniqueId();
         UUID userId = application.getOwnerId();
@@ -280,8 +286,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         int base = application.getFlagsRaw() & Application.ApplicationFlag.SYSTEM;
         int modifiers = flags & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = editRedirectUris(application, json);
-        ApplicationEditData editData = new ApplicationEditData(userId, applicationId, name, description, iconId, base | modifiers, redirectUris);
-        return api.editApplication(editData);
+        return new ApplicationEditData(userId, applicationId, name, description, iconId, base | modifiers, redirectUris);
     }
 
     @Nonnull
@@ -290,6 +295,27 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         return body.hasKey("redirect_uris") ? body.getArray("redirect_uris")
                 .stream(DataArray::getString)
                 .collect(Collectors.toList()) : application.getRedirectUris();
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Void> modify(@Nonnull ApplicationEditData application)
+    {
+        Checks.notNull(application, "Application");
+        String content = Helpers.format("UPDATE integrations.applications SET %s WHERE user_id = :user_id AND application_id = :application_id IF EXISTS",
+                InteractionUtil.join(application.toData().keys(), true));
+        return new InteractionMappingActionImpl<>(api.getJACT(), content, application.toMap())
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+            }
+        };
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)

@@ -25,7 +25,8 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
-import com.github.reganjohn.iam.api.entities.ApplicationInfo;
+import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.entities.ApplicationContext;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -112,7 +113,7 @@ public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl i
     private InteractionCallbackAction<Void> retrieveApplicationInfo(UUID userId, UUID applicationId)
     {
         return api.retrieveApplicationById(userId, applicationId)
-                .flatMap(api::retrieveApplicationInfo)
+                .flatMap(Application::retrieveAccess)
                 .map(Placeholder::new)
                 .flatMap(this::delete);
     }
@@ -143,10 +144,10 @@ public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl i
 
     private static class Placeholder
     {
-        private final ApplicationInfo application;
+        private final ApplicationContext application;
         private final List<String> thumbprints;
 
-        private Placeholder(@Nonnull ApplicationInfo application)
+        private Placeholder(@Nonnull ApplicationContext application)
         {
             this.application = application;
             this.thumbprints = application.getThumbprints();
@@ -162,7 +163,7 @@ public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl i
         public InteractionMapping toMapping()
         {
             return new InteractionMapping.Builder(toMap())
-                    .put("user_id", application.getOwnerId())
+                    .put("owner_id", application.getApplication().getOwnerId())
                     .put("application_id", application.getUniqueId())
                     .build();
         }
