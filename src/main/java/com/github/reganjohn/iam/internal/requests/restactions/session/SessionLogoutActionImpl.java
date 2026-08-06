@@ -24,32 +24,31 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionLogoutAction;
-import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.api.requests.objaction.InteractionContextType;
 import com.reganjohn.jact.internal.interactions.InteractionImpl;
 import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionListContextActionImpl;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.AbstractMultiValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.security.PublicKey;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class SessionLogoutActionImpl extends AbstractSessionActionImpl implements SessionLogoutAction
 {
@@ -68,16 +67,16 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(publicKey.getEncoded());
         api.retrieveUserById(userId)
                 .flatMap(User::retrieveSessions)
-                .map(sessions -> createPlaceholder(userId, sessionId.toUUID(), sessions))
+                .map(sessions -> createPlaceholder(sessionId.toUUID(), sessions))
                 .flatMap(this::logout)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
-    private Placeholder createPlaceholder(@Nonnull UUID userId, @Nonnull UUID sessionId,
+    private Placeholder createPlaceholder(@Nonnull UUID sessionId,
                                           @Nonnull List<Session> sessions)
     {
-        Placeholder placeholder = new Placeholder(userId, sessionId, sessions);
+        Placeholder placeholder = new Placeholder(sessionId, sessions);
         if (placeholder.sessions.isEmpty())
             throw new ErrorResponseException(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION);
         else
@@ -88,15 +87,14 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
     @CheckReturnValue
     private InteractionCallbackAction<Void> logout(@Nonnull Placeholder placeholder)
     {
-        String content = ClassLoader.getResourceAsString("logout.cql", placeholder.getSessions(), placeholder.getThumbprints());
-        return new InteractionMappingActionImpl<>(api.getJACT(), content, placeholder.toMapping())
+        Checks.notNull(placeholder, "Placeholder");
+        return new InteractionListContextActionImpl<>(api.getJACT(), InteractionContextType.LOGGED, placeholder.toMap())
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Void> interaction,
-                                      @Nonnull BufferArray array)
+            protected void handleBufferedBody(@Nonnull InteractionCallbackResponseImpl response,
+                                              InteractionImpl<Void> interaction, @Nonnull ByteBuf data)
             {
-                interaction.onSuccess(null);
+                super.handleBufferedBody(response, interaction, data);
             }
         };
     }
@@ -108,53 +106,30 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
 
     private static class Placeholder
     {
-        private final UUID userId;
         private final UUID sessionId;
         private final List<Session> sessions;
 
-        private Placeholder(@Nonnull UUID userId, UUID sessionId, @Nonnull List<Session> sessions)
+        private Placeholder(UUID sessionId, @Nonnull List<Session> sessions)
         {
-            this.userId = userId;
             this.sessionId = sessionId;
             this.sessions = sessions.stream().filter(session -> !isOwner(session)).collect(Collectors.toList());
-        }
-
-        @Nonnull
-        public String getSessions()
-        {
-            return IntStream.range(0, sessions.size()).mapToObj(i -> ":s" + i).collect(Collectors.joining(", "));
-        }
-
-        @Nonnull
-        public String getThumbprints()
-        {
-            return IntStream.range(0, sessions.size()).mapToObj(i -> ":t" + i).collect(Collectors.joining(", "));
-        }
-
-        @Nonnull
-        public InteractionMapping toMapping()
-        {
-            return new InteractionMapping.Builder(toMap())
-                    .put("user_id", userId)
-                    .build();
-        }
-
-        @Nonnull
-        public Map<String, Object> toMap()
-        {
-            return IntStream.range(0, sessions.size()).collect(HashMap::new, this::withQueryParams, HashMap::putAll);
-        }
-
-        private void withQueryParams(@Nonnull Map<String, Object> map, int index)
-        {
-            Session session = sessions.get(index);
-            map.put("s" + index, session.getUniqueId());
-            map.put("t" + index, session.getThumbprint());
         }
 
         private boolean isOwner(@Nonnull Session session)
         {
             return session.getUniqueId().equals(sessionId);
+        }
+
+        @Nonnull
+        private ArrayListValuedHashMap<String, List<Object>> toMap()
+        {
+            return sessions.stream().collect(ArrayListValuedHashMap::new, this::withQueryParam, AbstractMultiValuedMap::putAll);
+        }
+
+        private void withQueryParam(@Nonnull MultiValuedMap<String, List<Object>> map, @Nonnull Session session)
+        {
+            long flags = session.getFlagsRaw() | Session.SessionFlag.DELETED.getRawValue();
+            map.put("UPDATE users.sessions SET flags = ? WHERE user_id = ? AND session_id = ?", Arrays.asList(flags, session.getUserId(), session.getUniqueId()));
         }
     }
 }

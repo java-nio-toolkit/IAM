@@ -117,7 +117,8 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
         AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(data.getSubject());
         UUID applicationId = UUID.fromString(params.get("application_id"));
-        api.retrieveEntitlement(userId, applicationId)
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveEntitlementById(applicationId))
                 .flatMap(entitlement -> modify(entitlement, rawBody))
                 .queue(success -> handleSuccess(context));
     }
@@ -129,10 +130,10 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
         InteractionMapping map = new InteractionMapping.Builder()
                 .put("user_id", override.getUserId())
                 .put("application_id", override.getApplicationId())
-                .put("permissions", rawBody.getInt("permissions", override.getPermissionsRaw()))
+                .put("permissions", rawBody.getLong("permissions", override.getPermissionsRaw()))
                 .put("updated_at", OffsetDateTime.now())
                 .build();
-        return new InteractionMappingActionImpl<>(api.getJACT(), "UPDATE users.entitlement SET permissions = :permissions, updated_at = :updated_at WHERE user_id = :user_id AND application_id = :application_id IF EXISTS", map)
+        return new InteractionMappingActionImpl<>(api.getJACT(), "UPDATE users.entitlements SET permissions = :permissions, updated_at = :updated_at WHERE user_id = :user_id AND application_id = :application_id IF EXISTS", map)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

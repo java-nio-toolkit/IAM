@@ -30,9 +30,9 @@ public class UserEditData implements UserData, InteractionMapping
     private final UUID userId;
     private final String username;
     private final String avatarId;
-    private final int flags;
+    private final long flags;
 
-    public UserEditData(@Nonnull UUID userId, @Nonnull String name, @Nullable String avatarId, int flags)
+    public UserEditData(@Nonnull UUID userId, @Nonnull String name, @Nullable String avatarId, long flags)
     {
         this.userId = userId;
         this.username = name;
@@ -62,7 +62,7 @@ public class UserEditData implements UserData, InteractionMapping
     }
 
     @Override
-    public int getRawUserFlags()
+    public long getRawUserFlags()
     {
         return flags;
     }

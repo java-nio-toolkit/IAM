@@ -31,12 +31,12 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
     private final UUID applicationId;
     private final UUID interactionId;
     private final OffsetDateTime expiresAt;
-    private final int rawPermissions;
+    private final long rawPermissions;
     private final String redirectUri;
 
     public ApplicationContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull UUID ownerId, @Nonnull UUID applicationId,
                                              @Nonnull UUID interactionId, @Nonnull OffsetDateTime expiresAt,
-                                             int permissions, @Nonnull String uri)
+                                             long permissions, @Nonnull String uri)
     {
         this.api = api;
         this.ownerId = ownerId;
@@ -83,7 +83,7 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
     }
 
     @Override
-    public int getPermissionsRaw()
+    public long getPermissionsRaw()
     {
         return rawPermissions;
     }

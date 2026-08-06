@@ -33,6 +33,12 @@ CREATE KEYSPACE IF NOT EXISTS integrations WITH replication =
         'replication_factor': 1
         };
 
+CREATE KEYSPACE IF NOT EXISTS community WITH replication =
+    {
+        'class': 'SimpleStrategy',
+        'replication_factor': 1
+        };
+
 DROP TABLE IF EXISTS global.public_keys;
 
 DROP TABLE IF EXISTS users.public_keys;
@@ -71,7 +77,7 @@ CREATE TABLE IF NOT EXISTS users.public_keys
 CREATE TABLE IF NOT EXISTS users.accounts
 (
     user_id   UUID,
-    flags     INT,
+    flags     BIGINT,
     username  TEXT,
     avatar_id TEXT,
     PRIMARY KEY (user_id)
@@ -81,7 +87,7 @@ CREATE TABLE IF NOT EXISTS users.sessions
 (
     user_id    UUID,
     session_id UUID,
-    flags      INT,
+    flags      BIGINT,
     user_agent TEXT,
     thumbprint TEXT,
     PRIMARY KEY ((user_id), session_id)
@@ -92,7 +98,8 @@ CREATE TABLE IF NOT EXISTS users.entitlements
     user_id        UUID,
     application_id UUID,
     owner_id       UUID,
-    permissions    INT,
+    flags          BIGINT,
+    permissions    BIGINT,
     updated_at     TIMESTAMP,
     PRIMARY KEY ((user_id), application_id)
 ) WITH transactional_mode = 'full';
@@ -104,7 +111,7 @@ CREATE TABLE IF NOT EXISTS integrations.applications
     name           TEXT,
     description    TEXT,
     icon_id        TEXT,
-    flags          INT,
+    flags          BIGINT,
     redirect_uris  LIST<TEXT>,
     PRIMARY KEY ((user_id), application_id)
 ) WITH transactional_mode = 'full';
@@ -114,7 +121,7 @@ CREATE TABLE IF NOT EXISTS integrations.interactions
     user_id        UUID,
     application_id UUID,
     interaction_id UUID,
-    permissions    INT,
+    permissions    BIGINT,
     redirect_uri   TEXT,
     expiry         TIMESTAMP,
     PRIMARY KEY ((user_id, application_id), interaction_id)
@@ -126,7 +133,7 @@ CREATE TABLE IF NOT EXISTS integrations.responses
     interaction_id UUID,
     user_id        UUID,
     owner_id       UUID,
-    permissions    INT,
+    permissions    BIGINT,
     PRIMARY KEY ((application_id), interaction_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 60;
 
@@ -134,8 +141,56 @@ CREATE TABLE IF NOT EXISTS integrations.public_keys
 (
     user_id        UUID,
     application_id UUID,
+    access_id      UUID,
+    flags          BIGINT,
     thumbprint     TEXT,
-    PRIMARY KEY ((user_id), application_id, thumbprint)
+    PRIMARY KEY ((user_id), application_id, access_id)
 ) WITH transactional_mode = 'full';
 
+CREATE TABLE IF NOT EXISTS community.teams
+(
+    team_id     UUID,
+    owner_id    UUID,
+    name        TEXT,
+    description TEXT,
+    icon_id     TEXT,
+    flags       BIGINT,
+    PRIMARY KEY (team_id)
+) WITH transactional_mode = 'full';
 
+CREATE TABLE IF NOT EXISTS community.members
+(
+    team_id   UUID,
+    user_id   UUID,
+    is_owner  BOOLEAN,
+    flags     BIGINT,
+    joined_at TIMESTAMP,
+    PRIMARY KEY ((team_id), user_id)
+) WITH transactional_mode = 'full';
+
+CREATE TABLE IF NOT EXISTS community.member_roles
+(
+    team_id UUID,
+    user_id UUID,
+    role_id UUID,
+    PRIMARY KEY ((team_id), user_id, role_id)
+) WITH transactional_mode = 'full';
+
+CREATE TABLE IF NOT EXISTS community.applications
+(
+    team_id        UUID,
+    application_id UUID,
+    owner_id       UUID,
+    flags          BIGINT,
+    PRIMARY KEY ((team_id), application_id)
+) WITH transactional_mode = 'full';
+
+CREATE TABLE IF NOT EXISTS community.roles
+(
+    team_id     UUID,
+    role_id     UUID,
+    name        TEXT,
+    flags       BIGINT,
+    permissions BIGINT,
+    PRIMARY KEY ((team_id), role_id)
+) WITH transactional_mode = 'full';

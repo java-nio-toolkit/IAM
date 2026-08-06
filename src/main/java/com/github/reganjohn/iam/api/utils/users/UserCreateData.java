@@ -35,13 +35,13 @@ public class UserCreateData implements UserData, SessionData, InteractionMapping
     private final String avatarId;
     private final String userAgent;
     private final AccessEntryData data;
-    private final int userFlags;
-    private final int sessionFlags;
+    private final long userFlags;
+    private final long sessionFlags;
     private final String thumbprint;
 
     public UserCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String name,
                           @Nullable String avatarId, @Nullable String agent, @Nonnull AccessEntryData data,
-                          int userFlags, int sessionFlags, @Nonnull String thumbprint)
+                          long userFlags, long sessionFlags, @Nonnull String thumbprint)
     {
         this.userId = userId;
         this.sessionId = sessionId;
@@ -97,13 +97,13 @@ public class UserCreateData implements UserData, SessionData, InteractionMapping
     }
 
     @Override
-    public int getRawSessionFlags()
+    public long getRawSessionFlags()
     {
         return sessionFlags;
     }
 
     @Override
-    public int getRawUserFlags()
+    public long getRawUserFlags()
     {
         return userFlags;
     }

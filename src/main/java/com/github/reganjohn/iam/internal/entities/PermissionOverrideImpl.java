@@ -19,9 +19,18 @@ package com.github.reganjohn.iam.internal.entities;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.jact.internal.utils.InteractionUtil;
 
 import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class PermissionOverrideImpl implements PermissionOverride
@@ -30,17 +39,20 @@ public class PermissionOverrideImpl implements PermissionOverride
     private final UUID userId;
     private final UUID ownerId;
     private final UUID applicationId;
-    private final int rawPermissions;
+    private final long rawPermissions;
+    private final long flags;
     private final OffsetDateTime updatedAt;
 
     public PermissionOverrideImpl(@Nonnull IAM api, @Nonnull UUID userId, @Nonnull UUID ownerId,
-                                  @Nonnull UUID applicationId, int rawPermissions, @Nonnull OffsetDateTime updatedAt)
+                                  @Nonnull UUID applicationId, long rawPermissions, long flags,
+                                  @Nonnull OffsetDateTime updatedAt)
     {
         this.api = api;
         this.userId = userId;
         this.ownerId = ownerId;
         this.applicationId = applicationId;
         this.rawPermissions = rawPermissions;
+        this.flags = flags;
         this.updatedAt = updatedAt;
     }
 
@@ -80,9 +92,15 @@ public class PermissionOverrideImpl implements PermissionOverride
     }
 
     @Override
-    public int getPermissionsRaw()
+    public long getPermissionsRaw()
     {
         return rawPermissions;
+    }
+
+    @Override
+    public long getFlagsRaw()
+    {
+        return flags;
     }
 
     @Override
@@ -90,12 +108,32 @@ public class PermissionOverrideImpl implements PermissionOverride
     {
         for (Permission perm : permissions)
         {
-            int rawValue = perm.getRawValue();
+            long rawValue = perm.getRawValue();
             if ((rawPermissions & rawValue) != rawValue)
             {
                 return false;
             }
         }
         return true;
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<Void> delete()
+    {
+        long flags = getFlagsRaw() | EntitlementFlag.DELETED.getRawValue();
+        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE users.entitlements SET flags = ? WHERE user_id = ? AND application_id = ?", Arrays.asList(flags, userId, applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    interaction.onSuccess(null);
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
+            }
+        };
     }
 }

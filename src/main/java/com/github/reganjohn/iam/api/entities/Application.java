@@ -19,6 +19,7 @@ package com.github.reganjohn.iam.api.entities;
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import org.jetbrains.annotations.Unmodifiable;
 
@@ -78,7 +79,7 @@ public interface Application extends IUnique
     String getIconId();
 
     /**
-     * The id for the user who owns this 
+     * The id for the user who owns this
      *
      * @return The owner id of this application
      */
@@ -96,14 +97,6 @@ public interface Application extends IUnique
     @Unmodifiable
     List<String> getRedirectUris();
 
-    @Nonnull
-    @CheckReturnValue
-    InteractionCallbackAction<Integer> retrieveAccessCount();
-
-    @Nonnull
-    @CheckReturnValue
-    InteractionCallbackAction<ApplicationContext> retrieveAccess();
-
     /**
      * The {@link ApplicationFlag Flags} set for the application.
      * <br>Modifying the returned EnumSet will have not actually change the flags of the application.
@@ -116,18 +109,34 @@ public interface Application extends IUnique
         return ApplicationFlag.getFlags(getFlagsRaw());
     }
 
+    @Nonnull
+    InteractionCallbackAction<Void> delete();
+
     /**
      * The raw bitset representing this application's flags.
      *
      * @return The bitset
      */
-    int getFlagsRaw();
+    long getFlagsRaw();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Integer> retrieveAccessCount();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<AccessContextInteraction> retrieveAccessById(@Nonnull UUID accessId);
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess();
 
     /**
      * Represents the bit offsets used for application flags.
      */
     enum ApplicationFlag
     {
+        DELETED(34, false),
         UNKNOWN(-1, false);
 
         /**
@@ -135,18 +144,18 @@ public interface Application extends IUnique
          */
         public static final ApplicationFlag[] EMPTY_FLAGS = new ApplicationFlag[0];
 
-        public static final int ALL = 1 | getRaw(EnumSet.allOf(ApplicationFlag.class));
+        public static final long ALL = 1 | getRaw(EnumSet.allOf(ApplicationFlag.class));
 
-        public static final int SYSTEM = ALL & ~getRaw();
+        public static final long SYSTEM = ALL & ~getRaw();
 
-        private final int offset;
-        private final int raw;
+        private final long offset;
+        private final long raw;
         private final boolean managed;
 
-        ApplicationFlag(int offset, boolean managed)
+        ApplicationFlag(long offset, boolean managed)
         {
             this.offset = offset;
-            this.raw = 1 << offset;
+            this.raw = 1L << offset;
             this.managed = managed;
         }
 
@@ -155,7 +164,7 @@ public interface Application extends IUnique
          *
          * @return The offset that represents this {@link Application.ApplicationFlag ApplicationFlag}.
          */
-        public int getOffset()
+        public long getOffset()
         {
             return offset;
         }
@@ -166,7 +175,7 @@ public interface Application extends IUnique
          *
          * @return The raw value of this specific flag.
          */
-        public int getRawValue()
+        public long getRawValue()
         {
             return raw;
         }
@@ -214,7 +223,7 @@ public interface Application extends IUnique
          * @return Possibly-empty EnumSet of ApplicationFlags.
          */
         @Nonnull
-        public static EnumSet<ApplicationFlag> getFlags(int flags)
+        public static EnumSet<ApplicationFlag> getFlags(long flags)
         {
             EnumSet<ApplicationFlag> foundFlags = EnumSet.noneOf(ApplicationFlag.class);
             if (flags == 0)
@@ -233,7 +242,7 @@ public interface Application extends IUnique
         }
 
         /**
-         * This is effectively the opposite of {@link #getFlags(int)}, this takes 1 or more ApplicationFlags
+         * This is effectively the opposite of {@link #getFlags(long)}, this takes 1 or more ApplicationFlags
          * and returns the bitmask representation of the flags.
          *
          * @param  flags
@@ -244,10 +253,10 @@ public interface Application extends IUnique
          *
          * @return bitmask representing the provided flags.
          */
-        public static int getRaw(@Nonnull ApplicationFlag... flags)
+        public static long getRaw(@Nonnull ApplicationFlag... flags)
         {
             Checks.noneNull(flags, "ApplicationFlags");
-            int raw = 0;
+            long raw = 0;
             for (ApplicationFlag flag : flags)
             {
                 if (flag != null && flag != UNKNOWN)
@@ -260,7 +269,7 @@ public interface Application extends IUnique
         }
 
         /**
-         * This is effectively the opposite of {@link #getFlags(int)}. This takes a collection of ApplicationFlags
+         * This is effectively the opposite of {@link #getFlags(long)}. This takes a collection of ApplicationFlags
          * and returns the bitmask representation of the flags.
          *
          * @param  flags
@@ -271,7 +280,7 @@ public interface Application extends IUnique
          *
          * @return bitmask representing the provided flags.
          */
-        public static int getRaw(@Nonnull Collection<ApplicationFlag> flags)
+        public static long getRaw(@Nonnull Collection<ApplicationFlag> flags)
         {
             Checks.notNull(flags, "Flag Collection");
             return getRaw(flags.toArray(EMPTY_FLAGS));

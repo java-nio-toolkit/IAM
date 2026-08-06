@@ -16,8 +16,10 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationContext;
+import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -38,20 +40,20 @@ import java.util.UUID;
 public class ApplicationImpl implements Application
 {
     private final IAMImpl api;
-    private final UUID id;
+    private final UUID applicationId;
     private final UUID ownerId;
     private final String name;
     private final String description;
     private final String iconId;
-    private final int flags;
+    private final long flags;
     private final List<String> redirectUris;
 
     public ApplicationImpl(@Nonnull IAMImpl api, @Nonnull UUID id, @Nonnull UUID ownerId, @Nonnull String name,
-                           @Nullable String description, @Nullable String iconId, int flags,
+                           @Nullable String description, @Nullable String iconId, long flags,
                            @Nonnull List<String> redirectUris)
     {
         this.api = api;
-        this.id = id;
+        this.applicationId = id;
         this.ownerId = ownerId;
         this.name = name;
         this.description = description;
@@ -71,7 +73,7 @@ public class ApplicationImpl implements Application
     @Override
     public UUID getUniqueId()
     {
-        return id;
+        return applicationId;
     }
 
     @Nonnull
@@ -126,16 +128,36 @@ public class ApplicationImpl implements Application
 
     @Nonnull
     @Override
-    public InteractionCallbackAction<ApplicationContext> retrieveAccess()
+    public InteractionCallbackAction<AccessContextInteraction> retrieveAccessById(@Nonnull UUID accessId)
+    {
+        Checks.notNull(accessId, "Access ID");
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(getOwnerId(), getUniqueId(), accessId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<AccessContextInteraction> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
+                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(ApplicationImpl.this, array.getObject(0)));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+            }
+        };
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess()
     {
         return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<ApplicationContext> interaction,
+                                      @Nonnull InteractionImpl<List<AccessContextInteraction>> interaction,
                                       @Nonnull BufferArray array)
             {
-                if (!array.isEmpty())
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
                     interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(ApplicationImpl.this, array));
                 else
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
@@ -143,8 +165,16 @@ public class ApplicationImpl implements Application
         };
     }
 
+    @Nonnull
     @Override
-    public int getFlagsRaw()
+    public InteractionCallbackAction<Void> delete()
+    {
+        long flags = getFlagsRaw() | Application.ApplicationFlag.DELETED.getRawValue();
+        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE integrations.applications SET flags = ? WHERE user_id = ? AND application_id = ?", Arrays.asList(flags, getOwnerId(), getUniqueId()));
+    }
+
+    @Override
+    public long getFlagsRaw()
     {
         return flags;
     }

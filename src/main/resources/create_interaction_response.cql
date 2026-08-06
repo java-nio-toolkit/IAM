@@ -24,7 +24,7 @@ BEGIN TRANSACTION
         DELETE FROM integrations.interactions WHERE user_id = :user_id AND application_id = :application_id AND interaction_id = :interaction_id;
         INSERT INTO integrations.responses (interaction_id, user_id, owner_id, application_id, permissions)
         VALUES (:interaction_id, :user_id, :owner_id, :application_id, :permissions);
-        INSERT INTO users.entitlements (user_id, application_id, owner_id, permissions, updated_at)
-        VALUES (:user_id, :application_id, :owner_id, :permissions, :updated_at);
+        INSERT INTO users.entitlements (user_id, application_id, owner_id, flags, permissions, updated_at)
+        VALUES (:user_id, :application_id, :owner_id, :flags, :permissions, :updated_at);
     END IF
 COMMIT TRANSACTION;

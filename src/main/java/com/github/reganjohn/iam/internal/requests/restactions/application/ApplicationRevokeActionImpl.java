@@ -29,6 +29,7 @@ import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationRevokeAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
@@ -43,10 +44,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
@@ -128,39 +126,12 @@ public class ApplicationRevokeActionImpl extends AbstractApplicationActionImpl i
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        String accessId = request.getRoute().getMajorParameters().get("access_id");
-        revoke(userId, applicationId, accessId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<Void> revoke(@Nonnull UUID userId, @Nonnull UUID applicationId,
-                                                   @Nonnull String thumbprint)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notNull(applicationId, "Application ID");
-        Checks.notEmpty(thumbprint, "Thumbprint");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("delete_access_application.cql"), mapFromData(userId, applicationId, thumbprint))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Void> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                interaction.onSuccess(null);
-            }
-        };
-    }
-
-    @Nonnull
-    private InteractionMapping mapFromData(@Nonnull UUID userId, @Nonnull UUID applicationId,
-                                           @Nonnull String thumbprint)
-    {
-        return new InteractionMapping.Builder()
-                .put("user_id", userId)
-                .put("application_id", applicationId)
-                .put("thumbprint", thumbprint)
-                .build();
+        UUID accessId = UUID.fromString(request.getRoute().getMajorParameters().get("access_id"));
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveApplicationById(applicationId))
+                .flatMap(application -> application.retrieveAccessById(accessId))
+                .flatMap(AccessContextInteraction::revoke)
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

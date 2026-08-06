@@ -45,7 +45,7 @@ public interface ApplicationCallbackResponse extends IUnique
     @Nonnull
     OffsetDateTime getTimeExpiresAt();
 
-    int getPermissionsRaw();
+    long getPermissionsRaw();
 
     @Nonnull
     default EnumSet<Permission> getPermissions()
@@ -59,4 +59,8 @@ public interface ApplicationCallbackResponse extends IUnique
     @Nonnull
     @CheckReturnValue
     InteractionCallbackAction<Application> retrieveApplication();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<ApplicationCallbackResponse> delete();
 }

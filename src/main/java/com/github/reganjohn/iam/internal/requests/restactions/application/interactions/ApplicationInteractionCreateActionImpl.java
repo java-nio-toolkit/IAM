@@ -171,9 +171,10 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         UUID userId = UUID.fromString(data.getSubject());
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUIDv7.randomUUID().toUUID();
-        int rawPermissions = rawBody.getInt("permissions");
+        long rawPermissions = rawBody.getLong("permissions");
         String uri = rawBody.getString("redirect_uri");
-        api.retrieveApplicationById(userId, applicationId)
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> create(application, interactionId, rawPermissions, uri))
                 .queue(success -> handleSuccess(context, userId, applicationId, interactionId), context::fireExceptionCaught);
     }
@@ -181,7 +182,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     @Nonnull
     @CheckReturnValue
     private InteractionCallbackAction<Void> create(@Nonnull Application application, @Nonnull UUID interactionId,
-                                                   int rawPermissions, @Nonnull String uri)
+                                                   long rawPermissions, @Nonnull String uri)
     {
         if (Helpers.contains(application.getRedirectUris(), uri, false))
             return createInteraction(application, interactionId, rawPermissions, uri);
@@ -193,7 +194,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     @CheckReturnValue
     private InteractionCallbackAction<Void> createInteraction(@Nonnull Application application,
                                                               @Nonnull UUID interactionId,
-                                                              int rawPermissions, @Nonnull String uri)
+                                                              long rawPermissions, @Nonnull String uri)
     {
         Checks.notNull(application, "Application");
         Checks.notNull(interactionId, "Interaction ID");
@@ -213,7 +214,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
 
     @Nonnull
     private InteractionMapping mapFromData(@Nonnull Application application, @Nonnull UUID interactionId,
-                                           int rawPermissions, @Nonnull String uri)
+                                           long rawPermissions, @Nonnull String uri)
     {
         return new InteractionMapping.Builder()
                 .put("user_id", application.getOwnerId())

@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
@@ -27,6 +28,7 @@ import javax.annotation.Nullable;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.UUID;
 
 public interface User extends IUnique
 {
@@ -73,6 +75,25 @@ public interface User extends IUnique
         return UserFlag.getFlags(getFlagsRaw());
     }
 
+    /**
+     * Returns the bitmask representation of the {@link UserFlag UserFlags} of this user.
+     *
+     * @return bitmask representation of the user's flags.
+     */
+    long getFlagsRaw();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<List<AccessEntryData>> retrieveAccess();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<AccessEntryData> retrieveAccessById(@Nonnull String thumbprint);
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Session> retrieveSessionById(@Nonnull UUID sessionId);
+
     @Nonnull
     @CheckReturnValue
     InteractionCallbackAction<List<Session>> retrieveSessions();
@@ -80,6 +101,10 @@ public interface User extends IUnique
     @Nonnull
     @CheckReturnValue
     InteractionCallbackAction<Integer> retrieveSessionCount();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID applicationId);
 
     @Nonnull
     @CheckReturnValue
@@ -91,6 +116,10 @@ public interface User extends IUnique
 
     @Nonnull
     @CheckReturnValue
+    InteractionCallbackAction<PermissionOverride> retrieveEntitlementById(@Nonnull UUID applicationId);
+
+    @Nonnull
+    @CheckReturnValue
     InteractionCallbackAction<List<PermissionOverride>> retrieveEntitlements();
 
     @Nonnull
@@ -98,17 +127,11 @@ public interface User extends IUnique
     InteractionCallbackAction<Void> delete();
 
     /**
-     * Returns the bitmask representation of the {@link UserFlag UserFlags} of this user.
-     *
-     * @return bitmask representation of the user's flags.
-     */
-    int getFlagsRaw();
-
-    /**
      * Represents the bit offsets used for user flags.
      */
     enum UserFlag
     {
+        DELETED(34, "User's account is deleted", false),
         UNKNOWN(-1, "Unknown", false);
 
         /**
@@ -116,24 +139,24 @@ public interface User extends IUnique
          */
         public static final UserFlag[] EMPTY_FLAGS = new UserFlag[0];
 
-        public static final int ALL = 1 | getRaw(EnumSet.allOf(UserFlag.class));
+        public static final long ALL = 1 | getRaw(EnumSet.allOf(UserFlag.class));
 
-        public static final int SYSTEM = ALL & ~getRaw();
+        public static final long SYSTEM = ALL & ~getRaw();
 
-        private final int offset;
-        private final int raw;
+        private final long offset;
+        private final long raw;
         private final String name;
         private final boolean managed;
 
-        UserFlag(int offset, @Nonnull String name)
+        UserFlag(long offset, @Nonnull String name)
         {
             this(offset, name, true);
         }
 
-        UserFlag(int offset, @Nonnull String name, boolean managed)
+        UserFlag(long offset, @Nonnull String name, boolean managed)
         {
             this.offset = offset;
-            this.raw = 1 << offset;
+            this.raw = 1L << offset;
             this.name = name;
             this.managed = managed;
         }
@@ -164,7 +187,7 @@ public interface User extends IUnique
          *
          * @return The offset that represents this {@link UserFlag UserFlag}.
          */
-        public int getOffset()
+        public long getOffset()
         {
             return offset;
         }
@@ -175,7 +198,7 @@ public interface User extends IUnique
          *
          * @return The raw value of this specific flag.
          */
-        public int getRawValue()
+        public long getRawValue()
         {
             return raw;
         }
@@ -213,7 +236,7 @@ public interface User extends IUnique
          * @return Possibly-empty EnumSet of UserFlags.
          */
         @Nonnull
-        public static EnumSet<UserFlag> getFlags(int flags)
+        public static EnumSet<UserFlag> getFlags(long flags)
         {
             EnumSet<UserFlag> foundFlags = EnumSet.noneOf(UserFlag.class);
             if (flags == 0)
@@ -232,7 +255,7 @@ public interface User extends IUnique
         }
 
         /**
-         * This is effectively the opposite of {@link #getFlags(int)}, this takes 1 or more UserFlags
+         * This is effectively the opposite of {@link #getFlags(long)}, this takes 1 or more UserFlags
          * and returns the bitmask representation of the flags.
          *
          * @param  flags
@@ -243,10 +266,10 @@ public interface User extends IUnique
          *
          * @return bitmask representing the provided flags.
          */
-        public static int getRaw(@Nonnull UserFlag... flags)
+        public static long getRaw(@Nonnull UserFlag... flags)
         {
             Checks.noneNull(flags, "UserFlags");
-            int raw = 0;
+            long raw = 0;
             for (UserFlag flag : flags)
             {
                 if (flag != null && flag != UNKNOWN)
@@ -259,7 +282,7 @@ public interface User extends IUnique
         }
 
         /**
-         * This is effectively the opposite of {@link #getFlags(int)}. This takes a collection of UserFlags
+         * This is effectively the opposite of {@link #getFlags(long)}. This takes a collection of UserFlags
          * and returns the bitmask representation of the flags.
          *
          * @param  flags
@@ -270,7 +293,7 @@ public interface User extends IUnique
          *
          * @return bitmask representing the provided flags.
          */
-        public static int getRaw(@Nonnull Collection<UserFlag> flags)
+        public static long getRaw(@Nonnull Collection<UserFlag> flags)
         {
             Checks.notNull(flags, "Flag Collection");
             return getRaw(flags.toArray(EMPTY_FLAGS));

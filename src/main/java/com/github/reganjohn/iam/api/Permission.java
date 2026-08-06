@@ -33,14 +33,14 @@ public enum Permission
     // This is an optimization suggested by Effective Java 3rd Edition - Item 54
     public static final Permission[] EMPTY_PERMISSIONS = new Permission[0];
 
-    private final int offset;
-    private final int raw;
+    private final long offset;
+    private final long raw;
     private final String name;
 
-    Permission(int offset, @Nonnull String name)
+    Permission(long offset, @Nonnull String name)
     {
         this.offset = offset;
-        this.raw = 1 << offset;
+        this.raw = 1L << offset;
         this.name = name;
     }
 
@@ -60,7 +60,7 @@ public enum Permission
      *
      * @return The offset that represents this {@link com.github.reganjohn.iam.api.Permission Permission}.
      */
-    public int getOffset()
+    public long getOffset()
     {
         return offset;
     }
@@ -71,7 +71,7 @@ public enum Permission
      *
      * @return The raw value of this specific permission.
      */
-    public int getRawValue()
+    public long getRawValue()
     {
         return raw;
     }
@@ -109,7 +109,7 @@ public enum Permission
      * @return Possibly-empty EnumSet of {@link com.github.reganjohn.iam.api.Permission Permissions}.
      */
     @Nonnull
-    public static EnumSet<Permission> getPermissions(int permissions)
+    public static EnumSet<Permission> getPermissions(long permissions)
     {
         if (permissions == 0)
         {
@@ -127,17 +127,17 @@ public enum Permission
     }
 
     /**
-     * This is effectively the opposite of {@link #getPermissions(int)}, this takes 1 or more {@link com.github.reganjohn.iam.api.Permission Permissions}
-     * and returns the raw offset {@code int} representation of the permissions.
+     * This is effectively the opposite of {@link #getPermissions(long)}, this takes 1 or more {@link com.github.reganjohn.iam.api.Permission Permissions}
+     * and returns the raw offset {@code long} representation of the permissions.
      *
      * @param  permissions
-     *         The array of permissions of which to form into the raw int representation.
+     *         The array of permissions of which to form into the raw long representation.
      *
      * @return Unsigned int representing the provided permissions.
      */
-    public static int getRaw(@Nonnull Permission... permissions)
+    public static long getRaw(@Nonnull Permission... permissions)
     {
-        int raw = 0;
+        long raw = 0;
         for (Permission perm : permissions)
         {
             if (perm != null && perm != UNKNOWN)
@@ -150,17 +150,17 @@ public enum Permission
     }
 
     /**
-     * This is effectively the opposite of {@link #getPermissions(int)}, this takes a Collection of {@link com.github.reganjohn.iam.api.Permission Permissions}
-     * and returns the raw offset {@code int} representation of the permissions.
+     * This is effectively the opposite of {@link #getPermissions(long)}, this takes a Collection of {@link com.github.reganjohn.iam.api.Permission Permissions}
+     * and returns the raw offset {@code long} representation of the permissions.
      *
      * @param  permissions
-     *         The Collection of permissions of which to form into the raw int representation.
+     *         The Collection of permissions of which to form into the raw long representation.
      *
-     * @return Unsigned int representing the provided permissions.
+     * @return Unsigned long representing the provided permissions.
      *
      * @see    java.util.EnumSet EnumSet
      */
-    public static int getRaw(@Nonnull Collection<Permission> permissions)
+    public static long getRaw(@Nonnull Collection<Permission> permissions)
     {
         Checks.notNull(permissions, "Permission Collection");
         return getRaw(permissions.toArray(EMPTY_PERMISSIONS));

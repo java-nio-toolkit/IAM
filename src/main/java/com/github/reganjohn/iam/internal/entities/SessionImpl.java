@@ -19,19 +19,13 @@ package com.github.reganjohn.iam.internal.entities;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.EntityString;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -40,11 +34,11 @@ public class SessionImpl implements Session
     private final IAMImpl api;
     private final UUID sessionId;
     private final UUID userId;
-    private final int flags;
+    private final long flags;
     private final String thumbprint;
     private final String userAgent;
 
-    public SessionImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID sessionId, int flags,
+    public SessionImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID sessionId, long flags,
                        @Nonnull String thumbprint, @Nullable String userAgent)
     {
         this.api = api;
@@ -72,30 +66,7 @@ public class SessionImpl implements Session
     @Override
     public InteractionCallbackAction<AccessEntryData> retrieveAccess()
     {
-        return api.retrieveAccessEntryById(userId, thumbprint);
-    }
-
-    @Nonnull
-    @Override
-    public InteractionCallbackAction<Void> delete()
-    {
-        InteractionMapping map = new InteractionMapping.Builder()
-                .put("user_id", getUserId())
-                .put("session_id", getUniqueId())
-                .put("thumbprint", getThumbprint())
-                .build();
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("delete_session.cql"), map)
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty())
-                    request.onSuccess(null);
-                else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
-            }
-        };
+        return api.retrieveUserById(userId).flatMap(user -> user.retrieveAccessById(thumbprint));
     }
 
     @Nullable
@@ -120,9 +91,17 @@ public class SessionImpl implements Session
     }
 
     @Override
-    public int getFlagsRaw()
+    public long getFlagsRaw()
     {
         return flags;
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<Void> delete()
+    {
+        long flags = getFlagsRaw() | SessionFlag.DELETED.getRawValue();
+        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE users.sessions SET flags = ? WHERE user_id = ? AND session_id = ?", Arrays.asList(flags, userId, sessionId));
     }
 
     @Override

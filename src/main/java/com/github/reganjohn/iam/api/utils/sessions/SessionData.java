@@ -39,7 +39,7 @@ public interface SessionData extends SerializableData
     @Nonnull
     AccessEntryData getAccessEntry();
 
-    int getRawSessionFlags();
+    long getRawSessionFlags();
 
     @Nonnull
     default EnumSet<Session.SessionFlag> getSessionFlags()

@@ -23,6 +23,8 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
@@ -30,21 +32,21 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationContext;
+import com.github.reganjohn.iam.api.entities.User;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationAccessAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
@@ -104,11 +106,40 @@ public class ApplicationAccessActionImpl extends AbstractApplicationActionImpl i
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveApplicationById(userId, applicationId)
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(Application::retrieveAccess)
-                .flatMap(ApplicationContext::retrieveAccessEntries)
+                .flatMap(interactions -> retrieveAccessData(userId, interactions))
                 .map(this::retrieveData)
                 .queue(success -> handleSuccess(context, success), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    private InteractionCallbackAction<List<AccessEntryData>> retrieveAccessData(@Nonnull UUID userId,
+                                                                                @Nonnull List<AccessContextInteraction> interactions)
+    {
+        return api.retrieveUserById(userId)
+                .flatMap(User::retrieveAccess)
+                .map(access -> filter(interactions, new ArrayList<>(access)));
+    }
+
+    @Nonnull
+    private List<AccessEntryData> filter(@Nonnull List<AccessContextInteraction> interactions,
+                                         @Nonnull List<AccessEntryData> access)
+    {
+        Set<String> thumbprints = interactions.stream().map(AccessContextInteraction::getThumbprint).collect(Collectors.toSet());
+        access.removeIf(data ->
+        {
+            try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
+            {
+                return !thumbprints.contains(context.digest());
+            }
+            catch (Exception ex)
+            {
+                throw new IllegalStateException("Failed to retrieve the snapshot hash", ex);
+            }
+        });
+        return access;
     }
 
     @Nonnull

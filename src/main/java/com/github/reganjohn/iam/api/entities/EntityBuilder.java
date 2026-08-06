@@ -24,11 +24,13 @@ import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.entities.*;
 import com.github.reganjohn.iam.internal.interactions.ApplicationCallbackResponseImpl;
+import com.github.reganjohn.iam.internal.interactions.AccessContextInteractionImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.api.utils.data.BufferObject;
@@ -43,10 +45,11 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Predicate;
 
 public class EntityBuilder extends AbstractEntityBuilder
 {
+    private static final long DELETED = 1L << 34;
+
     private final IAMImpl api;
 
     public EntityBuilder(@Nonnull IAMImpl api)
@@ -78,10 +81,14 @@ public class EntityBuilder extends AbstractEntityBuilder
         AccessOptionData optionData = new AccessOptionData(snapshot.getName(), type, manager.getSignType());
         DataObject rawData = DataObject.empty()
                 .put("iss", issuer)
-                .put("sub", subject)
-                .put("act", actor)
-                .put("access", perm)
-                .put("iat", offset.toEpochSecond())
+                .put("sub", subject);
+
+        if (actor != null)
+            rawData.put("act", actor);
+        if (perm != null)
+            rawData.put("access", perm);
+
+        rawData.put("iat", offset.toEpochSecond())
                 .put("exp", expiresAt.toEpochSecond())
                 .put("jti", uniqueId)
                 .put("cnf", contextData.toData());
@@ -103,14 +110,24 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public ApplicationContextImpl createApplicationAccess(@Nonnull Application application, @Nonnull BufferArray array)
+    public List<AccessContextInteraction> createApplicationAccess(@Nonnull Application application, @Nonnull BufferArray array)
     {
-        List<String> thumbprints = new ArrayList<>();
-        for (BufferObject bufferObject : array)
+        List<AccessContextInteraction> interactions = new ArrayList<>();
+        for (BufferObject obj : array)
         {
-            thumbprints.add(bufferObject.getString("thumbprint"));
+            interactions.add(createApplicationAccess(application, obj));
         }
-        return new ApplicationContextImpl(api, application, thumbprints);
+        return interactions;
+    }
+
+    @Nonnull
+    public AccessContextInteractionImpl createApplicationAccess(@Nonnull Application application, @Nonnull BufferObject obj)
+    {
+        UUID userId = obj.getUUID("user_id");
+        UUID accessId = obj.getUUID("access_id");
+        long flags = obj.getLong("flags");
+        String thumbprint = obj.getString("thumbprint");
+        return new AccessContextInteractionImpl(api, application, userId, accessId, flags, thumbprint);
     }
 
     @Nonnull
@@ -119,7 +136,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID userId = data.getUUID("user_id");
         String username = data.getString("username");
         String avatarId = data.getString("avatar_id", null);
-        int flags = data.getInt("flags");
+        long flags = data.getInt("flags");
         return new UserImpl(api, userId, username, avatarId, flags);
     }
 
@@ -137,22 +154,19 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         UUID userId = data.getUUID("user_id");
         UUID sessionId = data.getUUID("session_id");
-        int flags = data.getInt("flags");
+        long flags = data.getInt("flags");
         String userAgent = data.getString("user_agent", null);
         String thumbprint = data.getString("thumbprint");
         return new SessionImpl(api, userId, sessionId, flags, thumbprint, userAgent);
     }
 
     @Nonnull
-    public List<AccessEntryData> createAccessEntries(@Nonnull BufferArray data, @Nonnull Predicate<String> filter) throws Exception
+    public List<AccessEntryData> createAccessEntries(@Nonnull BufferArray data) throws Exception
     {
         List<AccessEntryData> entries = new ArrayList<>();
         for (BufferObject obj : data)
         {
-            if (filter.test(obj.getString("thumbprint", null)))
-            {
-                entries.add(createAccessEntry(obj));
-            }
+            entries.add(createAccessEntry(obj));
         }
         return entries;
     }
@@ -194,7 +208,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         String name = data.getString("name");
         String description = data.getString("description", null);
         String iconId = data.getString("icon_id", null);
-        int flags = data.getInt("flags");
+        long flags = data.getInt("flags");
         List<String> redirectUris = data.getList(String.class, "redirect_uris");
         return new ApplicationImpl(api, applicationId, ownerId, name, description, iconId, flags, redirectUris);
     }
@@ -239,8 +253,24 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID userId = data.getUUID("user_id");
         UUID applicationId = data.getUUID("application_id");
         UUID ownerId = data.getUUID("owner_id");
-        int permissions = data.getInt("permissions");
+        long permissions = data.getLong("permissions");
+        long flags = data.getLong("flags");
         OffsetDateTime updatedAt = Helpers.toOffsetDateTime(data.getTimestamp("updated_at"));
-        return new PermissionOverrideImpl(api, userId, ownerId, applicationId, permissions, updatedAt);
+        return new PermissionOverrideImpl(api, userId, ownerId, applicationId, permissions, flags, updatedAt);
+    }
+
+    public static boolean isDelete(@Nonnull BufferArray array)
+    {
+        if (array.isEmpty())
+            return false;
+        for (BufferObject obj : array)
+        {
+            long flags = obj.getLong("flags", 0);
+            if ((flags & DELETED) != 0)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -33,6 +33,7 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.session.SessionPaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -42,9 +43,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class SessionPaginationActionImpl extends AbstractSessionActionImpl implements SessionPaginationAction
@@ -95,13 +94,40 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     }
 
     @Nonnull
+    private InteractionCallbackAction<List<AccessEntryData>> retrieveAccessData(@Nonnull UUID userId,
+                                                                                @Nonnull List<Session> sessions)
+    {
+        return api.retrieveUserById(userId)
+                .flatMap(User::retrieveAccess)
+                .map(access -> filter(sessions, new ArrayList<>(access)));
+    }
+
+    @Nonnull
+    private List<AccessEntryData> filter(@Nonnull List<Session> sessions, @Nonnull List<AccessEntryData> access)
+    {
+        Set<String> thumbprints = sessions.stream().map(Session::getThumbprint).collect(Collectors.toSet());
+        access.removeIf(data ->
+        {
+            try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
+            {
+                return !thumbprints.contains(context.digest());
+            }
+            catch (Exception ex)
+            {
+                throw new IllegalStateException("Failed to retrieve the snapshot hash", ex);
+            }
+        });
+        return access;
+    }
+
+    @Nonnull
     @CheckReturnValue
     private InteractionCallbackAction<Map<String, DataObject>> retrieveMap(@Nonnull UUID userId,
                                                                            @Nonnull List<Session> sessions)
     {
         Checks.notNull(userId, "User ID");
         Checks.notNull(sessions, "Sessions");
-        return api.retrieveAccessSessions(userId, sessions).map(this::mapFromData);
+        return retrieveAccessData(userId, sessions).map(this::mapFromData);
     }
 
     @Nonnull

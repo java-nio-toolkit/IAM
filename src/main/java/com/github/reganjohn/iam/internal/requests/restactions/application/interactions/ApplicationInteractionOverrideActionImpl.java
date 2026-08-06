@@ -195,6 +195,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
                 .put("user_id", UUID.fromString(json.getSubject()))
                 .put("application_id", interaction.getApplicationId())
                 .put("interaction_id", interaction.getUniqueId())
+                .put("flags", 0L)
                 .put("permissions", interaction.getPermissionsRaw())
                 .put("updated_at", OffsetDateTime.now())
                 .build();

@@ -17,11 +17,15 @@
 package com.github.reganjohn.iam.api;
 
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.reganjohn.jact.internal.JACTImpl;
 
 import javax.annotation.Nonnull;
 
 public interface IAM
 {
+    @Nonnull
+    JACTImpl getJACT();
+
     @Nonnull
     EntityBuilder getEntityBuilder();
 }

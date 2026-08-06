@@ -21,9 +21,15 @@ import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.jact.api.utils.data.BufferArray;
+import com.reganjohn.jact.internal.interactions.InteractionImpl;
+import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class ApplicationCallbackResponseImpl implements ApplicationCallbackResponse
@@ -34,12 +40,12 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     private final UUID applicationId;
     private final UUID interactionId;
     private final OffsetDateTime expiresAt;
-    private final int rawPermissions;
+    private final long rawPermissions;
     private final String redirectUri;
 
     public ApplicationCallbackResponseImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
                                            @Nonnull UUID applicationId, @Nonnull UUID interactionId,
-                                           @Nonnull OffsetDateTime expiresAt, int permissions, @Nonnull String uri)
+                                           @Nonnull OffsetDateTime expiresAt, long permissions, @Nonnull String uri)
     {
         this.api = api;
         this.userId = userId;
@@ -94,7 +100,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     }
 
     @Override
-    public int getPermissionsRaw()
+    public long getPermissionsRaw()
     {
         return rawPermissions;
     }
@@ -110,6 +116,22 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     @Override
     public InteractionCallbackAction<Application> retrieveApplication()
     {
-        return api.retrieveApplicationById(getOwnerId(), getApplicationId());
+        return api.retrieveUserById(getOwnerId()).flatMap(user -> user.retrieveApplicationById(applicationId));
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<ApplicationCallbackResponse> delete()
+    {
+        return new InteractionContextActionImpl<>(api.getJACT(), "DELETE FROM integrations.responses WHERE application_id = ? AND interaction_id = ? IF EXISTS", Arrays.asList(getApplicationId(), getUniqueId()))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<ApplicationCallbackResponse> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                interaction.onSuccess(ApplicationCallbackResponseImpl.this);
+            }
+        };
     }
 }

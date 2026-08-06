@@ -267,7 +267,8 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveApplicationById(userId, applicationId)
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .map(application -> fromData(application, rawBody))
                 .flatMap(this::modify)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
@@ -282,9 +283,9 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         String name = json.getString("name", application.getName());
         String description = json.getString("description", application.getDescription());
         String iconId = json.getString("icon_id", application.getIconId());
-        int flags = json.getInt("flags", application.getFlagsRaw());
-        int base = application.getFlagsRaw() & Application.ApplicationFlag.SYSTEM;
-        int modifiers = flags & ~Application.ApplicationFlag.SYSTEM;
+        long flags = json.getLong("flags", application.getFlagsRaw());
+        long base = application.getFlagsRaw() & Application.ApplicationFlag.SYSTEM;
+        long modifiers = flags & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = editRedirectUris(application, json);
         return new ApplicationEditData(userId, applicationId, name, description, iconId, base | modifiers, redirectUris);
     }

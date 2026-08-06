@@ -231,8 +231,8 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         UUID sessionId = UUIDv7.nameUUIDFromBytes(rawPublicKey).toUUID();
         String avatarId = rawData.getString("avatar_id", null);
         String agent = request.getHeaders().get("User-Agent");
-        int userFlags = rawData.getInt("flags", 0) & ~User.UserFlag.SYSTEM;
-        int sessionFlags = sessionData.getInt("flags", 0) & ~Session.SessionFlag.SYSTEM;
+        long userFlags = rawData.getLong("flags", 0) & ~User.UserFlag.SYSTEM;
+        long sessionFlags = sessionData.getLong("flags", 0) & ~Session.SessionFlag.SYSTEM;
         return new UserCreateData(userId, sessionId, name, avatarId, agent, entryData, userFlags, sessionFlags, thumbprint);
     }
 
@@ -259,6 +259,6 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), objectData.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.CREATED, new CaseInsensitiveMap<>(), body));
     }
 }

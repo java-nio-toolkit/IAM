@@ -259,7 +259,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         String name = rawBody.getString("name");
         String description = !rawBody.isEmpty("description") ? rawBody.getString("description") : null;
         String iconId = rawBody.getString("icon_id", null);
-        int flags = rawBody.getInt("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
+        long flags = rawBody.getInt("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = rawBody.getArray("redirect_uris").stream(DataArray::getString).collect(Collectors.toList());
         return new ApplicationCreateData(userId, applicationId.toUUID(), name, description, iconId, flags, redirectUris);
     }
@@ -285,6 +285,6 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT));
+        context.writeAndFlush(new Response(context, StatusReason.CREATED));
     }
 }

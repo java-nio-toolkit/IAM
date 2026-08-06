@@ -25,6 +25,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -102,26 +103,10 @@ public class PermissionOverrideDeleteActionImpl extends AbstractApplicationActio
         AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(data.getSubject());
         UUID applicationId = UUID.fromString(params.get("application_id"));
-        delete(userId, applicationId).queue(success -> handleSuccess(context));
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<Void> delete(@Nonnull UUID userId, @Nonnull UUID applicationId)
-    {
-        return new InteractionContextActionImpl<>(api.getJACT(), "DELETE FROM users.entitlement WHERE user_id = ? AND application_id = ? IF EXISTS", Arrays.asList(userId, applicationId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Void> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (InteractionUtil.isDone(array))
-                    interaction.onSuccess(null);
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
-            }
-        };
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveEntitlementById(applicationId))
+                .flatMap(PermissionOverride::delete)
+                .queue(success -> handleSuccess(context));
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

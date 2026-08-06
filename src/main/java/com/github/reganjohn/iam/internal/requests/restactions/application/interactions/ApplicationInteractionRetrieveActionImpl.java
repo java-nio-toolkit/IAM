@@ -32,11 +32,12 @@ import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationContext;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -44,16 +45,14 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.interactions.ApplicationInteractionRetrieveAction;
-import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.application.AbstractApplicationActionImpl;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.internal.interactions.InteractionImpl;
 import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
@@ -62,6 +61,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
@@ -152,21 +152,32 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         {
             retrieveCallbackResponse(applicationId, interactionId)
                     .flatMap(ApplicationCallbackResponse::retrieveApplication)
-                    .flatMap(Application::retrieveAccess)
-                    .map(application -> retrieveApplication(application, contextData))
+                    .flatMap(application -> retrieveApplication(application, contextData))
                     .flatMap(application -> retrieveCallbackResponse(application.getUniqueId(), interactionId))
+                    .flatMap(ApplicationCallbackResponse::delete)
                     .map(response -> createObjectData(context, data, response))
                     .queue(interaction -> handleSuccess(context, interaction));
         }
     }
 
     @Nonnull
-    private Application retrieveApplication(@Nonnull ApplicationContext info, @Nonnull AccessContextData context)
+    private List<String> retrieveThumbprints(@Nonnull List<AccessContextInteraction> interactions)
     {
-        if (Helpers.contains(info.getThumbprints(), context.digest(), false))
-            return info.getApplication();
-        else
-            throw new ErrorResponseException(ErrorResponse.MISSING_ACCESS);
+        return interactions.stream().map(AccessContextInteraction::getThumbprint).collect(Collectors.toList());
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Application> retrieveApplication(@Nonnull Application application,
+                                                                       @Nonnull AccessContextData context)
+    {
+        return application.retrieveAccess().map(this::retrieveThumbprints).map(thumbprints ->
+        {
+            if (Helpers.contains(thumbprints, context.digest(), false))
+                return application;
+            else
+                throw new ErrorResponseException(ErrorResponse.MISSING_ACCESS);
+        });
     }
 
     @Nonnull
@@ -174,11 +185,9 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     private InteractionCallbackAction<ApplicationCallbackResponse> retrieveCallbackResponse(@Nonnull UUID applicationId,
                                                                                             @Nonnull UUID interactionId)
     {
-        InteractionMapping map = new InteractionMapping.Builder()
-                .put("application_id", applicationId)
-                .put("interaction_id", interactionId)
-                .build();
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("retrieve_interaction_response.cql"), map)
+        Checks.notNull(interactionId, "Interaction ID");
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.responses WHERE application_id = ? AND interaction_id = ?", Arrays.asList(applicationId, interactionId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

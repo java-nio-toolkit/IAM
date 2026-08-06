@@ -39,8 +39,9 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationSyncAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
-import com.github.reganjohn.iam.api.utils.applications.AccessCreateData;
+import com.github.reganjohn.iam.api.utils.applications.ApplicationData;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.internal.interactions.InteractionImpl;
@@ -50,6 +51,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.*;
@@ -385,7 +387,8 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
             Map<String, String> params = request.getRoute().getMajorParameters();
             UUID userId = UUID.fromString(objectData.getSubject());
             UUID applicationId = UUID.fromString(params.get("application_id"));
-            api.retrieveApplicationById(userId, applicationId)
+            api.retrieveUserById(userId)
+                    .flatMap(user -> user.retrieveApplicationById(applicationId))
                     .flatMap(Application::retrieveAccessCount)
                     .map(count -> create(userId, applicationId, count, entryData, contextData))
                     .flatMap(this::sync)
@@ -395,7 +398,7 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> sync(@Nonnull AccessCreateData access)
+    private InteractionCallbackAction<Void> sync(@Nonnull AccessCreateData access)
     {
         Checks.notNull(access, "Application");
         return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_access_application.cql"), access.toMap())
@@ -414,18 +417,70 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
     }
 
     @Nonnull
-    public AccessCreateData create(@Nonnull UUID userId, @Nonnull UUID applicationId, int count,
-                                   @Nonnull AccessEntryData entryData,
-                                   @Nonnull AccessContextData contextData)
+    private AccessCreateData create(@Nonnull UUID userId, @Nonnull UUID applicationId, int count,
+                                    @Nonnull AccessEntryData entryData,
+                                    @Nonnull AccessContextData contextData)
     {
         if (count > Application.MAX_ACCESS_ENTRY_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_ACCESS_APPLICATION);
         else
-            return new AccessCreateData(userId, applicationId, entryData, contextData.digest());
+            return new AccessCreateData(userId, applicationId, entryData, 0, contextData.digest());
     }
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT));
+        context.writeAndFlush(new Response(context, StatusReason.CREATED));
+    }
+
+    private static class AccessCreateData implements ApplicationData, InteractionMapping
+    {
+        private final UUID userId;
+        private final UUID applicationId;
+        private final AccessEntryData entryData;
+        private final long flags;
+        private final String thumbprint;
+
+        public AccessCreateData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull AccessEntryData data,
+                                long flags, @Nonnull String thumbprint)
+        {
+            this.userId = userId;
+            this.applicationId = applicationId;
+            this.entryData = data;
+            this.flags = flags;
+            this.thumbprint = thumbprint;
+        }
+
+        @Nonnull
+        public Map<String, Object> toMap()
+        {
+            return new InteractionMapping.Builder()
+                    .put("user_id", userId)
+                    .put("application_id", applicationId)
+                    .put("alg", entryData.getAccessOption().getMode())
+                    .put("flags", flags)
+                    .put("kid", entryData.getName())
+                    .put("kty", entryData.getType().name())
+                    .put("usage", entryData.getUsage().name().toLowerCase())
+                    .put("public_key", entryData.getPublicKey().getEncoded())
+                    .put("access_id", UUID.nameUUIDFromBytes(thumbprint.getBytes(StandardCharsets.UTF_8)))
+                    .put("thumbprint", thumbprint)
+                    .toMap();
+        }
+
+        @Nonnull
+        @Override
+        public DataObject toData()
+        {
+            return DataObject.empty()
+                    .put("alg", entryData.getAccessOption().getMode())
+                    .put("flags", flags)
+                    .put("kid", entryData.getName())
+                    .put("kty", entryData.getType().name())
+                    .put("usage", entryData.getUsage().name().toLowerCase())
+                    .put("public_key", entryData.getPublicKey().getEncoded())
+                    .put("access_id", UUID.nameUUIDFromBytes(thumbprint.getBytes(StandardCharsets.UTF_8)))
+                    .put("thumbprint", thumbprint)
+                    .toData();
+        }
     }
 }

@@ -177,7 +177,8 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         {
             UUID userId = UUID.fromString(json.getSubject());
             UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
-            api.retrieveSessionById(userId, sessionId)
+            api.retrieveUserById(userId)
+                    .flatMap(user -> user.retrieveSessionById(sessionId))
                     .map(session -> fromData(session, rawBody, data, contextData.digest()))
                     .flatMap(this::modify)
                     .queue(success -> handleSuccess(context), context::fireExceptionCaught);
@@ -186,14 +187,14 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
 
     @Nonnull
     private SessionEditData fromData(@Nonnull Session session, @Nonnull DataObject json,
-                                                     @Nonnull ProofObjectData data, @Nonnull String thumbprint)
+                                     @Nonnull ProofObjectData data, @Nonnull String thumbprint)
     {
         UUID sessionId = session.getUniqueId();
         UUID userId = session.getUserId();
         String userAgent = json.getString("user_agent", session.getUserAgent());
-        int flags = json.getInt("flags", session.getFlagsRaw());
-        int base = session.getFlagsRaw() & Session.SessionFlag.SYSTEM;
-        int modifiers = flags & ~Session.SessionFlag.SYSTEM;
+        long flags = json.getLong("flags", session.getFlagsRaw());
+        long base = session.getFlagsRaw() & Session.SessionFlag.SYSTEM;
+        long modifiers = flags & ~Session.SessionFlag.SYSTEM;
         return new SessionEditData(userId, sessionId, userAgent, data.getEntryData(), base | modifiers, thumbprint);
     }
 

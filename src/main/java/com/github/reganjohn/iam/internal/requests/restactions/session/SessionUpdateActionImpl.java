@@ -141,7 +141,8 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
     {
         UUID userId = UUID.fromString(json.getSubject());
         UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
-        api.retrieveSessionById(userId, sessionId)
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveSessionById(sessionId))
                 .flatMap(session -> update(context, contextData, json, session))
                 .queue(data -> handleSuccess(context, data), context::fireExceptionCaught);
     }

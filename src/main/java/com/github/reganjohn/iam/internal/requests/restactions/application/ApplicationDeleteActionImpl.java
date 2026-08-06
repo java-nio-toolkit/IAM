@@ -26,28 +26,17 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationContext;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.application.ApplicationDeleteAction;
-import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
-import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.UUID_TYPE_COERCE;
@@ -105,78 +94,14 @@ public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl i
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        retrieveApplicationInfo(userId, applicationId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<Void> retrieveApplicationInfo(UUID userId, UUID applicationId)
-    {
-        return api.retrieveApplicationById(userId, applicationId)
-                .flatMap(Application::retrieveAccess)
-                .map(Placeholder::new)
-                .flatMap(this::delete);
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<Void> delete(@Nonnull Placeholder placeholder)
-    {
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("delete_application.cql", placeholder.getThumbprints()), placeholder.toMapping())
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Void> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty())
-                    interaction.onSuccess(null);
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
-            }
-        };
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveApplicationById(applicationId))
+                .flatMap(Application::delete)
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
         context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
-    }
-
-    private static class Placeholder
-    {
-        private final ApplicationContext application;
-        private final List<String> thumbprints;
-
-        private Placeholder(@Nonnull ApplicationContext application)
-        {
-            this.application = application;
-            this.thumbprints = application.getThumbprints();
-        }
-
-        @Nonnull
-        public String getThumbprints()
-        {
-            return IntStream.range(0, thumbprints.size()).mapToObj(i -> ":a" + i).collect(Collectors.joining(", "));
-        }
-
-        @Nonnull
-        public InteractionMapping toMapping()
-        {
-            return new InteractionMapping.Builder(toMap())
-                    .put("owner_id", application.getApplication().getOwnerId())
-                    .put("application_id", application.getUniqueId())
-                    .build();
-        }
-
-        @Nonnull
-        public Map<String, Object> toMap()
-        {
-            return IntStream.range(0, thumbprints.size()).collect(HashMap::new, this::withQueryParams, HashMap::putAll);
-        }
-
-        private void withQueryParams(@Nonnull Map<String, Object> map, int index)
-        {
-            map.put("a" + index, thumbprints.get(index));
-        }
     }
 }

@@ -44,17 +44,33 @@ public class Routes
 
     public static class Teams
     {
-        public static final Route CREATE_TEAM = new Route(POST, "teams");
-        public static final Route ADD_MEMBER = new Route(PUT, "teams/{team_id}/members/{user_id}");
         public static final Route GET_TEAMS = new Route(GET, "teams");
+        public static final Route CREATE_TEAM = new Route(POST, "teams");
         public static final Route GET_TEAM = new Route(GET, "teams/{team_id}");
-        public static final Route GET_MEMBERS = new Route(GET, "teams/{team_id}/members");
-        public static final Route GET_MEMBER = new Route(GET, "teams/{team_id}/members/{user_id}");
         public static final Route MODIFY_TEAM = new Route(PATCH, "teams/{team_id}");
-        public static final Route MODIFY_MEMBER = new Route(PATCH, "teams/{team_id}/members/{user_id}");
-        public static final Route MODIFY_SELF = new Route(PATCH, "teams/{team_id}/members/@me");
         public static final Route DELETE_TEAM = new Route(DELETE, "teams/{team_id}");
+        public static final Route GET_MEMBERS = new Route(GET, "teams/{team_id}/members");
+        public static final Route ADD_MEMBER = new Route(PUT, "teams/{team_id}/members/{user_id}");
+        public static final Route MODIFY_MEMBER = new Route(PATCH, "teams/{team_id}/members/{user_id}");
         public static final Route KICK_MEMBER = new Route(DELETE, "teams/{team_id}/members/{user_id}");
+        public static final Route GET_SELF = new Route(GET, "teams/{team_id}/members/@me");
+        public static final Route GET_MEMBER = new Route(GET, "teams/{team_id}/members/{user_id}");
+        public static final Route GET_TEAM_APPLICATIONS = new Route(GET, "teams/{team_id}/applications");
+        public static final Route ADD_TEAM_APPLICATION = new Route(PUT, "teams/{team_id}/applications/{application_id}");
+        public static final Route SYNC_TEAM_APPLICATION = new Route(POST, "teams/{team_id}/applications/{application_id}");
+        public static final Route DELETE_TEAM_APPLICATION = new Route(DELETE, "teams/{team_id}/applications/{application_id}");
+        public static final Route MODIFY_SELF = new Route(PATCH, "teams/{team_id}/members/@me");
+        public static final Route ADD_MEMBER_ROLE = new Route(PUT, "teams/{team_id}/members/{user_id}/roles/{role_id}");
+        public static final Route REMOVE_MEMBER_ROLE = new Route(DELETE, "teams/{team_id}/members/{user_id}/roles/{role_id}");
+    }
+
+    public static class Roles
+    {
+        public static final Route GET_ROLES = new Route(GET, "teams/{team_id}/roles");
+        public static final Route CREATE_ROLE = new Route(POST, "teams/{team_id}/roles");
+        public static final Route GET_ROLE = new Route(GET, "teams/{team_id}/roles/{role_id}");
+        public static final Route MODIFY_ROLE = new Route(PATCH, "teams/{team_id}/roles/{role_id}");
+        public static final Route DELETE_ROLE = new Route(DELETE, "teams/{team_id}/roles/{role_id}");
     }
 
     public static class Self

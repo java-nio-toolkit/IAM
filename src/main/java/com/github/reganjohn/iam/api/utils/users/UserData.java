@@ -35,7 +35,7 @@ public interface UserData extends SerializableData
     @Nullable
     String getAvatarId();
 
-    int getRawUserFlags();
+    long getRawUserFlags();
 
     @Nonnull
     default EnumSet<User.UserFlag> getUserFlags()

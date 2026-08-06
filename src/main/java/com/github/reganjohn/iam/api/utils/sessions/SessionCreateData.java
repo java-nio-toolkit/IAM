@@ -30,11 +30,11 @@ public class SessionCreateData implements SessionData
     private final UUID userId;
     private final String userAgent;
     private final AccessEntryData entryData;
-    private final int flags;
+    private final long flags;
     private final String thumbprint;
 
     public SessionCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String userAgent,
-                             @Nonnull AccessEntryData entryData, int flags, @Nonnull String thumbprint)
+                             @Nonnull AccessEntryData entryData, long flags, @Nonnull String thumbprint)
     {
         this.sessionId = sessionId;
         this.userId = userId;
@@ -73,7 +73,7 @@ public class SessionCreateData implements SessionData
     }
 
     @Override
-    public int getRawSessionFlags()
+    public long getRawSessionFlags()
     {
         return flags;
     }

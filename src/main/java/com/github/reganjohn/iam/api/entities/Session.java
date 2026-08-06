@@ -53,13 +53,14 @@ public interface Session extends IUnique
         return SessionFlag.getFlags(getFlagsRaw());
     }
 
-    int getFlagsRaw();
+    long getFlagsRaw();
 
     /**
      * Represents the bit offsets used for session flags.
      */
     enum SessionFlag
     {
+        DELETED(34, "User's session is deleted", false),
         UNKNOWN(-1, "Unknown", false);
 
         /**
@@ -67,24 +68,24 @@ public interface Session extends IUnique
          */
         public static final SessionFlag[] EMPTY_FLAGS = new SessionFlag[0];
 
-        public static final int ALL = 1 | getRaw(EnumSet.allOf(SessionFlag.class));
+        public static final long ALL = 1 | getRaw(EnumSet.allOf(SessionFlag.class));
 
-        public static final int SYSTEM = ALL & ~getRaw();
+        public static final long SYSTEM = ALL & ~getRaw();
 
-        private final int offset;
-        private final int raw;
+        private final long offset;
+        private final long raw;
         private final String name;
         private final boolean managed;
 
-        SessionFlag(int offset, @Nonnull String name)
+        SessionFlag(long offset, @Nonnull String name)
         {
             this(offset, name, true);
         }
 
-        SessionFlag(int offset, @Nonnull String name, boolean managed)
+        SessionFlag(long offset, @Nonnull String name, boolean managed)
         {
             this.offset = offset;
-            this.raw = 1 << offset;
+            this.raw = 1L << offset;
             this.name = name;
             this.managed = managed;
         }
@@ -115,7 +116,7 @@ public interface Session extends IUnique
          *
          * @return The offset that represents this {@link SessionFlag SessionFlag}.
          */
-        public int getOffset()
+        public long getOffset()
         {
             return offset;
         }
@@ -126,7 +127,7 @@ public interface Session extends IUnique
          *
          * @return The raw value of this specific flag.
          */
-        public int getRawValue()
+        public long getRawValue()
         {
             return raw;
         }
@@ -164,7 +165,7 @@ public interface Session extends IUnique
          * @return Possibly-empty EnumSet of SessionFlags.
          */
         @Nonnull
-        public static EnumSet<SessionFlag> getFlags(int flags)
+        public static EnumSet<SessionFlag> getFlags(long flags)
         {
             EnumSet<SessionFlag> foundFlags = EnumSet.noneOf(SessionFlag.class);
             if (flags == 0)
@@ -183,7 +184,7 @@ public interface Session extends IUnique
         }
 
         /**
-         * This is effectively the opposite of {@link #getFlags(int)}, this takes 1 or more SessionFlags
+         * This is effectively the opposite of {@link #getFlags(long)}, this takes 1 or more SessionFlags
          * and returns the bitmask representation of the flags.
          *
          * @param  flags
@@ -194,10 +195,10 @@ public interface Session extends IUnique
          *
          * @return bitmask representing the provided flags.
          */
-        public static int getRaw(@Nonnull SessionFlag... flags)
+        public static long getRaw(@Nonnull SessionFlag... flags)
         {
             Checks.noneNull(flags, "SessionFlags");
-            int raw = 0;
+            long raw = 0;
             for (SessionFlag flag : flags)
             {
                 if (flag != null && flag != UNKNOWN)
@@ -210,7 +211,7 @@ public interface Session extends IUnique
         }
 
         /**
-         * This is effectively the opposite of {@link #getFlags(int)}. This takes a collection of SessionFlags
+         * This is effectively the opposite of {@link #getFlags(long)}. This takes a collection of SessionFlags
          * and returns the bitmask representation of the flags.
          *
          * @param  flags
@@ -221,7 +222,7 @@ public interface Session extends IUnique
          *
          * @return bitmask representing the provided flags.
          */
-        public static int getRaw(@Nonnull Collection<SessionFlag> flags)
+        public static long getRaw(@Nonnull Collection<SessionFlag> flags)
         {
             Checks.notNull(flags, "Flag Collection");
             return getRaw(flags.toArray(EMPTY_FLAGS));

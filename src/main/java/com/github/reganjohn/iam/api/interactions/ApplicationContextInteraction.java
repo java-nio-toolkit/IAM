@@ -39,7 +39,7 @@ public interface ApplicationContextInteraction extends IUnique
     @Nonnull
     OffsetDateTime getTimeExpiresAt();
 
-    int getPermissionsRaw();
+    long getPermissionsRaw();
 
     @Nonnull
     default EnumSet<Permission> getPermissions()

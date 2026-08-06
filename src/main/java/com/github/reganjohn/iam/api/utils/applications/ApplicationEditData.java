@@ -31,11 +31,11 @@ public class ApplicationEditData implements ApplicationData
     private final String name;
     private final String description;
     private final String iconId;
-    private final int flags;
+    private final long flags;
     private final List<String> redirectUris;
 
     public ApplicationEditData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull String name,
-                               @Nullable String description, @Nullable String iconId, int flags, @Nonnull List<String> redirectUris)
+                               @Nullable String description, @Nullable String iconId, long flags, @Nonnull List<String> redirectUris)
     {
         this.userId = userId;
         this.applicationId = applicationId;

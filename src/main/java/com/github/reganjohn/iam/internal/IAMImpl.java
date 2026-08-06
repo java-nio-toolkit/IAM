@@ -27,15 +27,10 @@ import com.github.adamorgan.jnt.internal.handle.classic.ClassicReceiveHandlerImp
 import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
-import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.*;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.utils.ClassLoader;
-import com.github.reganjohn.iam.api.utils.applications.AccessCreateData;
-import com.github.reganjohn.iam.api.utils.applications.ApplicationEditData;
-import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
@@ -58,7 +53,6 @@ import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserRetri
 import com.github.reganjohn.iam.internal.requests.restactions.session.*;
 import com.reganjohn.jact.api.JACT;
 import com.reganjohn.jact.api.JACTBuilder;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import com.reganjohn.jact.api.requests.Consistency;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.Compression;
@@ -69,8 +63,6 @@ import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResp
 import com.reganjohn.jact.internal.managers.SecretAccessManagerImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionCreateActionImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -203,12 +195,12 @@ public class IAMImpl implements IAM
         {
             String[] statements = {
                     "TRUNCATE global.public_keys",
-                    "TRUNCATE users.public_keys",
                     "TRUNCATE integrations.applications",
                     "TRUNCATE integrations.public_keys",
+                    "TRUNCATE users.public_keys",
                     "TRUNCATE users.accounts",
-                    "TRUNCATE users.permissions",
-                    "TRUNCATE users.sessions"
+                    "TRUNCATE users.sessions",
+                    "TRUNCATE users.entitlements"
             };
 
             for (String statement : statements)
@@ -230,6 +222,7 @@ public class IAMImpl implements IAM
     }
 
     @Nonnull
+    @Override
     public JACTImpl getJACT()
     {
         return (JACTImpl) jact;
@@ -244,35 +237,6 @@ public class IAMImpl implements IAM
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccessSessions(@Nonnull UUID userId, @Nonnull List<Session> sessions)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notNull(sessions, "Sessions");
-        return retrieveAccessEntries(userId, sessions.stream().map(Session::getThumbprint).collect(Collectors.toList()));
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccessEntries(@Nonnull UUID userId, @Nonnull List<String> thumbprints)
-    {
-        Checks.notNull(userId, "User ID");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.public_keys WHERE user_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
-                                      @Nonnull BufferArray array) throws Exception
-            {
-                if (array.isEmpty())
-                    interaction.onSuccess(Collections.emptyList());
-                else
-                    interaction.onSuccess(entityBuilder.createAccessEntries(array, thumbprints::contains));
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
     public InteractionCallbackAction<User> retrieveUserById(@Nonnull UUID id)
     {
         Checks.notNull(id, "User ID");
@@ -282,94 +246,10 @@ public class IAMImpl implements IAM
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
                                       @Nonnull InteractionImpl<User> request, @Nonnull BufferArray array)
             {
-                if (!array.isEmpty())
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
                     request.onSuccess(entityBuilder.createUser(array.getObject(0)));
                 else
                     request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<Session> retrieveSessionById(@Nonnull UUID userId, @Nonnull UUID sessionId)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notNull(sessionId, "Session ID");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.sessions WHERE user_id = ? AND session_id = ?", Arrays.asList(userId, sessionId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Session> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (array.isEmpty())
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
-                else
-                    interaction.onSuccess(entityBuilder.createSession(array.getObject(0)));
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<AccessEntryData> retrieveAccessEntryById(@Nonnull UUID userId, @Nonnull String thumbprint)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notEmpty(thumbprint, "Thumbprint");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.public_keys WHERE user_id = ? AND thumbprint = ?", Arrays.asList(userId, thumbprint))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<AccessEntryData> interaction,
-                                      @Nonnull BufferArray array) throws Exception
-            {
-                if (array.isEmpty())
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
-                else
-                    interaction.onSuccess(entityBuilder.createAccessEntry(array.getObject(0)));
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID userId,
-                                                                          @Nonnull UUID applicationId)
-    {
-        Checks.notNull(userId, "User ID");
-        Checks.notNull(applicationId, "Application ID");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM integrations.applications WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Application> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (array.isEmpty())
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
-                else
-                    interaction.onSuccess(entityBuilder.createApplication(array.getObject(0)));
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<PermissionOverride> retrieveEntitlement(@Nonnull UUID userId,
-                                                                             @Nonnull UUID applicationId)
-    {
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.entitlement WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<PermissionOverride> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty())
-                    interaction.onSuccess(entityBuilder.createPermissionOverride(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
             }
         };
     }

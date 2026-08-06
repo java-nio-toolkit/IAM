@@ -38,7 +38,7 @@ import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.ApplicationContext;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -65,6 +65,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.JKT;
 import static com.github.reganjohn.iam.api.requests.restactions.UserAction.BASE_TYPE_REQUIRED;
@@ -156,7 +157,8 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
     {
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveEntitlement(userId, applicationId)
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveEntitlementById(applicationId))
                 .flatMap(permission -> update(context, contextData, json, permission))
                 .queue(data -> handleSuccess(context, data), context::fireExceptionCaught);
     }
@@ -168,17 +170,20 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
                                                                @Nonnull AccessObjectData json,
                                                                @Nonnull PermissionOverride permission)
     {
-        return api.retrieveApplicationById(permission.getOwnerId(), permission.getApplicationId())
+        return api.retrieveUserById(permission.getOwnerId())
+                .flatMap(user -> user.retrieveApplicationById(permission.getApplicationId()))
                 .flatMap(Application::retrieveAccess)
-                .flatMap(info -> update(context, data, json, info, permission));
+                .map(this::retrieveThumbprints)
+                .flatMap(thumbprints -> update(context, data, json, thumbprints, permission));
     }
+
 
     @Nonnull
     @CheckReturnValue
     private InteractionCallbackAction<AccessObjectData> update(@Nonnull ChannelHandlerContext context,
                                                                @Nonnull AccessContextData data,
                                                                @Nonnull AccessObjectData json,
-                                                               @Nonnull ApplicationContext application,
+                                                               @Nonnull List<String> thumbprints,
                                                                @Nonnull PermissionOverride permission)
     {
         DataObject contextData = json.getContextData();
@@ -192,7 +197,7 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
             throw new IllegalArgumentException("The thumbprint is required option and cannot be missing!");
         else if (!contextData.isType(JKT, DataType.STRING))
             throw new IllegalArgumentException("The JWK Thumbprint within the confirmation object must be a string!");
-        else if (!Helpers.contains(application.getThumbprints(), contextData.getString(JKT), false))
+        else if (!Helpers.contains(thumbprints, contextData.getString(JKT), false))
             throw new IllegalStateException("The access token thumbprint does not match the entitlement thumbprint.");
         else
             return update(context, permission, data, json, json.getActor());
@@ -238,5 +243,11 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
         context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+    }
+
+    @Nonnull
+    private List<String> retrieveThumbprints(@Nonnull List<AccessContextInteraction> interactions)
+    {
+        return interactions.stream().map(AccessContextInteraction::getThumbprint).collect(Collectors.toList());
     }
 }

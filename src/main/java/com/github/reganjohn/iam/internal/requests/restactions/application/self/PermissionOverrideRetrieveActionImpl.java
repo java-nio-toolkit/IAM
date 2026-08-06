@@ -101,7 +101,10 @@ public class PermissionOverrideRetrieveActionImpl extends AbstractApplicationAct
         AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(data.getSubject());
         UUID applicationId = UUID.fromString(params.get("application_id"));
-        api.retrieveEntitlement(userId, applicationId).map(this::mapFromData).queue(json -> handleSuccess(context, json));
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveEntitlementById(applicationId))
+                .map(this::mapFromData)
+                .queue(json -> handleSuccess(context, json));
     }
 
     @Nonnull

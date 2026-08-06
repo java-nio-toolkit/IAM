@@ -102,7 +102,8 @@ public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl
         AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(data.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveApplicationById(userId, applicationId)
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .map(this::fromData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }

@@ -108,12 +108,19 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> delete(UUID userId, UUID sessionId, int count)
+    private InteractionCallbackAction<Void> delete(@Nonnull UUID userId, @Nonnull UUID sessionId, int count)
     {
         if (count == 1)
             throw new ErrorResponseException(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION);
         else
-            return api.retrieveSessionById(userId, sessionId).flatMap(Session::delete);
+            return retrieveSessionById(userId, sessionId).flatMap(Session::delete);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Session> retrieveSessionById(@Nonnull UUID userId, @Nonnull UUID sessionId)
+    {
+        return api.retrieveUserById(userId).flatMap(user -> user.retrieveSessionById(sessionId));
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
