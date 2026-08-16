@@ -26,7 +26,10 @@ import org.jetbrains.annotations.Unmodifiable;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.UUID;
 
 public interface Application extends IUnique
 {

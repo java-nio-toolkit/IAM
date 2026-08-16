@@ -175,10 +175,61 @@ public class UserImpl implements User
 
     @Nonnull
     @Override
+    public InteractionCallbackAction<Webhook> retrieveWebhookById(@Nonnull UUID webhookId)
+    {
+        Checks.notNull(webhookId, "Webhook ID");
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM users.webhooks WHERE owner_id = ? AND webhook_id = ?", Arrays.asList(userId, webhookId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Webhook> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    interaction.onSuccess(getIAM().getEntityBuilder().createWebhook(array.getObject(0)));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
+            }
+        };
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<List<Webhook>> retrieveWebhooks()
+    {
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<Webhook>> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : getIAM().getEntityBuilder().createWebhooks(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @Override
+    public InteractionCallbackAction<Integer> retrieveWebhookCount()
+    {
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT COUNT(*) FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess((int) InteractionUtil.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @Override
     public InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID applicationId)
     {
         Checks.notNull(applicationId, "Application ID");
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.applications WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.applications WHERE owner_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -197,7 +248,7 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<List<Application>> retrieveApplications()
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.applications WHERE user_id = ?", Collections.singletonList(userId))
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -213,7 +264,7 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Integer> retrieveApplicationCount()
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.applications WHERE user_id = :user_id", Collections.singletonList(userId))
+        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

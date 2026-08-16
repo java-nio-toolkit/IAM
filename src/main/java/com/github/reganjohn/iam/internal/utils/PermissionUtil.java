@@ -18,9 +18,7 @@ package com.github.reganjohn.iam.internal.utils;
 
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.Permission;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.Nonnull;
 import java.util.EnumSet;

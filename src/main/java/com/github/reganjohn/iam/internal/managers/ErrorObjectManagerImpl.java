@@ -22,6 +22,7 @@ import com.github.adamorgan.jnt.api.events.session.InactiveType;
 import com.github.adamorgan.jnt.api.events.session.SessionInactiveEvent;
 import com.github.adamorgan.jnt.api.exceptions.*;
 import com.github.adamorgan.jnt.api.requests.MediaType;
+import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.SignType;
@@ -59,13 +60,14 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     @Override
     public void exceptionCaught(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error) throws Exception
     {
+        Request request = context.channel().attr(Request.IDENTIFIER).get();
         if (printStackTrace && !(error instanceof MissingAccessException))
             error.printStackTrace();
 
         if (error instanceof JsonParseException)
             handleFailure(context, ErrorResponse.INVALID_REQUEST_BODY, StatusReason.BAD_REQUEST);
         else if (error instanceof RateLimitedException)
-            handleFailure(context, (RateLimitedException) error);
+            handleFailure(context, request, (RateLimitedException) error);
         else if (error instanceof ProofAccessException)
             handleFailure(context, (ProofAccessException) error);
         else if (error instanceof InvalidTokenException)
@@ -100,11 +102,18 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, errorResponse, StatusReason.UNPROCESSABLE_ENTITY);
         else if (errorResponse.getErrorCode() == ErrorResponse.INVALID_FROM_OBJECT_BODY.getCode())
             handleFailure(context, errorResponse, StatusReason.UNPROCESSABLE_ENTITY);
+        else if (errorResponse.getErrorCode() >= 10000 && errorResponse.getErrorCode() < 20000)
+            handleFailure(context, errorResponse, StatusReason.NOT_FOUND);
+        else if (errorResponse.getErrorCode() >= 20000 && errorResponse.getErrorCode() < 30000)
+            handleFailure(context, errorResponse, StatusReason.FORBIDDEN);
+        else if (errorResponse.getErrorCode() >= 40000 && errorResponse.getErrorCode() < 50000)
+            handleFailure(context, errorResponse, StatusReason.CONFLICT);
         else
             handleFailure(context, errorResponse, StatusReason.BAD_REQUEST);
     }
 
-    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull RateLimitedException error)
+    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                               @Nonnull RateLimitedException error)
     {
         DataObject json = DataObject.empty()
                 .put("message", "You are being rate limited.")
@@ -177,17 +186,20 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
         handleFailure(context, exception, StatusReason.UNAUTHORIZED);
     }
 
-    private void handleFailure(@Nonnull ChannelHandlerContext context, ErrorResponse errorResponse, @Nonnull StatusReason reason)
+    private void handleFailure(@Nonnull ChannelHandlerContext context, ErrorResponse errorResponse,
+                               @Nonnull StatusReason reason)
     {
         handleFailure(context, new ErrorResponseException(errorResponse), Collections.emptyMap(), reason);
     }
 
-    private void handleFailure(@Nonnull ChannelHandlerContext context, int code, @Nonnull String meaning, @Nonnull StatusReason reason)
+    private void handleFailure(@Nonnull ChannelHandlerContext context, int code, @Nonnull String meaning,
+                               @Nonnull StatusReason reason)
     {
         handleFailure(context, new ErrorResponseException(code, meaning), Collections.emptyMap(), reason);
     }
 
-    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse, @Nonnull StatusReason reason)
+    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse,
+                               @Nonnull StatusReason reason)
     {
         handleFailure(context, errorResponse, Collections.emptyMap(), reason);
     }

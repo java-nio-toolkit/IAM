@@ -15,13 +15,13 @@
  */
 
 BEGIN TRANSACTION
-    LET application_data = (SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id);
+    LET application_data = (SELECT * FROM integrations.applications WHERE owner_id = :user_id AND application_id = :application_id);
 
     -- Return data directly from table (must come before INSERT)
-    SELECT * FROM integrations.applications WHERE user_id = :user_id AND application_id = :application_id;
+    SELECT * FROM integrations.applications WHERE owner_id = :user_id AND application_id = :application_id;
 
     IF application_data IS NULL THEN
-        INSERT INTO integrations.applications (user_id, application_id, name, description, icon_id, flags, redirect_uris)
+        INSERT INTO integrations.applications (owner_id, application_id, name, description, icon_id, flags, redirect_uris)
         VALUES (:user_id, :application_id, :name, :description, :icon_id, :flags, :redirect_uris);
     END IF
 COMMIT TRANSACTION;

@@ -19,9 +19,9 @@ package com.github.reganjohn.iam.internal.entities;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
-import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.data.BufferArray;
@@ -139,7 +139,7 @@ public class ApplicationImpl implements Application
                                       @Nonnull BufferArray array)
             {
                 if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(ApplicationImpl.this, array.getObject(0)));
+                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(array.getObject(0)));
                 else
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
             }
@@ -158,7 +158,7 @@ public class ApplicationImpl implements Application
                                       @Nonnull BufferArray array)
             {
                 if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(ApplicationImpl.this, array));
+                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(array));
                 else
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
             }
@@ -170,7 +170,7 @@ public class ApplicationImpl implements Application
     public InteractionCallbackAction<Void> delete()
     {
         long flags = getFlagsRaw() | Application.ApplicationFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE integrations.applications SET flags = ? WHERE user_id = ? AND application_id = ?", Arrays.asList(flags, getOwnerId(), getUniqueId()));
+        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE integrations.applications SET flags = ? WHERE owner_id = ? AND application_id = ?", Arrays.asList(flags, getOwnerId(), getUniqueId()));
     }
 
     @Override

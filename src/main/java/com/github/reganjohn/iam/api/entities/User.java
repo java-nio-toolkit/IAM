@@ -104,6 +104,18 @@ public interface User extends IUnique
 
     @Nonnull
     @CheckReturnValue
+    InteractionCallbackAction<Webhook> retrieveWebhookById(@Nonnull UUID webhookId);
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<List<Webhook>> retrieveWebhooks();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Integer> retrieveWebhookCount();
+
+    @Nonnull
+    @CheckReturnValue
     InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID applicationId);
 
     @Nonnull

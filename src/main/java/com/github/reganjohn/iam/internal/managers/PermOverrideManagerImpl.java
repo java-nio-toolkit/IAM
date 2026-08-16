@@ -35,7 +35,9 @@ import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
-import java.util.*;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 

@@ -250,7 +250,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
                 if (array.isEmpty())
                     request.onSuccess(null);
                 else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.USER_ALREADY_EXISTS));
+                    request.onFailure(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS));
             }
         };
     }

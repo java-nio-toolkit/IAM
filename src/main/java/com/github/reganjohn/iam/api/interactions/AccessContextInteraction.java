@@ -3,8 +3,6 @@ package com.github.reganjohn.iam.api.interactions;
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
-import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 
@@ -23,7 +21,10 @@ public interface AccessContextInteraction extends IUnique
     UUID getUserId();
 
     @Nonnull
-    Application getApplication();
+    UUID getOwnerId();
+
+    @Nonnull
+    UUID getApplicationId();
 
     @Nonnull
     String getThumbprint();

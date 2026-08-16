@@ -26,7 +26,6 @@ import com.reganjohn.jact.internal.interactions.InteractionImpl;
 import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
 
-import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
 import java.util.Arrays;

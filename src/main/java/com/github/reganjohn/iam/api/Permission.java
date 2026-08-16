@@ -78,7 +78,7 @@ public enum Permission
 
     /**
      * Gets the first {@link com.github.reganjohn.iam.api.Permission Permission} relating to the provided offset.
-     * <br>If there is no {@link com.github.reganjohn.iam.api.Permission Permssions} that matches the provided
+     * <br>If there is no {@link com.github.reganjohn.iam.api.Permission Permissions} that matches the provided
      * offset, {@link com.github.reganjohn.iam.api.Permission#UNKNOWN Permission.UNKNOWN} is returned.
      *
      * @param  offset

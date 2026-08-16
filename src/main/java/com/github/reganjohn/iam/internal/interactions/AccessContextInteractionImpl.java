@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.internal.interactions;
 
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
@@ -33,19 +32,21 @@ import java.util.UUID;
 public class AccessContextInteractionImpl implements AccessContextInteraction
 {
     private final IAMImpl api;
-    private final Application application;
+    private final UUID applicationId;
     private final UUID accessId;
     private final UUID userId;
+    private final UUID ownerId;
     private final long flags;
     private final String thumbprint;
 
-    public AccessContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull Application application, @Nonnull UUID userId,
-                                        @Nonnull UUID accessId, long flags, @Nonnull String thumbprint)
+    public AccessContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
+                                        @Nonnull UUID applicationId, @Nonnull UUID accessId, long flags, @Nonnull String thumbprint)
     {
         this.api = api;
-        this.application = application;
-        this.accessId = accessId;
         this.userId = userId;
+        this.applicationId = applicationId;
+        this.accessId = accessId;
+        this.ownerId = ownerId;
         this.flags = flags;
         this.thumbprint = thumbprint;
     }
@@ -73,9 +74,16 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
 
     @Nonnull
     @Override
-    public Application getApplication()
+    public UUID getOwnerId()
     {
-        return application;
+        return ownerId;
+    }
+
+    @Nonnull
+    @Override
+    public UUID getApplicationId()
+    {
+        return applicationId;
     }
 
     @Nonnull
@@ -103,7 +111,7 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
     public InteractionCallbackAction<Void> revoke()
     {
         long flags = getFlagsRaw() | AccessContextInteraction.AccessContextFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE integrations.public_keys SET flags = ? WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(flags, userId, application.getUniqueId(), accessId))
+        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE integrations.public_keys SET flags = ? WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(flags, userId, applicationId, accessId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

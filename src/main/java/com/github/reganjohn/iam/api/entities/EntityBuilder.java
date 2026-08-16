@@ -29,8 +29,8 @@ import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.entities.*;
-import com.github.reganjohn.iam.internal.interactions.ApplicationCallbackResponseImpl;
 import com.github.reganjohn.iam.internal.interactions.AccessContextInteractionImpl;
+import com.github.reganjohn.iam.internal.interactions.ApplicationCallbackResponseImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
 import com.reganjohn.jact.api.utils.data.BufferArray;
 import com.reganjohn.jact.api.utils.data.BufferObject;
@@ -110,24 +110,26 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public List<AccessContextInteraction> createApplicationAccess(@Nonnull Application application, @Nonnull BufferArray array)
+    public List<AccessContextInteraction> createApplicationAccess(@Nonnull BufferArray array)
     {
         List<AccessContextInteraction> interactions = new ArrayList<>();
         for (BufferObject obj : array)
         {
-            interactions.add(createApplicationAccess(application, obj));
+            interactions.add(createApplicationAccess(obj));
         }
         return interactions;
     }
 
     @Nonnull
-    public AccessContextInteractionImpl createApplicationAccess(@Nonnull Application application, @Nonnull BufferObject obj)
+    public AccessContextInteractionImpl createApplicationAccess(@Nonnull BufferObject obj)
     {
         UUID userId = obj.getUUID("user_id");
+        UUID ownerId = obj.getUUID("owner_id");
+        UUID applicationId = obj.getUUID("application_id");
         UUID accessId = obj.getUUID("access_id");
         long flags = obj.getLong("flags");
         String thumbprint = obj.getString("thumbprint");
-        return new AccessContextInteractionImpl(api, application, userId, accessId, flags, thumbprint);
+        return new AccessContextInteractionImpl(api, userId, ownerId, applicationId, accessId, flags, thumbprint);
     }
 
     @Nonnull
@@ -203,7 +205,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     @Nonnull
     public ApplicationImpl createApplication(@Nonnull BufferObject data)
     {
-        UUID ownerId = data.getUUID("user_id");
+        UUID ownerId = data.getUUID("owner_id");
         UUID applicationId = data.getUUID("application_id");
         String name = data.getString("name");
         String description = data.getString("description", null);
@@ -214,13 +216,36 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
+    public List<Webhook> createWebhooks(@Nonnull BufferArray data)
+    {
+        List<Webhook> webhooks = new ArrayList<>();
+        for (BufferObject obj : data)
+            webhooks.add(createWebhook(obj));
+        return webhooks;
+    }
+
+    @Nonnull
+    public Webhook createWebhook(@Nonnull BufferObject data)
+    {
+        UUID webhookId = data.getUUID("webhook_id");
+        String name = data.getString("name");
+        UUID ownerId = data.getUUID("owner_id");
+        String avatarId = data.getString("avatar_id", null);
+        String url = data.getString("url");
+        OffsetDateTime updatedAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
+        long flags = data.getLong("flags");
+        long scopes = data.getLong("scopes");
+        return new WebhookImpl(api, webhookId, name, ownerId, avatarId, url, updatedAt, flags, scopes);
+    }
+
+    @Nonnull
     public ApplicationContextInteraction createContextInteraction(@Nonnull BufferObject data)
     {
         UUID ownerId = data.getUUID("user_id");
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
         int rawPermissions = data.getInt("permissions");
-        OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
+        OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("updated_at"));
         String uri = data.getString("redirect_uri");
         return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri);
     }
