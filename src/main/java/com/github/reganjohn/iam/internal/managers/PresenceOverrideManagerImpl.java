@@ -22,6 +22,7 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
+import com.github.reganjohn.iam.api.managers.PresenceOverrideManager;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -33,11 +34,11 @@ import static com.github.adamorgan.jnt.api.managers.DigestObjectManager.CONTENT_
 import static com.github.adamorgan.jnt.api.managers.PresenceObjectManager.SIGN;
 import static com.github.adamorgan.jnt.api.managers.PresenceObjectManager.SIGN_IN;
 
-public class SignatureManagerImpl extends ClassicObjectManagerImpl
+public class PresenceOverrideManagerImpl extends ClassicObjectManagerImpl implements PresenceOverrideManager
 {
     private final AccessEntryManagerImpl manager;
 
-    public SignatureManagerImpl(@Nonnull AccessEntryManager manager)
+    public PresenceOverrideManagerImpl(@Nonnull AccessEntryManager manager)
     {
         this.manager = (AccessEntryManagerImpl) manager;
     }

@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.api;
 
+import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.reganjohn.jact.internal.JACTImpl;
 
@@ -28,4 +29,7 @@ public interface IAM
 
     @Nonnull
     EntityBuilder getEntityBuilder();
+
+    @Nonnull
+    SocketManager getSocketManager();
 }

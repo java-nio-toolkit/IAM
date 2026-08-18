@@ -16,13 +16,17 @@
 
 package com.github.reganjohn.iam.internal;
 
-import com.github.adamorgan.jnt.api.ConnectionType;
 import com.github.adamorgan.jnt.api.JNT;
 import com.github.adamorgan.jnt.api.JNTBuilder;
+import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
+import com.github.adamorgan.jnt.api.socket.DefaultSocketManagerBuilder;
+import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.JNTImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicReceiveHandlerImpl;
+import com.github.adamorgan.jnt.internal.handle.classic.ClassicRequestSendHandlerImpl;
+import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
@@ -32,10 +36,7 @@ import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.archive.AdaMorganClientV2;
-import com.github.reganjohn.iam.internal.managers.ContentSecurityOverrideManagerImpl;
-import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
-import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
-import com.github.reganjohn.iam.internal.managers.PermOverrideManagerImpl;
+import com.github.reganjohn.iam.internal.managers.*;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.*;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionCreateActionImpl;
@@ -98,6 +99,8 @@ public class IAMImpl implements IAM
 
     private final JNT api;
     private final JACT jact;
+    private final AccessEntryManager manager;
+    private final SocketManager socketManager;
 
     private final EntityBuilder entityBuilder = new EntityBuilder(this);
 
@@ -108,7 +111,8 @@ public class IAMImpl implements IAM
         new IAMImpl(host, port);
     }
 
-    public static JACT buildInstance()
+    @Nonnull
+    private JACT buildInstance()
     {
         return JACTBuilder.create("localhost", 9042)
                 .setApplicationName("Test Client")
@@ -119,11 +123,28 @@ public class IAMImpl implements IAM
                 .build();
     }
 
+    @Nonnull
+    private SocketManager createWebhookManager()
+    {
+        return DefaultSocketManagerBuilder.create()
+                .addEventListenerProvider(ClassicRequestSendHandlerImpl::new)
+                .addEventListenerProvider(ClassicResponseReceiveHandlerImpl::new)
+                .addEventListenerProvider(() -> new ClassicIdleObjectManagerImpl(30, 30, 5))
+                .addEventListenerProvider(() -> new PresenceOverrideManagerImpl(manager))
+                .addEventListenerProvider(ContentObjectManagerImpl::new)
+                .addEventListenerProvider(DigestObjectManagerImpl::new)
+                .setConnectTimeout(10, TimeUnit.SECONDS)
+                .setKeepAlive(true)
+                .build();
+    }
+
     public IAMImpl(String host, int port) throws Exception
     {
         List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jact = buildInstance();
-        this.api = JNTBuilder.create(host, port, ConnectionType.SERVER)
+        this.manager = new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 30, TimeUnit.SECONDS, audiences);
+        this.socketManager = createWebhookManager();
+        this.api = JNTBuilder.create(host, port)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
 
                 .addEventListeners(new ClockObjectManagerImpl())
@@ -132,7 +153,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new CookieObjectManagerImpl())
 
                 .addEventListeners(new ContentSecurityOverrideManagerImpl())
-                .addEventListeners(new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 30, TimeUnit.SECONDS, audiences))
+                .addEventListeners(manager)
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
@@ -244,6 +265,13 @@ public class IAMImpl implements IAM
     public EntityBuilder getEntityBuilder()
     {
         return entityBuilder;
+    }
+
+    @Nonnull
+    @Override
+    public SocketManager getSocketManager()
+    {
+        return socketManager;
     }
 
     @Nonnull

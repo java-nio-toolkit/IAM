@@ -16,20 +16,15 @@
 
 package com.github.reganjohn.iam.internal.managers;
 
-import com.github.adamorgan.jnt.api.ConnectionType;
-import com.github.adamorgan.jnt.api.JNT;
-import com.github.adamorgan.jnt.api.JNTBuilder;
 import com.github.adamorgan.jnt.api.events.Event;
 import com.github.adamorgan.jnt.api.events.GenericEvent;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
-import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.requests.*;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.internal.handle.classic.ClassicRequestSendHandlerImpl;
-import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
+import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.adamorgan.jnt.internal.utils.requestbody.BufferedRequestBody;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.Scope;
@@ -40,8 +35,11 @@ import com.github.reganjohn.iam.api.events.applications.interactions.Interaction
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionOverrideEvent;
 import com.github.reganjohn.iam.api.managers.WebhookOverrideManager;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -52,6 +50,8 @@ import java.util.stream.Collectors;
 
 public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl implements WebhookOverrideManager
 {
+    public static final Logger LOG = JNTLogger.getLog(WebhookOverrideManagerImpl.class);
+
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final IAMImpl api;
@@ -71,50 +71,60 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
     public void onGenericEvent(@Nonnull ChannelHandlerContext context, @Nonnull GenericEvent event)
     {
         if (event instanceof InteractionCreateEvent)
-            onApplicationInteractionCreate(context, (InteractionCreateEvent) event);
+            onApplicationInteractionCreate((InteractionCreateEvent) event);
         else if (event instanceof InteractionOverrideEvent)
-            onApplicationInteractionOverride(context, (InteractionOverrideEvent) event);
+            onApplicationInteractionOverride((InteractionOverrideEvent) event);
         super.onGenericEvent(context, event);
     }
 
-    private void onApplicationInteractionCreate(@Nonnull ChannelHandlerContext context,
-                                                @Nonnull InteractionCreateEvent event)
+    private void onApplicationInteractionCreate(@Nonnull InteractionCreateEvent event)
     {
-        handleInternally(context, event.getUserId(), Scope.APPLICATION_INTERACTION_CREATE, event);
+        handleInternally(event.getUserId(), Scope.APPLICATION_INTERACTION_CREATE, event);
     }
 
-    private void onApplicationInteractionOverride(@Nonnull ChannelHandlerContext context,
-                                                  @Nonnull InteractionOverrideEvent event)
+    private void onApplicationInteractionOverride(@Nonnull InteractionOverrideEvent event)
     {
-        handleInternally(context, event.getUserId(), Scope.APPLICATION_INTERACTION_ACCEPT, event);
+        handleInternally(event.getUserId(), Scope.APPLICATION_INTERACTION_ACCEPT, event);
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId, @Nonnull Scope scope,
-                                  @Nonnull Event event)
+    private void handleInternally(@Nonnull UUID userId, @Nonnull Scope scope, @Nonnull Event event)
     {
         api.retrieveUserById(userId)
                 .flatMap(User::retrieveWebhooks)
                 .map(webhooks -> retrieveWebhooks(webhooks, scope))
-                .queue(webhooks -> handleInternally(context, webhooks, scope, event), this::handleFailure);
+                .queue(webhooks -> handleInternally(webhooks, scope, event), this::handleFailure);
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull List<Webhook> webhooks,
-                                  @Nonnull Scope scope, @Nonnull Event event)
+    private void handleInternally(@Nonnull List<Webhook> webhooks, @Nonnull Scope scope, @Nonnull Event event)
     {
         for (Webhook webhook : webhooks)
         {
-            handleSuccess(context, webhook, fromJSON(webhook, scope, event));
+            handleInternally(webhook, fromJSON(webhook, scope, event));
         }
     }
 
-    private void handleSuccess(ChannelHandlerContext context, @Nonnull Webhook webhook, @Nonnull DataObject rawData)
+    private void handleInternally(@Nonnull Webhook webhook, @Nonnull DataObject rawData)
     {
-        connect(context, URI.create(webhook.getUrl()), rawData);
+        URI uri = URI.create(webhook.getUrl());
+        Route route = new Route(Method.POST, uri.getPath().split("/")[1]);
+        api.getSocketManager().connect(uri.getHost(), 443).addListener((ChannelFutureListener) obj ->
+        {
+            if (obj.isSuccess())
+                handleSuccess(obj, route, rawData);
+            else
+                handleFailure(obj.cause());
+        });
     }
 
-    private void handleFailure(@Nonnull Throwable failure)
+    private void handleSuccess(@Nonnull ChannelFuture connect, @Nonnull Route route, @Nonnull DataObject rawData)
     {
-        //todo: handle failure
+        LOG.debug("The connection was successfully loaded!");
+        connect.channel().pipeline().addLast(new WebhookActionImpl(route, rawData));
+    }
+
+    private void handleFailure(@Nonnull Throwable error)
+    {
+        LOG.warn("There was an unexpected error while executing a REST request", error);
     }
 
     @Nonnull
@@ -146,23 +156,6 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
         return webhooks.stream().filter(webhook -> webhook.getScopes().contains(scope)).collect(Collectors.toList());
     }
 
-    @Nonnull
-    public JNT connect(@Nonnull ChannelHandlerContext context, @Nonnull URI uri, @Nonnull DataObject rawData)
-    {
-        AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
-        Route route = new Route(Method.POST, uri.getPath().split("/")[1]);
-        return JNTBuilder.create(uri.getHost(), 443, ConnectionType.CLIENT)
-                .addEventListenerProvider(ClassicRequestSendHandlerImpl::new)
-                .addEventListenerProvider(ClassicResponseReceiveHandlerImpl::new)
-                .addEventListenerProvider(() -> new ClassicIdleObjectManagerImpl(4, 15, 5))
-                .addEventListenerProvider(() -> new SignatureManagerImpl(manager))
-                .addEventListenerProvider(LocationObjectManagerImpl::new)
-                .addEventListenerProvider(ContentObjectManagerImpl::new)
-                .addEventListenerProvider(DigestObjectManagerImpl::new)
-                .addEventListenerProvider(() -> new WebhookActionImpl(route, rawData))
-                .build();
-    }
-
     @Override
     public boolean isSharable()
     {
@@ -180,13 +173,9 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
         }
 
         @Override
-        public void channelActive(ChannelHandlerContext context)
+        public void handlerAdded(@Nonnull ChannelHandlerContext context)
         {
-            onRawData(context);
-        }
-
-        public void onRawData(@Nonnull ChannelHandlerContext context)
-        {
+            LOG.debug("Sending webhook request on route {}", route.getRoute());
             BufferedRequestBody body = new BufferedRequestBody(MEDIA_TYPE_JSON, rawData.toBinary(), true);
             context.writeAndFlush(new Request(context, route.compile(), new CaseInsensitiveMap<>(), body));
         }
@@ -197,14 +186,27 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
         {
             if (response.isError())
                 handleFailure(context, new InvalidResponseException(response.code, response.message));
-            else;
-                //todo: ...
+            else if (response.code >= 300 && response.code < 400)
+                reject(context);
+            else
+                handleSuccess(request, response);
+        }
+
+        private void reject(@Nonnull ChannelHandlerContext context)
+        {
+            LOG.warn("The webhook requests do not allow the use of redirects.");
+            context.close();
+        }
+
+        private void handleSuccess(@Nonnull Request request, @Nonnull Response response)
+        {
+            LOG.debug("The webhook request was successfully finished with status {}", response.code);
         }
 
         @Override
         public void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull InvalidResponseException ex)
         {
-            //todo: ...
+            LOG.warn("The webhook request finished with an fail", ex);
         }
     }
 }

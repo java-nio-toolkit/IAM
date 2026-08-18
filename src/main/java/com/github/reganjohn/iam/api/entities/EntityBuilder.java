@@ -245,7 +245,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
         int rawPermissions = data.getInt("permissions");
-        OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("updated_at"));
+        OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
         String uri = data.getString("redirect_uri");
         return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri);
     }
