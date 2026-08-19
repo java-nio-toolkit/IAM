@@ -409,7 +409,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     private InteractionCallbackAction<Void> create(@Nonnull SessionCreateData session)
     {
         Checks.notNull(session, "Session");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_session.cql"), session.toMap())
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_session.cql"), session)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

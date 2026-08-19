@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS global.public_keys
     alg        TEXT,
     kty        TEXT,
     usage      TEXT,
+    flags      BIGINT,
     thumbprint TEXT,
     public_key BLOB,
     PRIMARY KEY (thumbprint)
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS users.public_keys
     alg        TEXT,
     kty        TEXT,
     usage      TEXT,
+    flags      BIGINT,
     thumbprint TEXT,
     public_key BLOB,
     PRIMARY KEY ((user_id), thumbprint)

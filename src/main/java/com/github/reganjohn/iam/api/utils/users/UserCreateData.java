@@ -127,6 +127,7 @@ public class UserCreateData implements UserData, SessionData, InteractionMapping
                 .put("session_id", sessionId)
                 .put("user_agent", userAgent)
                 .put("session_flags", sessionFlags)
+                .put("access_flags", 0L)
                 .put("kid", data.getName())
                 .put("kty", data.getType().name())
                 .put("alg", data.getAccessOption().getMode())

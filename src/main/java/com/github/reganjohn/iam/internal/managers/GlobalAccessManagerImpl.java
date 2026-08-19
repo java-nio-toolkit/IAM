@@ -1,5 +1,6 @@
 package com.github.reganjohn.iam.internal.managers;
 
+import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
@@ -8,11 +9,13 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
-import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.github.reganjohn.iam.internal.utils.AccessEntryFlag;
 import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.jact.api.utils.data.BufferArray;
@@ -33,10 +36,7 @@ import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements GlobalAccessManager
@@ -89,16 +89,19 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                                       @Nonnull InteractionImpl<Boolean> interaction,
                                       @Nonnull BufferArray array) throws Exception
             {
-                if (array.isEmpty())
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SIGNER));
-                else
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
                     interaction.onSuccess(hasAccess(data, array.getObject(0)));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SIGNER));
             }
         };
     }
 
     private boolean hasAccess(@Nonnull AccessObjectData rawData, @Nonnull BufferObject successObj) throws GeneralSecurityException
     {
+        EnumSet<AccessEntryFlag> flags = AccessEntryFlag.getFlags(successObj.getLong("flags"));
+        if (!flags.contains(AccessEntryFlag.ISSUED))
+            throw new InvalidTokenException();
         String mode = successObj.getString("alg");
         X509EncodedKeySpec engine = new X509EncodedKeySpec(successObj.getBytes("public_key"));
         KeyFactory factory = KeyFactory.getInstance(mode);
@@ -118,10 +121,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     {
         Checks.notNull(snapshot, "Snapshot");
         Checks.notNull(contextMap, "Map");
-        String content = Helpers.format("INSERT INTO global.public_keys (%s) VALUES (%s) IF NOT EXISTS",
-                Helpers.join(", ", contextMap.keySet()),
-                Helpers.join(", ", InteractionUtil.split(contextMap.keySet(), true)));
-        return new InteractionMappingActionImpl<>(api.getJACT(), content, mapFromData(snapshot))
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_issued_signer.cql"), mapFromData(snapshot))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -148,6 +148,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                     .put("alg", getSignType().getName())
                     .put("kty", snapshot.getType().name())
                     .put("usage", snapshot.getUsage().name())
+                    .put("flags", AccessEntryFlag.getRaw(AccessEntryFlag.ISSUED))
                     .put("thumbprint", contextData.digest())
                     .put("public_key", snapshot.getPublicKey().getEncoded())
                     .toMap();

@@ -30,11 +30,13 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -46,6 +48,8 @@ import java.util.StringJoiner;
 
 public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 {
+    public static final Logger LOG = JNTLogger.getLog(ErrorObjectManagerImpl.class);
+
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
     private static final String ERROR_AUTHORIZATION = "WWW-Authenticate";
@@ -62,7 +66,7 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     {
         Request request = context.channel().attr(Request.IDENTIFIER).get();
         if (printStackTrace && !(error instanceof MissingAccessException))
-            error.printStackTrace();
+            LOG.error("Oops! We've encountered an server error! Not good!", error);
 
         if (error instanceof JsonParseException)
             handleFailure(context, ErrorResponse.INVALID_REQUEST_BODY, StatusReason.BAD_REQUEST);

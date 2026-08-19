@@ -23,10 +23,10 @@ BEGIN TRANSACTION
     SELECT * FROM global.public_keys WHERE thumbprint = :thumbprint;
 
     IF global_data IS NULL AND application_data IS NULL AND access_data IS NULL THEN
-        INSERT INTO global.public_keys (kid, alg, kty, usage, thumbprint, public_key)
-        VALUES (:kid, :alg, :kty, :usage, :thumbprint, :public_key);
-        INSERT INTO users.public_keys (user_id, kid, alg, kty, usage, thumbprint, public_key)
-        VALUES (:user_id, :kid, :alg, :kty, :usage, :thumbprint, :public_key);
+        INSERT INTO global.public_keys (kid, alg, kty, usage, flags, thumbprint, public_key)
+        VALUES (:kid, :alg, :kty, :usage, :access_flags, :thumbprint, :public_key);
+        INSERT INTO users.public_keys (user_id, kid, alg, kty, usage, flags, thumbprint, public_key)
+        VALUES (:user_id, :kid, :alg, :kty, :usage, :access_flags, :thumbprint, :public_key);
         INSERT INTO integrations.public_keys (user_id, application_id, owner_id, flags, access_id, thumbprint)
         VALUES (:user_id, :application_id, :owner_id, :flags, :access_id, :thumbprint);
     END IF

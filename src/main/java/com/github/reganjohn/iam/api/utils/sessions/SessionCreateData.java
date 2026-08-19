@@ -22,9 +22,10 @@ import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Map;
 import java.util.UUID;
 
-public class SessionCreateData implements SessionData
+public class SessionCreateData implements SessionData, InteractionMapping
 {
     private final UUID sessionId;
     private final UUID userId;
@@ -86,7 +87,7 @@ public class SessionCreateData implements SessionData
     }
 
     @Nonnull
-    public InteractionMapping toMap()
+    public Map<String, Object> toMap()
     {
         return new InteractionMapping.Builder()
                 .put("user_id", userId)
@@ -97,9 +98,10 @@ public class SessionCreateData implements SessionData
                 .put("kid", entryData.getName())
                 .put("kty", entryData.getType().name())
                 .put("usage", entryData.getUsage().name().toLowerCase())
-                .put("public_key", entryData.getPublicKey().getEncoded())
+                .put("access_flags", 0L)
                 .put("thumbprint", thumbprint)
-                .build();
+                .put("public_key", entryData.getPublicKey().getEncoded())
+                .toMap();
     }
 
     @Nonnull

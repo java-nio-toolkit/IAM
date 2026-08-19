@@ -421,7 +421,7 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
     private InteractionCallbackAction<Void> sync(@Nonnull AccessCreateData access)
     {
         Checks.notNull(access, "Application");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_access_application.cql"), access.toMap())
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_access_application.cql"), access)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -471,9 +471,10 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
                     .put("kid", entryData.getName())
                     .put("kty", entryData.getType().name())
                     .put("usage", entryData.getUsage().name().toLowerCase())
-                    .put("public_key", entryData.getPublicKey().getEncoded())
                     .put("access_id", UUID.nameUUIDFromBytes(thumbprint.getBytes(StandardCharsets.UTF_8)))
+                    .put("access_flags", 0L)
                     .put("thumbprint", thumbprint)
+                    .put("public_key", entryData.getPublicKey().getEncoded())
                     .toMap();
         }
 

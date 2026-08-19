@@ -31,6 +31,22 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "com.github.reganjohn.iam.internal.IAMImpl"
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+
+    from({
+        configurations.runtimeClasspath.get()
+                .filter { it.name.endsWith("jar") }
+                .map { zipTree(it) }
+    })
+}
+
 tasks.test {
     useJUnitPlatform()
 }
