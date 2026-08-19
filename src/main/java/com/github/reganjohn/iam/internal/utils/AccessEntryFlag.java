@@ -29,7 +29,7 @@ public enum AccessEntryFlag
     UNKNOWN(-1, false);
 
     /**
-     * Empty array of ApplicationFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
+     * Empty array of AccessEntryFlag enum, useful for optimized use in {@link java.util.Collection#toArray(Object[])}.
      */
     public static final AccessEntryFlag[] EMPTY_FLAGS = new AccessEntryFlag[0];
 
@@ -51,7 +51,7 @@ public enum AccessEntryFlag
     /**
      * The binary offset of the flag.
      *
-     * @return The offset that represents this {@link AccessEntryFlag ApplicationFlag}.
+     * @return The offset that represents this {@link AccessEntryFlag AccessEntryFlag}.
      */
     public long getOffset()
     {
@@ -70,9 +70,9 @@ public enum AccessEntryFlag
     }
 
     /**
-     * Whether this {@link AccessEntryFlag ApplicationFlag} is managed.
+     * Whether this {@link AccessEntryFlag AccessEntryFlag} is managed.
      *
-     * @return True, if this {@link AccessEntryFlag ApplicationFlag} is managed.
+     * @return True, if this {@link AccessEntryFlag AccessEntryFlag} is managed.
      */
     public boolean isManaged()
     {
@@ -80,14 +80,14 @@ public enum AccessEntryFlag
     }
 
     /**
-     * Gets the first ApplicationFlag relating to the provided offset.
-     * <br>If there is no ApplicationFlag that matches the provided offset,
+     * Gets the first AccessEntryFlag relating to the provided offset.
+     * <br>If there is no AccessEntryFlag that matches the provided offset,
      * {@link #UNKNOWN} is returned.
      *
      * @param  offset
-     *         The offset to match a ApplicationFlag to.
+     *         The offset to match a AccessEntryFlag to.
      *
-     * @return ApplicationFlag relating to the provided offset.
+     * @return AccessEntryFlag relating to the provided offset.
      */
     @Nonnull
     public static AccessEntryFlag getFromOffset(int offset)
@@ -103,13 +103,13 @@ public enum AccessEntryFlag
     }
 
     /**
-     * A set of all ApplicationFlags that are specified by this raw int representation of
+     * A set of all AccessEntryFlags that are specified by this raw int representation of
      * flags.
      *
      * @param  flags
      *         The raw {@code int} representation if flags.
      *
-     * @return Possibly-empty EnumSet of ApplicationFlags.
+     * @return Possibly-empty EnumSet of AccessEntryFlags.
      */
     @Nonnull
     public static EnumSet<AccessEntryFlag> getFlags(long flags)
@@ -131,20 +131,20 @@ public enum AccessEntryFlag
     }
 
     /**
-     * This is effectively the opposite of {@link #getFlags(long)}, this takes 1 or more ApplicationFlags
+     * This is effectively the opposite of {@link #getFlags(long)}, this takes 1 or more AccessEntryFlags
      * and returns the bitmask representation of the flags.
      *
      * @param  flags
      *         The array of flags of which to form into the raw int representation.
      *
      * @throws java.lang.IllegalArgumentException
-     *         When the provided ApplicationFlags are null.
+     *         When the provided AccessEntryFlags are null.
      *
      * @return bitmask representing the provided flags.
      */
     public static long getRaw(@Nonnull AccessEntryFlag... flags)
     {
-        Checks.noneNull(flags, "ApplicationFlags");
+        Checks.noneNull(flags, "AccessEntryFlags");
         long raw = 0;
         for (AccessEntryFlag flag : flags)
         {
@@ -158,7 +158,7 @@ public enum AccessEntryFlag
     }
 
     /**
-     * This is effectively the opposite of {@link #getFlags(long)}. This takes a collection of ApplicationFlags
+     * This is effectively the opposite of {@link #getFlags(long)}. This takes a collection of AccessEntryFlags
      * and returns the bitmask representation of the flags.
      *
      * @param  flags
