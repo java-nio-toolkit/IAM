@@ -25,9 +25,9 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 
-public class WebhookCreateData implements WebhookData, InteractionMapping
+public class WebhookCreateData implements WebhookData
 {
-    private final UUID id;
+    private final UUID webhookId;
     private final String name;
     private final UUID userId;
     private final String avatarId;
@@ -39,7 +39,7 @@ public class WebhookCreateData implements WebhookData, InteractionMapping
     public WebhookCreateData(@Nonnull UUID id, @Nonnull String name, @Nonnull UUID userId, @Nullable String avatarId,
                              long scopes, @Nonnull String url, @Nonnull OffsetDateTime updatedAt, long flags)
     {
-        this.id = id;
+        this.webhookId = id;
         this.name = name;
         this.userId = userId;
         this.avatarId = avatarId;
@@ -53,7 +53,7 @@ public class WebhookCreateData implements WebhookData, InteractionMapping
     @Override
     public UUID getUniqueId()
     {
-        return id;
+        return webhookId;
     }
 
     @Nonnull
@@ -109,7 +109,7 @@ public class WebhookCreateData implements WebhookData, InteractionMapping
     {
         return new InteractionMapping.Builder()
                 .put("owner_id", userId)
-                .put("webhook_id", id)
+                .put("webhook_id", webhookId)
                 .put("name", name)
                 .put("avatar_id", avatarId)
                 .put("endpoint", url)

@@ -17,13 +17,14 @@
 package com.github.reganjohn.iam.api.utils.webhooks;
 
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public interface WebhookData extends SerializableData
+public interface WebhookData extends SerializableData, InteractionMapping
 {
     @Nonnull
     UUID getUniqueId();

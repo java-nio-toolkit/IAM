@@ -268,7 +268,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
     private InteractionCallbackAction<Void> create(@Nonnull ApplicationCreateData application)
     {
         Checks.notNull(application, "Application");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_application.cql"), application.toMap())
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_application.cql"), application)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

@@ -25,7 +25,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
-public class UserEditData implements UserData, InteractionMapping
+public class UserEditData implements UserData
 {
     private final UUID userId;
     private final String username;
@@ -83,11 +83,6 @@ public class UserEditData implements UserData, InteractionMapping
     @Override
     public DataObject toData()
     {
-        return DataObject.empty()
-                .put("user_id", userId)
-                .put("username", username)
-                .put("avatar_id", avatarId)
-                .put("flags", flags)
-                .toData();
+        return DataObject.fromMap(toMap());
     }
 }

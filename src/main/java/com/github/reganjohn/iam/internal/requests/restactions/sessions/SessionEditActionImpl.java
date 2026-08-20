@@ -41,6 +41,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionEditAction;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
@@ -55,10 +56,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 public class SessionEditActionImpl extends AbstractSessionActionImpl implements SessionEditAction
 {
@@ -202,9 +200,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
     public InteractionCallbackAction<Void> modify(@Nonnull SessionEditData session)
     {
         Checks.notNull(session, "Session");
-        String content = Helpers.format("UPDATE users.sessions SET %s WHERE user_id = :user_id AND session_id = :session_id IF EXISTS",
-                InteractionUtil.join(session.toData().keys(), true));
-        return new InteractionMappingActionImpl<>(api.getJACT(), content, session.toMap())
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("edit_session.cql"), session)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

@@ -22,7 +22,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public abstract class AbstractSessionActionImpl extends AccountManagerImpl implements SessionAction
+public abstract class AbstractSessionActionImpl extends AbstractOverrideActionImpl implements SessionAction
 {
     public AbstractSessionActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {

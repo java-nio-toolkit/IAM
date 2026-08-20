@@ -22,6 +22,7 @@ import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class ApplicationEditData implements ApplicationData
@@ -47,7 +48,7 @@ public class ApplicationEditData implements ApplicationData
     }
 
     @Nonnull
-    public InteractionMapping toMap()
+    public Map<String, Object> toMap()
     {
         return new InteractionMapping.Builder()
                 .put("user_id", userId)
@@ -57,19 +58,13 @@ public class ApplicationEditData implements ApplicationData
                 .put("icon_id", iconId)
                 .put("flags", flags)
                 .put("redirect_uris", redirectUris)
-                .build();
+                .toMap();
     }
 
     @Nonnull
     @Override
     public DataObject toData()
     {
-        return DataObject.empty()
-                .put("name", name)
-                .put("description", description)
-                .put("icon_id", iconId)
-                .put("flags", flags)
-                .put("redirect_uris", redirectUris)
-                .toData();
+        return DataObject.fromMap(toMap());
     }
 }

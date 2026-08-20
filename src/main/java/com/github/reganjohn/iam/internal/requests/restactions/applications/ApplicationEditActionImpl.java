@@ -38,6 +38,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.ApplicationEditAction;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
@@ -302,9 +303,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
     public InteractionCallbackAction<Void> modify(@Nonnull ApplicationEditData application)
     {
         Checks.notNull(application, "Application");
-        String content = Helpers.format("UPDATE integrations.applications SET %s WHERE owner_id = :user_id AND application_id = :application_id IF EXISTS",
-                InteractionUtil.join(application.toData().keys(), true));
-        return new InteractionMappingActionImpl<>(api.getJACT(), content, application.toMap())
+        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("edit_application.cql"), application)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

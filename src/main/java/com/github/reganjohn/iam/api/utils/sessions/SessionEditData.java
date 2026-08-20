@@ -23,6 +23,7 @@ import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Map;
 import java.util.UUID;
 
 public class SessionEditData implements SessionData
@@ -87,27 +88,20 @@ public class SessionEditData implements SessionData
     }
 
     @Nonnull
-    public InteractionMapping toMap()
+    public Map<String, Object> toMap()
     {
-        InteractionMapping.Builder map = new InteractionMapping.Builder();
-        map.put("user_id", userId);
-        map.put("session_id", sessionId);
-        if (Helpers.nonEmpty(userAgent))
-            map.put("user_agent", userAgent);
-        if (flags != 0)
-            map.put("flags", flags);
-        return map.build();
+        return new InteractionMapping.Builder()
+                .put("user_id", userId)
+                .put("session_id", sessionId)
+                .put("user_agent", userAgent)
+                .put("flags", flags)
+                .toMap();
     }
 
     @Nonnull
     @Override
     public DataObject toData()
     {
-        DataObject data = DataObject.empty();
-        if (Helpers.nonEmpty(userAgent))
-            data.put("user_agent", userAgent);
-        if (flags != 0)
-            data.put("flags", flags);
-        return data;
+        return DataObject.fromMap(toMap());
     }
 }

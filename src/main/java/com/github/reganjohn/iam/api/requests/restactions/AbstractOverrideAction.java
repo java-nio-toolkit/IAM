@@ -21,7 +21,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public interface AccountManager extends RestAction
+public interface AbstractOverrideAction extends RestAction
 {
     String UUID_TYPE_COERCE = "UUID_TYPE_COERCE";
 

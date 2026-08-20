@@ -22,7 +22,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public abstract class AbstractWebhookActionImpl extends AccountManagerImpl implements WebhookAction
+public abstract class AbstractWebhookActionImpl extends AbstractOverrideActionImpl implements WebhookAction
 {
     public AbstractWebhookActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {

@@ -279,7 +279,7 @@ public class IAMImpl implements IAM
     public InteractionCallbackAction<User> retrieveUserById(@Nonnull UUID id)
     {
         Checks.notNull(id, "User ID");
-        return new InteractionContextActionImpl<>(jact, "SELECT * FROM users.accounts WHERE user_id = ?", Collections.singletonList(id))
+        return new InteractionContextActionImpl<>(getJACT(), "SELECT * FROM users.accounts WHERE user_id = ?", Collections.singletonList(id))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

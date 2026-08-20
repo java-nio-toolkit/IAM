@@ -17,8 +17,9 @@
 package com.github.reganjohn.iam.api.utils.applications;
 
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
+import com.reganjohn.jact.api.interactions.context.InteractionMapping;
 
-public interface ApplicationData extends SerializableData
+public interface ApplicationData extends SerializableData, InteractionMapping
 {
 
 }

@@ -22,7 +22,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
 
-public abstract class AbstractApplicationActionImpl extends AccountManagerImpl implements ApplicationAction
+public abstract class AbstractApplicationActionImpl extends AbstractOverrideActionImpl implements ApplicationAction
 {
     public AbstractApplicationActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {
