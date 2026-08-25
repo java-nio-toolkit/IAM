@@ -46,11 +46,12 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionRetrieveAction;
+import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionUpdateAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
@@ -69,7 +70,7 @@ import java.util.stream.Collectors;
 
 import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.JKT;
 
-public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionRetrieveAction
+public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionUpdateAction
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
 
@@ -209,11 +210,8 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
                                                                @Nonnull AccessObjectData data,
                                                                @Nonnull DataObject actor)
     {
-        GlobalAccessManagerImpl manager = context.channel().attr(GlobalAccessManagerImpl.IDENTIFIER).get();
-        String rawUniqueId = data.getOptionData().getName();
-        if (Helpers.isEmpty(rawUniqueId) || !MiscUtil.isUUID(rawUniqueId))
-            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
-        return manager.hasAccess(UUID.fromString(rawUniqueId), data).map(hasAccess ->
+        GlobalAccessManagerImpl manager = (GlobalAccessManagerImpl) context.channel().attr(GlobalAccessManagerImpl.IDENTIFIER).get();
+        return manager.hasAccess(data).map(hasAccess ->
         {
             if (hasAccess)
                 return createObjectData(manager, permission, contextData, data, actor, manager.getCurrentOrder());

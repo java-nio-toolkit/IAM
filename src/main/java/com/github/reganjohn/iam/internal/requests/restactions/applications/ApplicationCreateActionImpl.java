@@ -43,11 +43,11 @@ import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -268,7 +268,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
     private InteractionCallbackAction<Void> create(@Nonnull ApplicationCreateData application)
     {
         Checks.notNull(application, "Application");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_application.cql"), application)
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_application.cql"), application)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

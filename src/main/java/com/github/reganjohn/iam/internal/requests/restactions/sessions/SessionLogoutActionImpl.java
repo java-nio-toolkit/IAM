@@ -33,11 +33,11 @@ import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionLogoutAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.requests.objaction.InteractionContextType;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionListContextActionImpl;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.requests.objaction.InteractionContextType;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.MultiValuedMap;
@@ -91,15 +91,7 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
     private InteractionCallbackAction<Void> logout(@Nonnull Placeholder placeholder)
     {
         Checks.notNull(placeholder, "Placeholder");
-        return new InteractionListContextActionImpl<>(api.getJACT(), InteractionContextType.LOGGED, placeholder.toMap())
-        {
-            @Override
-            protected void handleBufferedBody(@Nonnull InteractionCallbackResponseImpl response,
-                                              InteractionImpl<Void> interaction, @Nonnull ByteBuf data)
-            {
-                super.handleBufferedBody(response, interaction, data);
-            }
-        };
+        return new InteractionListContextActionImpl<>(api.getJCA(), InteractionContextType.LOGGED, placeholder.toMap());
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

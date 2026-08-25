@@ -53,18 +53,17 @@ import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditA
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.sessions.*;
 import com.github.reganjohn.iam.internal.requests.restactions.webhooks.*;
-import com.reganjohn.jact.api.JACT;
-import com.reganjohn.jact.api.JACTBuilder;
-import com.reganjohn.jact.api.requests.Consistency;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.Compression;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.JACTImpl;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.managers.SecretAccessManagerImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionCreateActionImpl;
+import com.reganjohn.c4j.api.JCA;
+import com.reganjohn.c4j.api.JCABuilder;
+import com.reganjohn.c4j.api.requests.Consistency;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.Compression;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.managers.SecretAccessManagerImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionCreateActionImpl;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -98,7 +97,7 @@ public class IAMImpl implements IAM
     }
 
     private final JNT api;
-    private final JACT jact;
+    private final JCA jca;
     private final AccessEntryManager manager;
     private final SocketManager socketManager;
 
@@ -106,15 +105,13 @@ public class IAMImpl implements IAM
 
     public static void main(String[] args) throws Exception
     {
-        String host = "localhost";
-        int port = 8080;
-        new IAMImpl(host, port);
+        new IAMImpl(8080);
     }
 
     @Nonnull
-    private JACT buildInstance()
+    private JCA buildInstance()
     {
-        return JACTBuilder.create("localhost", 9042)
+        return JCABuilder.create("localhost", 9042)
                 .setApplicationName("Test Client")
                 .setProtocolVersion(5)
                 .addEventListener(new SecretAccessManagerImpl("cassandra", "cassandra"))
@@ -138,13 +135,15 @@ public class IAMImpl implements IAM
                 .build();
     }
 
-    public IAMImpl(String host, int port) throws Exception
+    public IAMImpl(int port) throws Exception
     {
         List<String> audiences = Collections.singletonList("https://localhost.com");
-        this.jact = buildInstance();
+        this.jca = buildInstance().awaitReady();
+        cleanup();
+        TimeUnit.SECONDS.sleep(2);
         this.manager = new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 30, TimeUnit.SECONDS, audiences);
         this.socketManager = createWebhookManager();
-        this.api = JNTBuilder.create(host, port)
+        this.api = JNTBuilder.create("localhost", port)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
 
                 .addEventListeners(new ClockObjectManagerImpl())
@@ -153,11 +152,11 @@ public class IAMImpl implements IAM
                 .addEventListeners(new CookieObjectManagerImpl())
 
                 .addEventListeners(new ContentSecurityOverrideManagerImpl())
-                .addEventListeners(manager)
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
                 .addEventListeners(new ProofPresenceManagerImpl())
+                .addEventListeners(manager)
 
                 .addEventListeners(new DigestAccessManagerImpl())
                 .addEventListeners(new DigestObjectManagerImpl())
@@ -210,40 +209,30 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new WebhookEditActionImpl(this))
                 .addEventListenerProvider(() -> new WebhookDeleteActionImpl(this))
 
-                .addEventListeners(new ErrorObjectManagerImpl(true))
+                .addEventListeners(new ErrorObjectManagerImpl(false))
                 .build();
-
+        
         TimeUnit.SECONDS.sleep(2);
-        startup();
+        AdaMorganClientV2 clientV2 = new AdaMorganClientV2();
+        clientV2.startTest();
     }
 
-    public void startup() throws Exception
+    public void cleanup()
     {
-        try
-        {
-            String[] statements =
-                    {
-                            "TRUNCATE global.public_keys",
-                            "TRUNCATE integrations.applications",
-                            "TRUNCATE integrations.public_keys",
-                            "TRUNCATE users.public_keys",
-                            "TRUNCATE users.accounts",
-                            "TRUNCATE users.sessions",
-                            "TRUNCATE users.entitlements"
-                    };
+        String[] statements =
+                {
+                        "TRUNCATE global.public_keys",
+                        "TRUNCATE integrations.applications",
+                        "TRUNCATE integrations.public_keys",
+                        "TRUNCATE users.public_keys",
+                        "TRUNCATE users.accounts",
+                        "TRUNCATE users.sessions",
+                        "TRUNCATE users.entitlements"
+                };
 
-            for (String statement : statements)
-            {
-                new InteractionCreateActionImpl<Void>(jact, statement).queue();
-            }
-
-            TimeUnit.SECONDS.sleep(1);
-        }
-        finally
+        for (String statement : statements)
         {
-            //new TestApplicationServer();
-            AdaMorganClientV2 clientV2 = new AdaMorganClientV2();
-            clientV2.startTest();
+            new InteractionCreateActionImpl<Void>(jca, statement).queue();
         }
     }
 
@@ -255,9 +244,9 @@ public class IAMImpl implements IAM
 
     @Nonnull
     @Override
-    public JACTImpl getJACT()
+    public JCA getJCA()
     {
-        return (JACTImpl) jact;
+        return jca;
     }
 
     @Nonnull
@@ -279,7 +268,7 @@ public class IAMImpl implements IAM
     public InteractionCallbackAction<User> retrieveUserById(@Nonnull UUID id)
     {
         Checks.notNull(id, "User ID");
-        return new InteractionContextActionImpl<>(getJACT(), "SELECT * FROM users.accounts WHERE user_id = ?", Collections.singletonList(id))
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.accounts WHERE user_id = ?", Collections.singletonList(id))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

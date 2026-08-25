@@ -20,12 +20,12 @@ import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -125,7 +125,7 @@ public class WebhookImpl implements Webhook
     public InteractionCallbackAction<Void> delete()
     {
         long flags = getFlagsRaw() | Webhook.WebhookFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE users.webhooks SET flags = ? WHERE owner_id = ? AND webhook_id = ? IF EXISTS", Arrays.asList(flags, userId, id))
+        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET flags = ? WHERE owner_id = ? AND webhook_id = ? IF EXISTS", Arrays.asList(flags, userId, id))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

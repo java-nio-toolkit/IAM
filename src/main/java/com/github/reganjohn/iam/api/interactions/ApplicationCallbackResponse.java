@@ -20,7 +20,7 @@ import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -28,7 +28,7 @@ import java.time.OffsetDateTime;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public interface ApplicationCallbackResponse extends IUnique
+public interface ApplicationCallbackResponse
 {
     @Nonnull
     IAMImpl getIAM();
@@ -43,7 +43,7 @@ public interface ApplicationCallbackResponse extends IUnique
     UUID getApplicationId();
 
     @Nonnull
-    OffsetDateTime getTimeExpiresAt();
+    UUID getInteractionId();
 
     long getPermissionsRaw();
 
@@ -52,9 +52,6 @@ public interface ApplicationCallbackResponse extends IUnique
     {
         return Permission.getPermissions(getPermissionsRaw());
     }
-
-    @Nonnull
-    String getRedirectUri();
 
     @Nonnull
     @CheckReturnValue

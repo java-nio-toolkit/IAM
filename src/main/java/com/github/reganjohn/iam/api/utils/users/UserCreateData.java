@@ -19,7 +19,7 @@ package com.github.reganjohn.iam.api.utils.users;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.utils.sessions.SessionData;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;

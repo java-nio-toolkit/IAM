@@ -46,11 +46,11 @@ import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.users.UserCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
@@ -241,7 +241,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
     public InteractionCallbackAction<Void> create(@Nonnull UserCreateData user)
     {
         Checks.notNull(user, "User");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_account.cql"), user)
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_account.cql"), user)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

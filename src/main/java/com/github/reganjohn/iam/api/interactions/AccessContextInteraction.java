@@ -4,7 +4,7 @@ import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;

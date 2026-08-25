@@ -18,14 +18,15 @@ package com.github.reganjohn.iam.api;
 
 import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
-import com.reganjohn.jact.internal.JACTImpl;
+import com.reganjohn.c4j.api.JCA;
+import com.reganjohn.c4j.internal.JCAImpl;
 
 import javax.annotation.Nonnull;
 
 public interface IAM
 {
     @Nonnull
-    JACTImpl getJACT();
+    JCA getJCA();
 
     @Nonnull
     EntityBuilder getEntityBuilder();

@@ -38,13 +38,13 @@ import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookEditAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookActionImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -245,7 +245,7 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
     {
         Checks.notNull(webhook, "Webhook");
         Checks.notNull(rawBody, "Body");
-        return new InteractionMappingActionImpl<>(api.getJACT(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :url, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", mapFromData(webhook, rawBody))
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :url, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", mapFromData(webhook, rawBody))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

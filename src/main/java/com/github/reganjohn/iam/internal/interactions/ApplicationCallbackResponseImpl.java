@@ -20,11 +20,11 @@ package com.github.reganjohn.iam.internal.interactions;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 
 import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
@@ -38,22 +38,17 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     private final UUID ownerId;
     private final UUID applicationId;
     private final UUID interactionId;
-    private final OffsetDateTime expiresAt;
     private final long rawPermissions;
-    private final String redirectUri;
 
     public ApplicationCallbackResponseImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
-                                           @Nonnull UUID applicationId, @Nonnull UUID interactionId,
-                                           @Nonnull OffsetDateTime expiresAt, long permissions, @Nonnull String uri)
+                                           @Nonnull UUID applicationId, @Nonnull UUID interactionId, long permissions)
     {
         this.api = api;
         this.userId = userId;
         this.ownerId = ownerId;
         this.applicationId = applicationId;
         this.interactionId = interactionId;
-        this.expiresAt = expiresAt;
         this.rawPermissions = permissions;
-        this.redirectUri = uri;
     }
 
     @Nonnull
@@ -65,7 +60,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
 
     @Nonnull
     @Override
-    public UUID getUniqueId()
+    public UUID getInteractionId()
     {
         return interactionId;
     }
@@ -91,24 +86,10 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
         return applicationId;
     }
 
-    @Nonnull
-    @Override
-    public OffsetDateTime getTimeExpiresAt()
-    {
-        return expiresAt;
-    }
-
     @Override
     public long getPermissionsRaw()
     {
         return rawPermissions;
-    }
-
-    @Nonnull
-    @Override
-    public String getRedirectUri()
-    {
-        return redirectUri;
     }
 
     @Nonnull
@@ -122,7 +103,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     @Override
     public InteractionCallbackAction<ApplicationCallbackResponse> delete()
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "DELETE FROM integrations.responses WHERE application_id = ? AND interaction_id = ? IF EXISTS", Arrays.asList(getApplicationId(), getUniqueId()))
+        return new InteractionContextActionImpl<>(api.getJCA(), "DELETE FROM integrations.responses WHERE application_id = ? AND interaction_id = ? IF EXISTS", Arrays.asList(getApplicationId(), getInteractionId()))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

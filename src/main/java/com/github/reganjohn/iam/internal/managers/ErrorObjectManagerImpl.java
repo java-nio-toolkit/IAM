@@ -65,7 +65,7 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     public void exceptionCaught(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error) throws Exception
     {
         Request request = context.channel().attr(Request.IDENTIFIER).get();
-        if (printStackTrace && !(error instanceof MissingAccessException))
+        if (printStackTrace)// && !(error instanceof MissingAccessException))
             LOG.error("Oops! We've encountered an server error! Not good!", error);
 
         if (error instanceof JsonParseException)

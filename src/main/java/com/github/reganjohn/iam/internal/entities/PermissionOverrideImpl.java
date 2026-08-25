@@ -21,12 +21,12 @@ import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
 import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
@@ -122,7 +122,7 @@ public class PermissionOverrideImpl implements PermissionOverride
     public InteractionCallbackAction<Void> delete()
     {
         long flags = getFlagsRaw() | EntitlementFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE users.entitlements SET flags = ? WHERE user_id = ? AND application_id = ?", Arrays.asList(flags, userId, applicationId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.entitlements SET flags = ? WHERE user_id = ? AND application_id = ?", Arrays.asList(flags, userId, applicationId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

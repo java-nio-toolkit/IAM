@@ -3,11 +3,9 @@ package com.github.reganjohn.iam.internal.managers;
 import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.SignType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -16,22 +14,23 @@ import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.utils.AccessEntryFlag;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.api.utils.data.BufferObject;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.api.utils.data.BufferObject;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.AttributeKey;
 import io.netty.util.HashedWheelTimer;
+import org.apache.commons.lang3.exception.UncheckedException;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -41,8 +40,6 @@ import java.util.concurrent.TimeUnit;
 
 public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements GlobalAccessManager
 {
-    public static final AttributeKey<GlobalAccessManagerImpl> IDENTIFIER = AttributeKey.valueOf("global.access.manager");
-
     private final IAMImpl api;
 
     public GlobalAccessManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout,
@@ -80,9 +77,31 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
 
     @Nonnull
     @Override
-    public InteractionCallbackAction<Boolean> hasAccess(@Nonnull UUID id, @Nonnull AccessObjectData data)
+    public InteractionCallbackAction<Boolean> hasAccess(@Nonnull AccessObjectData data)
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM global.public_keys WHERE kid = ?", Collections.singletonList(id))
+        return hasAccess(data.getOptionData().getEntryData(), data);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Boolean> hasAccess(AccessEntryData raw, @Nonnull AccessObjectData data)
+    {
+        Checks.check(raw != null, ""); //todo: add message!
+        try (AccessContextData context = raw.getContext(AccessContextType.SHA_256))
+        {
+            return hasAccess(context, data);
+        }
+        catch (Exception ex)
+        {
+            throw new UncheckedException(ex);
+        }
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Boolean> hasAccess(@Nonnull AccessContextData context, @Nonnull AccessObjectData data)
+    {
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM global.public_keys WHERE thumbprint = ?", Collections.singletonList(context.digest()))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -117,11 +136,12 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> onCreateSnapshot(@Nonnull AccessEntrySnapshot snapshot, @Nonnull Map<String, Object> contextMap)
+    private InteractionCallbackAction<Void> onCreateSnapshot(@Nonnull AccessEntrySnapshot snapshot,
+                                                             @Nonnull Map<String, Object> contextMap)
     {
         Checks.notNull(snapshot, "Snapshot");
         Checks.notNull(contextMap, "Map");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_issued_signer.cql"), mapFromData(snapshot))
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_issued_signer.cql"), mapFromData(snapshot))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

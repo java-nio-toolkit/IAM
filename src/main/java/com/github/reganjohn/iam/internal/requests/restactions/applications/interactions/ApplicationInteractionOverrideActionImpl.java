@@ -37,15 +37,17 @@ import com.github.reganjohn.iam.api.requests.restactions.applications.interactio
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.requests.objaction.InteractionContextType;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -133,8 +135,10 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        retrieveInteraction(userId, applicationId, interactionId)
-                .flatMap(interaction -> createInteraction(json, interaction))
+        api.retrieveUserById(userId)
+                .flatMap(user -> user.retrieveApplicationById(applicationId))
+                .flatMap(application -> application.retrieveInteractionById(interactionId))
+                .flatMap(interaction -> createResponse(json, interaction))
                 .queue(interaction -> handleSuccess(context, interaction), context::fireExceptionCaught);
     }
 
@@ -169,57 +173,18 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<ApplicationContextInteraction> retrieveInteraction(@Nonnull UUID userId,
-                                                                                        @Nonnull UUID applicationId,
-                                                                                        @Nonnull UUID interactionId)
+    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull AccessObjectData json,
+                                                                                   @Nonnull ApplicationContextInteraction interaction)
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.interactions WHERE user_id = :user_id AND application_id = :application_id AND interaction_id = :interaction_id", Arrays.asList(userId, applicationId, interactionId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<ApplicationContextInteraction> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty())
-                    interaction.onSuccess(getIAM().getEntityBuilder().createContextInteraction(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
-            }
-        };
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<ApplicationContextInteraction> createInteraction(@Nonnull AccessObjectData json,
-                                                                                      @Nonnull ApplicationContextInteraction interaction)
-    {
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_interaction_response.cql"), mapFromData(json, interaction))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<ApplicationContextInteraction> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty())
-                    interaction.onSuccess(getIAM().getEntityBuilder().createContextInteraction(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
-            }
-        };
-    }
-
-    @Nonnull
-    private InteractionMapping mapFromData(@Nonnull AccessObjectData json,
-                                           @Nonnull ApplicationContextInteraction interaction)
-    {
-        return new InteractionMapping.Builder()
-                .put("owner_id", interaction.getOwnerId())
-                .put("user_id", UUID.fromString(json.getSubject()))
-                .put("application_id", interaction.getApplicationId())
-                .put("interaction_id", interaction.getUniqueId())
-                .put("flags", 0L)
-                .put("permissions", interaction.getPermissionsRaw())
-                .put("updated_at", OffsetDateTime.now())
-                .build();
+        UUID ownerId = interaction.getOwnerId();
+        UUID applicationId = interaction.getApplicationId();
+        UUID interactionId = interaction.getUniqueId();
+        UUID userId = UUID.fromString(json.getSubject());
+        long permissions = interaction.getPermissionsRaw();
+        return new InteractionListContextActionImpl<>(api.getJCA(), InteractionContextType.LOGGED, new ArrayListValuedHashMap<>())
+                .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", userId, applicationId, interactionId)
+                .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions)
+                .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, applicationId, ownerId, 0L, permissions, OffsetDateTime.now())
+                .map(unused -> interaction);
     }
 }

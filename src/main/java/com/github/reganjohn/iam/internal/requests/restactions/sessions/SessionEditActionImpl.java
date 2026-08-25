@@ -45,12 +45,12 @@ import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -200,7 +200,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
     public InteractionCallbackAction<Void> modify(@Nonnull SessionEditData session)
     {
         Checks.notNull(session, "Session");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("edit_session.cql"), session)
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("edit_session.cql"), session)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

@@ -32,8 +32,8 @@ import com.github.reganjohn.iam.internal.entities.*;
 import com.github.reganjohn.iam.internal.interactions.AccessContextInteractionImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationCallbackResponseImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.api.utils.data.BufferObject;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.api.utils.data.BufferObject;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -78,7 +78,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         OffsetDateTime expiresAt = snapshot.getTimeExpiresAt();
         List<String> audiences = manager.getAudiences();
         DataObject actor = rawActor != null ? Helpers.singletonData("sub", rawActor) : null;
-        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), type, manager.getSignType());
+        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), type, manager.getSignType(), snapshot);
         DataObject rawData = DataObject.empty()
                 .put("iss", issuer)
                 .put("sub", subject);
@@ -258,9 +258,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
         int rawPermissions = data.getInt("permissions");
-        OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
-        String uri = data.getString("redirect_uri");
-        return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri);
+        return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions);
     }
 
     @Nonnull

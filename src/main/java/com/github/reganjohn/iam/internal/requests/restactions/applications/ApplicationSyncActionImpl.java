@@ -42,12 +42,12 @@ import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -421,7 +421,7 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
     private InteractionCallbackAction<Void> sync(@Nonnull AccessCreateData access)
     {
         Checks.notNull(access, "Application");
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_access_application.cql"), access)
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_access_application.cql"), access)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -436,6 +436,7 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
         };
     }
 
+    //todo: consider what to return to the app owner when adding keys
     public void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
         context.writeAndFlush(new Response(context, StatusReason.CREATED));

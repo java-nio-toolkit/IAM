@@ -19,11 +19,11 @@ package com.github.reganjohn.iam.internal.interactions;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;
@@ -111,7 +111,7 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
     public InteractionCallbackAction<Void> revoke()
     {
         long flags = getFlagsRaw() | AccessContextInteraction.AccessContextFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE integrations.public_keys SET flags = ? WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(flags, userId, applicationId, accessId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE integrations.public_keys SET flags = ? WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(flags, userId, applicationId, accessId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

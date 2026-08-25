@@ -24,7 +24,7 @@ dependencies {
     implementation("com.nimbusds:nimbus-jose-jwt:10.9")
     implementation("org.bouncycastle:bcprov-lts8on:2.73.10")
     implementation("com.adamorgan:JNT:1.0.0_DEV")
-    implementation("com.reganjohn:JACT:1.0.0_DEV")
+    implementation("com.reganjohn:C4J:1.0.0_DEV")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

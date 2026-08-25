@@ -37,13 +37,13 @@ import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.self.PermissionOverrideEditAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -157,7 +157,7 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
                 .put("permissions", rawBody.getLong("permissions", override.getPermissionsRaw()))
                 .put("updated_at", OffsetDateTime.now())
                 .build();
-        return new InteractionMappingActionImpl<>(api.getJACT(), "UPDATE users.entitlements SET permissions = :permissions, updated_at = :updated_at WHERE user_id = :user_id AND application_id = :application_id IF EXISTS", map)
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.entitlements SET permissions = :permissions, updated_at = :updated_at WHERE user_id = :user_id AND application_id = :application_id IF EXISTS", map)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

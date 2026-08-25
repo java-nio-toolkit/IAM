@@ -45,7 +45,7 @@ import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionUpdateA
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
@@ -176,11 +176,8 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
                                                                @Nonnull AccessContextData contextData,
                                                                @Nonnull AccessObjectData data)
     {
-        GlobalAccessManagerImpl manager = context.channel().attr(GlobalAccessManagerImpl.IDENTIFIER).get();
-        String rawUniqueId = data.getOptionData().getName();
-        if (Helpers.isEmpty(rawUniqueId) || !MiscUtil.isUUID(rawUniqueId))
-            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
-        return manager.hasAccess(UUID.fromString(rawUniqueId), data).map(hasAccess ->
+        GlobalAccessManagerImpl manager = (GlobalAccessManagerImpl) context.channel().attr(GlobalAccessManagerImpl.IDENTIFIER).get();
+        return manager.hasAccess(data).map(hasAccess ->
         {
             if (hasAccess)
                 return createObjectData(manager, contextData, data, manager.getCurrentOrder());

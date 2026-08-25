@@ -43,12 +43,13 @@ import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -204,16 +205,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     {
         Checks.notNull(interaction, "Interaction");
         InteractionMapping mapping = mapFromData(interaction);
-        return new InteractionMappingActionImpl<>(api.getJACT(), ClassLoader.getResourceAsString("create_interaction_application.cql"), mapping)
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Void> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                interaction.onSuccess(null);
-            }
-        };
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_interaction_application.cql"), mapping);
     }
 
     @Nonnull
@@ -252,9 +244,14 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     @Nonnull
     private Route.CompiledRoute getRouteCompile(@Nonnull ApplicationContextInteraction interaction)
     {
-        UUID ownerId = interaction.getOwnerId();
-        UUID applicationId = interaction.getApplicationId();
-        UUID interactionId = interaction.getUniqueId();
-        return Routes.Applications.ACCEPT_APPLICATION_INTERACTION.compile(ownerId.toString(), applicationId.toString(), interactionId.toString());
+        Checks.notNull(interaction, "Interaction");
+        return getRouteCompile(interaction.getOwnerId().toString(), interaction.getApplicationId().toString(), interaction.getUniqueId().toString());
+    }
+
+    @Nonnull
+    private Route.CompiledRoute getRouteCompile(@Nonnull String ownerId, @Nonnull String applicationId,
+                                                @Nonnull String interactionId)
+    {
+        return Routes.Applications.ACCEPT_APPLICATION_INTERACTION.compile(ownerId, applicationId, interactionId);
     }
 }

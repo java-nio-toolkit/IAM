@@ -37,12 +37,12 @@ import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserEditAction
 import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -181,7 +181,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
     public InteractionCallbackAction<Void> modify(@Nonnull UserEditData user)
     {
         Checks.notNull(user, "User");
-        return new InteractionMappingActionImpl<>(api.getJACT(), "UPDATE users.accounts SET username = :username, flags = :flags WHERE user_id = :user_id IF EXISTS", user)
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.accounts SET username = :username, flags = :flags WHERE user_id = :user_id IF EXISTS", user)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

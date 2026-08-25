@@ -20,7 +20,8 @@ import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
+import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.CheckReturnValue;
@@ -133,6 +134,10 @@ public interface Application extends IUnique
     @Nonnull
     @CheckReturnValue
     InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess();
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<ApplicationContextInteraction> retrieveInteractionById(@Nonnull UUID id);
 
     /**
      * Represents the bit offsets used for application flags.

@@ -17,7 +17,7 @@
 package com.github.reganjohn.iam.api.utils.applications;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.reganjohn.jact.api.interactions.context.InteractionMapping;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

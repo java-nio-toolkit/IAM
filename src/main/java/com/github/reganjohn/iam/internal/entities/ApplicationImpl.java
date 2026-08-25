@@ -22,14 +22,16 @@ import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
+import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import com.reganjohn.jact.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.jact.api.utils.data.BufferArray;
-import com.reganjohn.jact.internal.interactions.InteractionImpl;
-import com.reganjohn.jact.internal.interactions.response.InteractionCallbackResponseImpl;
-import com.reganjohn.jact.internal.requests.objaction.InteractionContextActionImpl;
-import com.reganjohn.jact.internal.utils.InteractionUtil;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
+import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
+import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
@@ -115,7 +117,7 @@ public class ApplicationImpl implements Application
     @Override
     public InteractionCallbackAction<Integer> retrieveAccessCount()
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT COUNT(*) FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -131,7 +133,7 @@ public class ApplicationImpl implements Application
     public InteractionCallbackAction<AccessContextInteraction> retrieveAccessById(@Nonnull UUID accessId)
     {
         Checks.notNull(accessId, "Access ID");
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(getOwnerId(), getUniqueId(), accessId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(getOwnerId(), getUniqueId(), accessId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -150,7 +152,7 @@ public class ApplicationImpl implements Application
     @Override
     public InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess()
     {
-        return new InteractionContextActionImpl<>(api.getJACT(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -167,10 +169,30 @@ public class ApplicationImpl implements Application
 
     @Nonnull
     @Override
+    public InteractionCallbackAction<ApplicationContextInteraction> retrieveInteractionById(@Nonnull UUID id)
+    {
+        Checks.notNull(id, "Interaction ID");
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.interactions WHERE user_id = :user_id AND application_id = :application_id AND interaction_id = :interaction_id", Arrays.asList(ownerId, applicationId, id))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<ApplicationContextInteraction> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    interaction.onSuccess(getIAM().getEntityBuilder().createContextInteraction(array.getObject(0)));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
+            }
+        };
+    }
+
+    @Nonnull
+    @Override
     public InteractionCallbackAction<Void> delete()
     {
         long flags = getFlagsRaw() | Application.ApplicationFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJACT(), "UPDATE integrations.applications SET flags = ? WHERE owner_id = ? AND application_id = ?", Arrays.asList(flags, getOwnerId(), getUniqueId()));
+        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE integrations.applications SET flags = ? WHERE owner_id = ? AND application_id = ?", Arrays.asList(flags, getOwnerId(), getUniqueId()));
     }
 
     @Override
