@@ -158,11 +158,15 @@ CREATE TABLE IF NOT EXISTS integrations.invites
 
 CREATE TABLE IF NOT EXISTS integrations.public_keys
 (
-    user_id        UUID,
     application_id UUID,
     owner_id       UUID,
     access_id      UUID,
+    kid            TEXT,
+    alg            TEXT,
+    kty            TEXT,
+    usage          TEXT,
     flags          BIGINT,
     thumbprint     TEXT,
-    PRIMARY KEY ((user_id), application_id, access_id)
+    public_key     BLOB,
+    PRIMARY KEY ((application_id), access_id)
 ) WITH transactional_mode = 'full';

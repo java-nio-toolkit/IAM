@@ -6,10 +6,14 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.util.UUID;
 
 public interface GlobalAccessManager extends AccessEntryManager
 {
     @Nonnull
+    @CheckReturnValue
     InteractionCallbackAction<Boolean> hasAccess(@Nonnull AccessObjectData data);
+
+    @Nonnull
+    @CheckReturnValue
+    InteractionCallbackAction<Boolean> checkAvailable(@Nonnull String thumbprint);
 }

@@ -83,6 +83,23 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     }
 
     @Nonnull
+    @Override
+    public InteractionCallbackAction<Boolean> checkAvailable(@Nonnull String thumbprint)
+    {
+        Checks.notEmpty(thumbprint, "Thumbprint");
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM global.public_keys WHERE thumbprint = ?", Collections.singletonList(thumbprint))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Boolean> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                interaction.onSuccess(array.isEmpty() || EntityBuilder.isDelete(array));
+            }
+        };
+    }
+
+    @Nonnull
     @CheckReturnValue
     private InteractionCallbackAction<Boolean> hasAccess(AccessEntryData raw, @Nonnull AccessObjectData data)
     {
@@ -161,7 +178,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     private Map<String, Object> mapFromData(@Nonnull AccessEntrySnapshot snapshot)
     {
         Checks.check(snapshot.getType() != AccessEntryType.NONE, "The snapshot type cannot be NONE.");
-        try (AccessContextData contextData = snapshot.getContext(AccessContextType.SHA_256))
+        try (AccessContextData context = snapshot.getContext(AccessContextType.SHA_256))
         {
             return new InteractionMapping.Builder()
                     .put("kid", snapshot.getUniqueId().toString())
@@ -169,7 +186,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                     .put("kty", snapshot.getType().name())
                     .put("usage", snapshot.getUsage().name())
                     .put("flags", AccessEntryFlag.getRaw(AccessEntryFlag.ISSUED))
-                    .put("thumbprint", contextData.digest())
+                    .put("thumbprint", context.digest())
                     .put("public_key", snapshot.getPublicKey().getEncoded())
                     .toMap();
         }

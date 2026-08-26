@@ -45,11 +45,7 @@ import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteract
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.c4j.api.utils.data.BufferArray;
-import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -193,10 +189,15 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     private InteractionCallbackAction<Void> create(@Nonnull Application application,
                                                    @Nonnull ApplicationContextInteraction interaction)
     {
-        if (Helpers.contains(application.getRedirectUris(), interaction.getRedirectUri(), false))
-            return createInteraction(interaction);
-        else
-            throw new ErrorResponseException(ErrorResponse.INVALID_REDIRECT_URI);
+        return application.retrieveAccess().flatMap(interactions ->
+        {
+            if (interactions.isEmpty())
+                throw new ErrorResponseException(ErrorResponse.APPLICATION_CANNOT_ACCEPT_MEMBERS);
+            else if (Helpers.contains(application.getRedirectUris(), interaction.getRedirectUri(), false))
+                return createInteraction(interaction);
+            else
+                throw new ErrorResponseException(ErrorResponse.INVALID_REDIRECT_URI);
+        });
     }
 
     @Nonnull

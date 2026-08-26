@@ -50,6 +50,7 @@ public enum ErrorResponse
     INVALID_FORM_BODY(50035, "Invalid Form Body"),
     INVALID_FROM_OBJECT_BODY(50036, "Only dictionaries may be used in a DictType"),
     INVALID_REDIRECT_URI(50040, "Invalid GNAP \"redirect_uri\""),
+    APPLICATION_CANNOT_ACCEPT_MEMBERS(50096, "The application temporarily not accepting members."),
     INVALID_REQUEST_BODY(50109, "The request body contains invalid JSON."),
 
     SERVER_ERROR(0, "Oops! We've encountered an internal server error! Not good!");

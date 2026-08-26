@@ -17,19 +17,19 @@
 package com.github.reganjohn.iam.internal.requests.restactions.applications.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.exceptions.MissingAccessException;
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
+import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -39,6 +39,7 @@ import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionRetrieveAction;
@@ -129,23 +130,108 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     private void handleErrorResponse(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                                      @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
-        if (errors.isEmpty())
-            handleInternally(context, request);
-        else
+        if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-    }
-
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
-    {
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
+        hasAccess(context, applicationId).queue(hasAccess ->
+        {
+            if (hasAccess)
+                handleInternally(context, applicationId, interactionId);
+            else
+                throw new MissingAccessException(api.getJNT().getIdentifierString(), ProofObjectManager.INSUFFICIENT_SCOPE);
+        }, context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess(@Nonnull UUID applicationId)
+    {
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<AccessContextInteraction>> interaction,
+                                      @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(array));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SIGNER));
+            }
+        };
+    }
+
+    @Nonnull
+    private InteractionCallbackAction<List<AccessEntryData>> retrieveAccessData(@Nonnull UUID applicationId)
+    {
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
+                                      @Nonnull BufferArray array) throws Exception
+            {
+                if (!array.isEmpty())
+                    interaction.onSuccess(getIAM().getEntityBuilder().createAccessEntries(array));
+                else
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SIGNER));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Boolean> hasAccess(@Nonnull ChannelHandlerContext context,
+                                                         @Nonnull UUID applicationId) throws Exception
+    {
+        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
+        if (data != null)
+            return checkAccess(data, applicationId);
+        else
+            throw new ErrorResponseException(ErrorResponse.MISSING_ACCESS);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<Boolean> checkAccess(@Nonnull ProofObjectData data,
+                                                           @Nonnull UUID applicationId) throws Exception
+    {
+        try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
+        {
+            return retrieveAccess(applicationId).map(set ->
+            {
+                return set.stream().anyMatch(interaction ->
+                {
+                    return Helpers.equals(interaction.getThumbprint(), context.digest(), false);
+                });
+            });
+        }
+    }
+
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID applicationId,
+                                  @Nonnull UUID interactionId)
+    {
         retrieveCallbackResponse(applicationId, interactionId)
                 .flatMap(ApplicationCallbackResponse::retrieveApplication)
                 .flatMap(application -> retrieveCallbackResponse(application.getUniqueId(), interactionId))
                 .flatMap(ApplicationCallbackResponse::delete)
-                .map(response -> createObjectData(context, response))
+                .flatMap(response -> retrieveAccessData(context, response))
                 .queue(interaction -> handleSuccess(context, interaction), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<List<AccessObjectData>> retrieveAccessData(@Nonnull ChannelHandlerContext context,
+                                                                                 @Nonnull ApplicationCallbackResponse response)
+    {
+        return retrieveAccessData(response.getApplicationId()).map(data ->
+        {
+            return createAccessObjects(context, data, response);
+        });
     }
 
     @Nonnull
@@ -171,29 +257,41 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     }
 
     @Nonnull
-    private AccessObjectData createObjectData(@Nonnull ChannelHandlerContext context,
-                                              @Nonnull ApplicationCallbackResponse response)
+    private List<AccessObjectData> createAccessObjects(@Nonnull ChannelHandlerContext context,
+                                                       @Nonnull List<AccessEntryData> data,
+                                                       @Nonnull ApplicationCallbackResponse response)
     {
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
-        AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
-        try (AccessContextData contextData = snapshot.getContext(AccessContextType.SHA_256))
+        List<AccessObjectData> set = new ArrayList<>();
+        for (AccessEntryData access : data)
+            set.add(createAccessObject(manager, access, response));
+        return set;
+    }
+
+    @Nonnull
+    private AccessObjectData createAccessObject(@Nonnull AccessEntryManager manager, @Nonnull AccessEntryData data,
+                                                @Nonnull ApplicationCallbackResponse response)
+    {
+        try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
         {
+            AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
             String uniqueId = UUIDv7.randomUUID().toString();
             String identifier = api.getJNT().getIdentifierString();
-            UUID userId = response.getUserId();
+            String userId = response.getUserId().toString();
             UUID applicationId = response.getApplicationId();
             DataArray perm = PermissionUtil.toDataArray(response.getPermissions());
-            return EntityBuilder.createObjectData(uniqueId, identifier, userId.toString(), applicationId, perm, manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
+            String mediaTypeAccess = ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS;
+            return EntityBuilder.createObjectData(uniqueId, identifier, userId, applicationId, perm, manager, context, mediaTypeAccess, snapshot);
         }
-        catch (Exception ex)
+        catch (final Exception ex)
         {
-            throw new IllegalStateException(ex);
+            throw new IllegalStateException("Failed to retrieve the snapshot hash", ex);
         }
     }
 
-    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData data)
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull List<AccessObjectData> data)
     {
-        ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
+        ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.get(0).getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
         context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }

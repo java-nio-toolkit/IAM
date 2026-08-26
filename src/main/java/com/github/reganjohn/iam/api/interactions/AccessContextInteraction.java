@@ -18,9 +18,6 @@ public interface AccessContextInteraction extends IUnique
     IAMImpl getIAM();
 
     @Nonnull
-    UUID getUserId();
-
-    @Nonnull
     UUID getOwnerId();
 
     @Nonnull

@@ -22,12 +22,14 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.managers.PresenceOverrideManager;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
+import java.security.KeyPair;
 import java.time.OffsetDateTime;
 
 import static com.github.adamorgan.jnt.api.managers.DigestObjectManager.CONTENT_DIGEST;
@@ -66,7 +68,9 @@ public class PresenceOverrideManagerImpl extends ClassicObjectManagerImpl implem
     {
         CaseInsensitiveMap<String, String> headers = request.getHeaders();
         Route.CompiledRoute route = request.getRoute();
-        return new ContentAssertionRequest.Builder(snapshot)
+        KeyPair secret = snapshot.getSecret();
+        Checks.notNull(secret, "The Secret");
+        return new ContentAssertionRequest.Builder(secret)
                 .setContentDigest(headers.get(CONTENT_DIGEST))
                 .setBody(request.getBody())
                 .setMethod(route.getMethod())

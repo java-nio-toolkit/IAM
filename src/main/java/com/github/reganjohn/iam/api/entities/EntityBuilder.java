@@ -123,13 +123,12 @@ public class EntityBuilder extends AbstractEntityBuilder
     @Nonnull
     public AccessContextInteractionImpl createApplicationAccess(@Nonnull BufferObject obj)
     {
-        UUID userId = obj.getUUID("user_id");
         UUID ownerId = obj.getUUID("owner_id");
         UUID applicationId = obj.getUUID("application_id");
         UUID accessId = obj.getUUID("access_id");
         long flags = obj.getLong("flags");
         String thumbprint = obj.getString("thumbprint");
-        return new AccessContextInteractionImpl(api, userId, ownerId, applicationId, accessId, flags, thumbprint);
+        return new AccessContextInteractionImpl(api, ownerId, applicationId, accessId, flags, thumbprint);
     }
 
     @Nonnull
@@ -174,7 +173,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public AccessEntryData createAccessEntry(@Nonnull BufferObject data) throws Exception
+    public static AccessEntryData createAccessEntry(@Nonnull BufferObject data) throws Exception
     {
         byte[] publicKey = data.getBytes("public_key");
         String type = data.getString("kty");
@@ -244,7 +243,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID ownerId = data.getUUID("user_id");
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
-        int rawPermissions = data.getInt("permissions");
+        long rawPermissions = data.getLong("permissions");
         OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
         String uri = data.getString("redirect_uri");
         return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri);
@@ -257,7 +256,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID ownerId = data.getUUID("owner_id");
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
-        int rawPermissions = data.getInt("permissions");
+        long rawPermissions = data.getLong("permissions");
         return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions);
     }
 

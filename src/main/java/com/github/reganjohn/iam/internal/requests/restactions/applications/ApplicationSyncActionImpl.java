@@ -388,7 +388,7 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
             UUID applicationId = UUID.fromString(params.get("application_id"));
             api.retrieveUserById(userId)
                     .flatMap(user -> user.retrieveApplicationById(applicationId))
-                    .flatMap(application -> create(userId, application, entryData, contextData))
+                    .flatMap(application -> createAccessData(application, entryData, contextData))
                     .flatMap(this::sync)
                     .queue(success -> handleSuccess(context), context::fireExceptionCaught);
         }
@@ -396,24 +396,21 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<AccessCreateData> create(@Nonnull UUID userId, @Nonnull Application application,
-                                                               @Nonnull AccessEntryData data,
-                                                               @Nonnull AccessContextData context)
+    private InteractionCallbackAction<AccessCreateData> createAccessData(@Nonnull Application application,
+                                                                         @Nonnull AccessEntryData data,
+                                                                         @Nonnull AccessContextData context)
     {
-        return application.retrieveAccessCount().map(count ->
-        {
-            return create(userId, application, count, data, context);
-        });
+        return application.retrieveAccessCount().map(count -> createAccessData(application, data, context, count));
     }
 
     @Nonnull
-    private AccessCreateData create(@Nonnull UUID userId, @Nonnull Application application, int count,
-                                    @Nonnull AccessEntryData entryData, @Nonnull AccessContextData contextData)
+    private AccessCreateData createAccessData(@Nonnull Application application, @Nonnull AccessEntryData entryData,
+                                              @Nonnull AccessContextData contextData, int count)
     {
         if (count > Application.MAX_ACCESS_ENTRY_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_ACCESS_APPLICATION);
         else
-            return new AccessCreateData(userId, application, entryData, 0, contextData.digest());
+            return new AccessCreateData(application, entryData, 0, contextData.digest());
     }
 
     @Nonnull
@@ -436,7 +433,6 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
         };
     }
 
-    //todo: consider what to return to the app owner when adding keys
     public void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
         context.writeAndFlush(new Response(context, StatusReason.CREATED));
@@ -444,16 +440,14 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
 
     private static class AccessCreateData implements ApplicationData, InteractionMapping
     {
-        private final UUID userId;
         private final Application application;
         private final AccessEntryData entryData;
         private final long flags;
         private final String thumbprint;
 
-        public AccessCreateData(@Nonnull UUID userId, @Nonnull Application application, @Nonnull AccessEntryData data,
-                                long flags, @Nonnull String thumbprint)
+        public AccessCreateData(@Nonnull Application application, @Nonnull AccessEntryData data, long flags,
+                                @Nonnull String thumbprint)
         {
-            this.userId = userId;
             this.application = application;
             this.entryData = data;
             this.flags = flags;
@@ -464,9 +458,8 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
         public Map<String, Object> toMap()
         {
             return new InteractionMapping.Builder()
-                    .put("user_id", userId)
                     .put("application_id", application.getUniqueId())
-                    .put("owner_id", application.getOwnerId())
+                    .put("user_id", application.getOwnerId())
                     .put("alg", entryData.getAccessOption().getMode())
                     .put("flags", flags)
                     .put("kid", entryData.getName())

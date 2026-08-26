@@ -16,15 +16,19 @@
 
 package com.github.reganjohn.iam.api;
 
+import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.reganjohn.c4j.api.JCA;
-import com.reganjohn.c4j.internal.JCAImpl;
 
 import javax.annotation.Nonnull;
 
 public interface IAM
 {
+    @Nonnull
+    GlobalAccessManager getAccessManager();
+
     @Nonnull
     JCA getJCA();
 

@@ -117,7 +117,7 @@ public class ApplicationImpl implements Application
     @Override
     public InteractionCallbackAction<Integer> retrieveAccessCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(getUniqueId()))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -133,7 +133,7 @@ public class ApplicationImpl implements Application
     public InteractionCallbackAction<AccessContextInteraction> retrieveAccessById(@Nonnull UUID accessId)
     {
         Checks.notNull(accessId, "Access ID");
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(getOwnerId(), getUniqueId(), accessId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ? AND access_id = ?", Arrays.asList(getUniqueId(), accessId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -152,7 +152,7 @@ public class ApplicationImpl implements Application
     @Override
     public InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE user_id = ? AND application_id = ?", Arrays.asList(getOwnerId(), getUniqueId()))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(getUniqueId()))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

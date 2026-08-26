@@ -35,6 +35,7 @@ import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.*;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
@@ -98,7 +99,7 @@ public class IAMImpl implements IAM
 
     private final JNT api;
     private final JCA jca;
-    private final AccessEntryManager manager;
+    private final GlobalAccessManager manager;
     private final SocketManager socketManager;
 
     private final EntityBuilder entityBuilder = new EntityBuilder(this);
@@ -209,7 +210,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new WebhookEditActionImpl(this))
                 .addEventListenerProvider(() -> new WebhookDeleteActionImpl(this))
 
-                .addEventListeners(new ErrorObjectManagerImpl(false))
+                .addEventListeners(new ErrorObjectManagerImpl(true))
                 .build();
         
         TimeUnit.SECONDS.sleep(2);
@@ -223,7 +224,7 @@ public class IAMImpl implements IAM
                 {
                         "TRUNCATE global.public_keys",
                         "TRUNCATE integrations.applications",
-                        "TRUNCATE integrations.public_keys",
+                        "TRUNCATE ",
                         "TRUNCATE users.public_keys",
                         "TRUNCATE users.accounts",
                         "TRUNCATE users.sessions",
@@ -240,6 +241,13 @@ public class IAMImpl implements IAM
     public JNTImpl getJNT()
     {
         return (JNTImpl) api;
+    }
+
+    @Nonnull
+    @Override
+    public GlobalAccessManager getAccessManager()
+    {
+        return manager;
     }
 
     @Nonnull

@@ -34,16 +34,14 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
     private final IAMImpl api;
     private final UUID applicationId;
     private final UUID accessId;
-    private final UUID userId;
     private final UUID ownerId;
     private final long flags;
     private final String thumbprint;
 
-    public AccessContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
-                                        @Nonnull UUID applicationId, @Nonnull UUID accessId, long flags, @Nonnull String thumbprint)
+    public AccessContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull UUID ownerId, @Nonnull UUID applicationId,
+                                        @Nonnull UUID accessId, long flags, @Nonnull String thumbprint)
     {
         this.api = api;
-        this.userId = userId;
         this.applicationId = applicationId;
         this.accessId = accessId;
         this.ownerId = ownerId;
@@ -63,13 +61,6 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
     public UUID getUniqueId()
     {
         return accessId;
-    }
-
-    @Nonnull
-    @Override
-    public UUID getUserId()
-    {
-        return userId;
     }
 
     @Nonnull
@@ -103,7 +94,7 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
     @Override
     public InteractionCallbackAction<AccessEntryData> retrieveAccess()
     {
-        return api.retrieveUserById(userId).flatMap(user -> user.retrieveAccessById(thumbprint));
+        return api.retrieveUserById(ownerId).flatMap(user -> user.retrieveAccessById(thumbprint));
     }
 
     @Nonnull
@@ -111,7 +102,7 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
     public InteractionCallbackAction<Void> revoke()
     {
         long flags = getFlagsRaw() | AccessContextInteraction.AccessContextFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE integrations.public_keys SET flags = ? WHERE user_id = ? AND application_id = ? AND access_id = ?", Arrays.asList(flags, userId, applicationId, accessId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE integrations.public_keys SET flags = ? WHERE application_id = ? AND access_id = ?", Arrays.asList(flags, applicationId, accessId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
