@@ -27,6 +27,7 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
@@ -51,8 +52,6 @@ import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -62,7 +61,7 @@ import java.util.*;
 
 public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionRetrieveAction
 {
-    public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
+    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
     public ApplicationInteractionRetrieveActionImpl(@Nonnull IAMImpl api)
     {
@@ -225,8 +224,8 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<List<AccessObjectData>> retrieveAccessData(@Nonnull ChannelHandlerContext context,
-                                                                                 @Nonnull ApplicationCallbackResponse response)
+    private InteractionCallbackAction<Map<AccessEntryData, AccessObjectData>> retrieveAccessData(@Nonnull ChannelHandlerContext context,
+                                                                                                 @Nonnull ApplicationCallbackResponse response)
     {
         return retrieveAccessData(response.getApplicationId()).map(data ->
         {
@@ -257,14 +256,14 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     }
 
     @Nonnull
-    private List<AccessObjectData> createAccessObjects(@Nonnull ChannelHandlerContext context,
-                                                       @Nonnull List<AccessEntryData> data,
-                                                       @Nonnull ApplicationCallbackResponse response)
+    private Map<AccessEntryData, AccessObjectData> createAccessObjects(@Nonnull ChannelHandlerContext context,
+                                                                       @Nonnull List<AccessEntryData> data,
+                                                                       @Nonnull ApplicationCallbackResponse response)
     {
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
-        List<AccessObjectData> set = new ArrayList<>();
+        Map<AccessEntryData, AccessObjectData> set = new HashMap<>();
         for (AccessEntryData access : data)
-            set.add(createAccessObject(manager, access, response));
+            set.put(access, createAccessObject(manager, access, response));
         return set;
     }
 
@@ -289,10 +288,33 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         }
     }
 
-    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull List<AccessObjectData> data)
+    private void handleSuccess(@Nonnull ChannelHandlerContext context,
+                               @Nonnull Map<AccessEntryData, AccessObjectData> data)
     {
-        ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.get(0).getRaw());
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
+        DataObject raw = Helpers.singletonData("access_token", fromJSON(data));
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, raw.toBinary(), true);
         context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+    }
+
+    @Nonnull
+    public DataArray fromJSON(@Nonnull Map<AccessEntryData, AccessObjectData> data)
+    {
+        return data.entrySet().stream().map(this::fromJSON).collect(Helpers.toDataArray());
+    }
+
+    @Nonnull
+    public DataObject fromJSON(@Nonnull Map.Entry<AccessEntryData, AccessObjectData> data)
+    {
+        return fromJSON(data.getKey(), data.getValue());
+    }
+
+    @Nonnull
+    public DataObject fromJSON(@Nonnull AccessEntryData key, @Nonnull AccessObjectData data)
+    {
+        return DataObject.empty()
+                .put("label", key.getName())
+                .put("value", data.getRaw())
+                .put("access", data.getScope())
+                .toData();
     }
 }
