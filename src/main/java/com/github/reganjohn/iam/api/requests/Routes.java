@@ -30,6 +30,7 @@ public class Routes
         public static final Route ACCEPT_APPLICATION_INTERACTION = new Route(PATCH, "users/{user_id}/applications/{application_id}/interactions/{interaction_id}");
         public static final Route EXECUTE_APPLICATION_INTERACTION = new Route(POST, "applications/{application_id}/interactions/{interaction_id}", true);
         public static final Route UPDATE_APPLICATION_ACCESS = new Route(PUT, "users/@me/applications/{application_id}", true);
+        public static final Route OVERRIDE_APPLICATION_ACCESS = new Route(PUT, "applications/{application_id}/access/{access_id}");
         public static final Route GET_APPLICATION_ACCESS = new Route(GET, "applications/{application_id}/access");
         public static final Route GET_SELF_APPLICATIONS = new Route(GET, "applications");
         public static final Route GET_SELF_APPLICATION = new Route(GET, "applications/{application_id}");

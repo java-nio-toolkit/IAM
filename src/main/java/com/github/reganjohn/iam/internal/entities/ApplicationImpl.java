@@ -31,7 +31,6 @@ import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackRespo
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
-import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;

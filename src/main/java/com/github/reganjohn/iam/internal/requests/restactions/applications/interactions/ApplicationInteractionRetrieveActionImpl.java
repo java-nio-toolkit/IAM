@@ -18,6 +18,7 @@ package com.github.reganjohn.iam.internal.requests.restactions.applications.inte
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.exceptions.MissingAccessException;
+import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.requests.MediaType;
@@ -37,6 +38,7 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -58,6 +60,8 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
+
+import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.INVALID_REQUEST;
 
 public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionRetrieveAction
 {
@@ -164,25 +168,6 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     }
 
     @Nonnull
-    private InteractionCallbackAction<List<AccessEntryData>> retrieveAccessData(@Nonnull UUID applicationId)
-    {
-        Checks.notNull(applicationId, "Application ID");
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(applicationId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
-                                      @Nonnull BufferArray array) throws Exception
-            {
-                if (!array.isEmpty())
-                    interaction.onSuccess(getIAM().getEntityBuilder().createAccessEntries(array));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SIGNER));
-            }
-        };
-    }
-
-    @Nonnull
     @CheckReturnValue
     private InteractionCallbackAction<Boolean> hasAccess(@Nonnull ChannelHandlerContext context,
                                                          @Nonnull UUID applicationId) throws Exception
@@ -219,18 +204,19 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
                 .flatMap(application -> retrieveCallbackResponse(application.getUniqueId(), interactionId))
                 .flatMap(ApplicationCallbackResponse::delete)
                 .flatMap(response -> retrieveAccessData(context, response))
-                .queue(interaction -> handleSuccess(context, interaction), context::fireExceptionCaught);
+                .map(this::fromJSON)
+                .queue(rawData -> handleSuccess(context, rawData), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Map<AccessEntryData, AccessObjectData>> retrieveAccessData(@Nonnull ChannelHandlerContext context,
-                                                                                                 @Nonnull ApplicationCallbackResponse response)
+    private InteractionCallbackAction<Map<AccessEntryData, AccessObjectData>> retrieveAccessData(
+            @Nonnull ChannelHandlerContext context,
+            @Nonnull ApplicationCallbackResponse response)
     {
-        return retrieveAccessData(response.getApplicationId()).map(data ->
-        {
-            return createAccessObjects(context, data, response);
-        });
+        return api.retrieveUserById(response.getUserId())
+                .flatMap(User::retrieveAccess)
+                .map(data -> createAccessObjects(context, data, response));
     }
 
     @Nonnull
@@ -288,11 +274,9 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         }
     }
 
-    private void handleSuccess(@Nonnull ChannelHandlerContext context,
-                               @Nonnull Map<AccessEntryData, AccessObjectData> data)
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
     {
-        DataObject raw = Helpers.singletonData("access_token", fromJSON(data));
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, raw.toBinary(), true);
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
         context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }
 

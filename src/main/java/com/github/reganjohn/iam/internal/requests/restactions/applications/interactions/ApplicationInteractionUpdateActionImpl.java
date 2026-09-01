@@ -45,7 +45,6 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionRetrieveAction;
 import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionUpdateAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;

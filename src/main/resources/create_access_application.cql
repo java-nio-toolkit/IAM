@@ -15,18 +15,15 @@
  */
 
 BEGIN TRANSACTION
-    LET access_data = (SELECT * FROM users.public_keys WHERE user_id = :user_id AND thumbprint = :thumbprint);
     LET application_data = (SELECT * FROM integrations.public_keys WHERE application_id = :application_id AND access_id = :access_id);
     LET global_data = (SELECT * FROM global.public_keys WHERE thumbprint = :thumbprint);
 
     -- Return data directly from table (must come before INSERT)
     SELECT * FROM global.public_keys WHERE thumbprint = :thumbprint;
 
-    IF global_data IS NULL AND application_data IS NULL AND access_data IS NULL THEN
+    IF global_data IS NULL AND application_data IS NULL THEN
         INSERT INTO global.public_keys (kid, alg, kty, usage, flags, thumbprint, public_key)
         VALUES (:kid, :alg, :kty, :usage, :access_flags, :thumbprint, :public_key);
-        INSERT INTO users.public_keys (user_id, kid, alg, kty, usage, flags, thumbprint, public_key)
-        VALUES (:user_id, :kid, :alg, :kty, :usage, :access_flags, :thumbprint, :public_key);
         INSERT INTO integrations.public_keys (application_id, owner_id, access_id, kid, alg, kty, usage, flags, thumbprint, public_key)
         VALUES (:application_id, :user_id, :access_id, :kid, :alg, :kty, :usage, :flags, :thumbprint, :public_key);
     END IF

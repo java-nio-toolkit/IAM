@@ -23,6 +23,7 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.SignType;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.*;
@@ -36,12 +37,15 @@ import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.ApplicationSyncAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationData;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
+import com.github.reganjohn.iam.internal.utils.AccessEntryFlag;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
@@ -52,7 +56,6 @@ import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl implements ApplicationSyncAction
@@ -465,8 +468,8 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
                     .put("kid", entryData.getName())
                     .put("kty", entryData.getType().name())
                     .put("usage", entryData.getUsage().name().toLowerCase())
-                    .put("access_id", UUID.nameUUIDFromBytes(thumbprint.getBytes(StandardCharsets.UTF_8)))
-                    .put("access_flags", 0L)
+                    .put("access_id", UUIDv7.randomUUID().toUUID())
+                    .put("access_flags", AccessEntryFlag.getRaw(AccessEntryFlag.APPLICATION))
                     .put("thumbprint", thumbprint)
                     .put("public_key", entryData.getPublicKey().getEncoded())
                     .toMap();

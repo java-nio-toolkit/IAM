@@ -42,9 +42,7 @@ import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class EntityBuilder extends AbstractEntityBuilder
 {
@@ -159,6 +157,17 @@ public class EntityBuilder extends AbstractEntityBuilder
         String userAgent = data.getString("user_agent", null);
         String thumbprint = data.getString("thumbprint");
         return new SessionImpl(api, userId, sessionId, flags, thumbprint, userAgent);
+    }
+
+    @Nonnull
+    public Map<UUID, AccessEntryData> createInteractionAccessEntry(@Nonnull BufferArray data) throws Exception
+    {
+        Map<UUID, AccessEntryData> map = new HashMap<>();
+        for (BufferObject obj : data)
+        {
+            map.put(obj.getUUID("access_id"), createAccessEntry(obj));
+        }
+        return map;
     }
 
     @Nonnull

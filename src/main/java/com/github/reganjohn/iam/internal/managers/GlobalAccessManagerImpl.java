@@ -5,7 +5,6 @@ import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -30,12 +29,14 @@ import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.*;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements GlobalAccessManager
@@ -103,7 +104,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     @CheckReturnValue
     private InteractionCallbackAction<Boolean> hasAccess(AccessEntryData raw, @Nonnull AccessObjectData data)
     {
-        Checks.check(raw != null, ""); //todo: add message!
+        Checks.check(raw != null, "The token must contain its JWK in the header.");
         try (AccessContextData context = raw.getContext(AccessContextType.SHA_256))
         {
             return hasAccess(context, data);
@@ -181,7 +182,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         try (AccessContextData context = snapshot.getContext(AccessContextType.SHA_256))
         {
             return new InteractionMapping.Builder()
-                    .put("kid", snapshot.getUniqueId().toString())
+                    .put("kid", snapshot.getName())
                     .put("alg", getSignType().getName())
                     .put("kty", snapshot.getType().name())
                     .put("usage", snapshot.getUsage().name())

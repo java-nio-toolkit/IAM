@@ -37,14 +37,9 @@ import com.github.reganjohn.iam.api.requests.restactions.applications.interactio
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
-import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.requests.objaction.InteractionContextType;
-import com.reganjohn.c4j.api.utils.data.BufferArray;
-import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
-import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;

@@ -25,6 +25,8 @@ import java.util.EnumSet;
 public enum AccessEntryFlag
 {
     ISSUED(1, false),
+    APPLICATION(2, false),
+    PRIVATE(3, false),
     DELETED(34, false),
     UNKNOWN(-1, false);
 

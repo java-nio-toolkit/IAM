@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.api;
 
-import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.managers.GlobalAccessManager;

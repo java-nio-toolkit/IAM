@@ -22,7 +22,7 @@ import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.*;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.internal.managers.*;
+import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.adamorgan.jnt.internal.utils.requestbody.BufferedRequestBody;

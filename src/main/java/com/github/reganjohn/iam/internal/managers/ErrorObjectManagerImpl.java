@@ -67,7 +67,6 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
         Request request = context.channel().attr(Request.IDENTIFIER).get();
         if (printStackTrace && !(error instanceof MissingAccessException))
             LOG.error("Oops! We've encountered an server error! Not good!", error);
-
         if (error instanceof JsonParseException)
             handleFailure(context, ErrorResponse.INVALID_REQUEST_BODY, StatusReason.BAD_REQUEST);
         else if (error instanceof RateLimitedException)
@@ -211,16 +210,9 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse,
                                @Nonnull Map<String, String> header, @Nonnull StatusReason reason)
     {
-        try
-        {
-            BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
-            Response response = new Response(context, reason, new CaseInsensitiveMap<>(header), body);
-            context.writeAndFlush(response);
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
+        Response response = new Response(context, reason, new CaseInsensitiveMap<>(header), body);
+        context.writeAndFlush(response);
     }
 
     private void onSessionInactive(@Nonnull ChannelHandlerContext context, @Nonnull SessionInactiveEvent event)

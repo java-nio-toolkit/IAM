@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.api.interactions;
 
-import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -24,7 +23,6 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.time.OffsetDateTime;
 import java.util.EnumSet;
 import java.util.UUID;
 

@@ -21,10 +21,12 @@ import com.github.adamorgan.jnt.api.exceptions.PermissionException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -54,19 +56,36 @@ public class PermOverrideManagerImpl extends ClassicObjectManagerImpl implements
         else if (!data.getBody().hasKey("access", DataType.ARRAY))
             throw new ErrorResponseException(ErrorResponse.MISSING_ACCESS);
         else
-            handlePermissions(context, request, getPermissions(data));
+            handlePermissions(context, request, data, getPermissions(data));
     }
 
     private void handlePermissions(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                   @Nonnull EnumSet<Permission> permissions) throws PermissionException
+                                   @Nonnull AccessObjectData data, @Nonnull EnumSet<Permission> permissions) throws PermissionException
     {
         Route route = request.getRoute().getBaseRoute();
         if (route == Routes.Self.GET_SELF && permissions.contains(Permission.VIEW_ACCOUNT))
+            context.fireChannelRead(request);
+        else if (route == Routes.Applications.CREATE_APPLICATION_ACCESS && isOwner(request, data))
+            context.fireChannelRead(request);
+        else if (route == Routes.Applications.OVERRIDE_APPLICATION_ACCESS && isOwner(request, data))
+            context.fireChannelRead(request);
+        else if (route == Routes.Applications.DELETE_APPLICATION_ACCESS && isOwner(request, data))
             context.fireChannelRead(request);
         else if (route.isInteraction())
             context.fireChannelRead(request);
         else
             throw new InsufficientPermissionException();
+    }
+
+    private boolean isOwner(@Nonnull Request request, @Nonnull AccessObjectData data)
+    {
+        Map<String, String> params = request.getRoute().getMajorParameters();
+        String applicationId = params.get("application_id");
+        DataObject raw = data.getActor();
+        if (raw == null)
+            raw = DataObject.empty();
+        String subject = raw.getString("sub");
+        return Helpers.equals(applicationId, subject, true);
     }
 
     @Nonnull

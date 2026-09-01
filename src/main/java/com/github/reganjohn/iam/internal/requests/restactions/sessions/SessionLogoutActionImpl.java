@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.sessions;
 
+import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
@@ -35,10 +36,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.requests.objaction.InteractionContextType;
-import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -52,6 +50,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.INVALID_REQUEST;
 
 public class SessionLogoutActionImpl extends AbstractSessionActionImpl implements SessionLogoutAction
 {

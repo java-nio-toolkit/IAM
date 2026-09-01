@@ -18,7 +18,6 @@ package com.github.reganjohn.iam.internal;
 
 import com.github.adamorgan.jnt.api.JNT;
 import com.github.adamorgan.jnt.api.JNTBuilder;
-import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.socket.DefaultSocketManagerBuilder;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
@@ -142,11 +141,10 @@ public class IAMImpl implements IAM
         this.jca = buildInstance().awaitReady();
         cleanup();
         TimeUnit.SECONDS.sleep(2);
-        this.manager = new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 30, TimeUnit.SECONDS, audiences);
+        this.manager = new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 60, TimeUnit.SECONDS, audiences);
         this.socketManager = createWebhookManager();
-        this.api = JNTBuilder.create("localhost", port)
+        this.api = JNTBuilder.create(port)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
-
                 .addEventListeners(new ClockObjectManagerImpl())
                 .addEventListeners(new OriginAccessManagerImpl())
                 .addEventListeners(new CacheObjectManagerImpl())
@@ -193,6 +191,7 @@ public class IAMImpl implements IAM
 
                 .addEventListenerProvider(() -> new ApplicationAccessActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationSyncActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationOverrideActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationRevokeActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionCreateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionOverrideActionImpl(this))
@@ -223,12 +222,18 @@ public class IAMImpl implements IAM
         String[] statements =
                 {
                         "TRUNCATE global.public_keys",
-                        "TRUNCATE integrations.applications",
-                        "TRUNCATE ",
+
                         "TRUNCATE users.public_keys",
                         "TRUNCATE users.accounts",
                         "TRUNCATE users.sessions",
-                        "TRUNCATE users.entitlements"
+                        "TRUNCATE users.webhooks",
+                        "TRUNCATE users.entitlements",
+
+                        "TRUNCATE integrations.applications",
+                        "TRUNCATE integrations.interactions",
+                        "TRUNCATE integrations.responses",
+                        "TRUNCATE integrations.invites",
+                        "TRUNCATE integrations.public_keys"
                 };
 
         for (String statement : statements)
@@ -288,5 +293,11 @@ public class IAMImpl implements IAM
                     request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
             }
         };
+    }
+
+    @Nonnull
+    public String getIdentifierString()
+    {
+        return ((JNTImpl) api).getIdentifierString();
     }
 }

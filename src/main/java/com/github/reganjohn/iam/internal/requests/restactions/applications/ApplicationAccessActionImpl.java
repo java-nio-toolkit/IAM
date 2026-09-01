@@ -23,25 +23,27 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.ApplicationAccessAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
@@ -106,44 +108,43 @@ public class ApplicationAccessActionImpl extends AbstractApplicationActionImpl i
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
-                .flatMap(Application::retrieveAccess)
-                .flatMap(interactions -> retrieveAccessData(userId, interactions))
+                .flatMap(this::retrieveAccess)
                 .map(this::retrieveData)
                 .queue(success -> handleSuccess(context, success), context::fireExceptionCaught);
     }
 
     @Nonnull
-    private InteractionCallbackAction<List<AccessEntryData>> retrieveAccessData(@Nonnull UUID userId,
-                                                                                @Nonnull List<AccessContextInteraction> interactions)
+    private InteractionCallbackAction<Map<UUID, AccessEntryData>> retrieveAccess(@Nonnull Application application)
     {
-        return api.retrieveUserById(userId)
-                .flatMap(User::retrieveAccess)
-                .map(access -> filter(interactions, new ArrayList<>(access)));
-    }
-
-    @Nonnull
-    private List<AccessEntryData> filter(@Nonnull List<AccessContextInteraction> interactions,
-                                         @Nonnull List<AccessEntryData> access)
-    {
-        Set<String> thumbprints = interactions.stream().map(AccessContextInteraction::getThumbprint).collect(Collectors.toSet());
-        access.removeIf(data ->
+        Checks.notNull(application, "Application");
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(application.getUniqueId()))
         {
-            try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Map<UUID, AccessEntryData>> interaction,
+                                      @Nonnull BufferArray array) throws Exception
             {
-                return !thumbprints.contains(context.digest());
+                if (array.isEmpty())
+                    interaction.onSuccess(Collections.emptyMap());
+                else
+                    interaction.onSuccess(getIAM().getEntityBuilder().createInteractionAccessEntry(array));
             }
-            catch (Exception ex)
-            {
-                throw new IllegalStateException("Failed to retrieve the snapshot hash", ex);
-            }
-        });
-        return access;
+        };
     }
 
     @Nonnull
-    private DataArray retrieveData(@Nonnull List<AccessEntryData> set)
+    private DataArray retrieveData(@Nonnull Map<UUID, AccessEntryData> map)
     {
-        return set.stream().map(AccessEntryData::toData).collect(Helpers.toDataArray());
+        return map.entrySet().stream().map(this::fromJson).collect(Helpers.toDataArray());
+    }
+
+    @Nonnull
+    private DataObject fromJson(@Nonnull Map.Entry<UUID, AccessEntryData> data)
+    {
+        return DataObject.empty()
+                .put("unique_id", data.getKey())
+                .put("jwk", data.getValue())
+                .toData();
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
