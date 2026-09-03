@@ -97,9 +97,8 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!body.isType("name", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"name\" value is not string.");
-        else if (body.getString("name").length() < Application.MIN_NAME_LENGTH)
-            throw new DataObjectParsingException(STRING_TYPE_MIN,
-                    Helpers.format("The \"name\" value may not be less than %f characters.", Application.MIN_NAME_LENGTH));
+        else if (body.isEmpty("name"))
+            throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"name\" value may not be empty.");
         else if (body.getString("name").length() > Application.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"name\" may not be longer than %d characters.", Application.MAX_NAME_LENGTH));

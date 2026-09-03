@@ -66,7 +66,7 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
-        PublicKey publicKey = data.getEntryData().getPublicKey();
+        PublicKey publicKey = data.getEntryData().getPublic();
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(publicKey.getEncoded());
         api.retrieveUserById(userId)
                 .flatMap(User::retrieveSessions)

@@ -91,9 +91,8 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
             return;
         else if (!body.isType("username", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"username\" value is not string.");
-        else if (body.getString("username").length() < User.MIN_NAME_LENGTH)
-            throw new DataObjectParsingException(STRING_TYPE_MIN,
-                    Helpers.format("The \"username\" value may not be less than %f characters.", User.MIN_NAME_LENGTH));
+        else if (body.isEmpty("username"))
+            throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"username\" value may not be empty.");
         else if (body.getString("username").length() > User.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"username\" may not be longer than %d characters.", User.MAX_NAME_LENGTH));

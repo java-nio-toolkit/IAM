@@ -97,8 +97,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
         else if (!raw.isType("name", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"name\" value is not string.");
         else if (raw.isEmpty("name"))
-            throw new DataObjectParsingException(STRING_TYPE_MIN,
-                    Helpers.format("The \"name\" value may not be less than %f characters.", 1));
+            throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"name\" value may not be empty.");
         else if (raw.getString("name").length() > Webhook.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"name\" may not be longer than %d characters.", Webhook.MAX_NAME_LENGTH));

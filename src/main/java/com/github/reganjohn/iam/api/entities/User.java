@@ -32,8 +32,6 @@ import java.util.UUID;
 
 public interface User extends IUnique
 {
-    /** The minimum length for a username ({@value}) */
-    int MIN_NAME_LENGTH = 2;
     /** The maximum length for a username ({@value}) */
     int MAX_NAME_LENGTH = 32;
     /** The maximum length for a avatar id ({@value}) */

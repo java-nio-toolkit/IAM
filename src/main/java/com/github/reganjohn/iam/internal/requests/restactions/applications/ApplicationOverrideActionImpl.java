@@ -56,6 +56,8 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
 
+import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.*;
+
 public class ApplicationOverrideActionImpl extends AbstractApplicationActionImpl implements ApplicationOverrideAction
 {
     public ApplicationOverrideActionImpl(@Nonnull IAMImpl api)
@@ -393,10 +395,13 @@ public class ApplicationOverrideActionImpl extends AbstractApplicationActionImpl
     private void checkCurve(@Nonnull DataObject rawData)
     {
         SignType signType = SignType.from(rawData.getString(ProofObjectManager.ALG));
-        String type = rawData.getString(ProofObjectManager.KTY);
+        String rawType = rawData.getString(ProofObjectManager.KTY);
+        AccessEntryType type = AccessEntryType.valueOf(rawType);
+        if (type == AccessEntryType.RSA)
+            return;
         String crv = rawData.getString(ProofObjectManager.CRV);
         if (signType == SignType.NONE || signType == SignType.UNKNOWN)
-            throw createParsingException(ProofObjectManager.CRV, IAMImpl.signTypes.get(type));
+            throw createParsingException(ProofObjectManager.CRV, IAMImpl.signTypes.get(rawType));
         else if (signType.hasExtension() && !Helpers.equals(crv, signType.getRawName(), true))
             throw createParsingException(ProofObjectManager.CRV, signType);
     }
@@ -407,8 +412,10 @@ public class ApplicationOverrideActionImpl extends AbstractApplicationActionImpl
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+        String id = rawBody.getString(KID, null);
+        SignType type = SignType.from(rawBody.getString(ALG));
         AccessObjectData access = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        AccessEntryData data = AbstractEntityBuilder.createAccessEntry(rawBody);
+        AccessEntryData data = AbstractEntityBuilder.createAccessEntry(id, type, rawBody);
         try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
         {
             Map<String, String> params = request.getRoute().getMajorParameters();
@@ -480,16 +487,16 @@ public class ApplicationOverrideActionImpl extends AbstractApplicationActionImpl
             return new InteractionMapping.Builder()
                     .put("application_id", application.getUniqueId())
                     .put("user_id", application.getOwnerId())
-                    .put("alg", entryData.getAccessOption().getMode())
+                    .put("alg", entryData.getMode().getName())
                     .put("flags", 0L)
-                    .put("kid", entryData.getName())
+                    .put("kid", entryData.getUniqueId())
                     .put("kty", entryData.getType().name())
                     .put("usage", entryData.getUsage().name().toLowerCase())
                     .put("access_id", interaction.getUniqueId())
                     .put("access_flags", AccessEntryFlag.getRaw(AccessEntryFlag.APPLICATION))
                     .put("old_thumbprint", interaction.getThumbprint())
                     .put("thumbprint", thumbprint)
-                    .put("public_key", entryData.getPublicKey().getEncoded())
+                    .put("public_key", entryData.getPublic().getEncoded())
                     .toMap();
         }
 

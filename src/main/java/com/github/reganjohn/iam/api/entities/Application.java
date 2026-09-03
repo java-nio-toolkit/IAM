@@ -34,8 +34,6 @@ import java.util.UUID;
 
 public interface Application extends IUnique
 {
-    /** The minimum length for an application name ({@value}) */
-    int MIN_NAME_LENGTH = 2;
     /** The maximum length for an application name ({@value}) */
     int MAX_NAME_LENGTH = 32;
     /** The maximum length for any Icon CID set on an application ({@value}) */

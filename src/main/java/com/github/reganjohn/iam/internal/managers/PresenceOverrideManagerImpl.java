@@ -78,8 +78,8 @@ public class PresenceOverrideManagerImpl extends ClassicObjectManagerImpl implem
                 .setCompiledRoute("/" + route.getCompiledRoute())
                 .setCreationTimestamp(OffsetDateTime.now().toEpochSecond())
                 .setTimeExpiresAt(snapshot.getTimeExpiresAt())
-                .setUniqueId(snapshot.getName())
-                .setMode(snapshot.getAccessOption().getMode())
+                .setUniqueId(snapshot.getUniqueId())
+                .setMode(snapshot.getMode().getName())
                 .build();
     }
 }

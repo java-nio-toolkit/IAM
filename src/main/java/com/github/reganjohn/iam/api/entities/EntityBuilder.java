@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
+import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.*;
@@ -39,6 +40,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
+import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.OffsetDateTime;
@@ -76,7 +78,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         OffsetDateTime expiresAt = snapshot.getTimeExpiresAt();
         List<String> audiences = manager.getAudiences();
         DataObject actor = rawActor != null ? Helpers.singletonData("sub", rawActor) : null;
-        AccessOptionData optionData = new AccessOptionData(snapshot.getName(), type, manager.getSignType(), snapshot);
+        AccessOptionData optionData = new AccessOptionData(snapshot.getUniqueId(), type, manager.getSignType(), snapshot);
         DataObject rawData = DataObject.empty()
                 .put("iss", issuer)
                 .put("sub", subject);
@@ -184,21 +186,23 @@ public class EntityBuilder extends AbstractEntityBuilder
     @Nonnull
     public static AccessEntryData createAccessEntry(@Nonnull BufferObject data) throws Exception
     {
+        String id = data.getString("kid");
         byte[] publicKey = data.getBytes("public_key");
         String type = data.getString("kty");
         String alg = data.getString("alg");
+        SignType signType = SignType.from(alg);
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKey);
         KeyFactory keyFactory = KeyFactory.getInstance(alg);
         PublicKey key = keyFactory.generatePublic(keySpec);
-        DataObject rawData = AccessEntryKey.fromJSON(type, key);
+        DataObject rawData = createAccessSecretData(AccessEntryType.valueOf(type), new KeyPair(key, null), true);
         DataObject rawEntryData = DataObject.empty()
-                .put("kid", data.getString("kid"))
+                .put("kid", id)
                 .put("alg", alg)
                 .put("kty", type)
                 .put("use", data.getString("usage"))
                 .putAll(rawData)
                 .toData();
-        return createAccessEntry(rawEntryData);
+        return createAccessEntry(id, signType, rawEntryData);
     }
 
     @Nonnull

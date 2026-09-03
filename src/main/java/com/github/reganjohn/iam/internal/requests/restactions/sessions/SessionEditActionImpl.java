@@ -129,12 +129,11 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
             return;
         else if (!json.isType("user_agent", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"user_agent\" value is not string.");
-        else if (json.getString("user_agent").length() < User.MIN_NAME_LENGTH)
-            throw new DataObjectParsingException(STRING_TYPE_MIN,
-                    Helpers.format("The \"user_agent\" value may not be less than %f characters.", User.MIN_NAME_LENGTH));
+        else if (json.isEmpty("user_agent"))
+            throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"user_agent\" value may not be empty.");
         else if (json.getString("user_agent").length() > User.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
-                    Helpers.format("The \"user_agent\" value may not be longer than %f characters.", User.MAX_NAME_LENGTH));
+                    Helpers.format("The \"user_agent\" value may not be longer than %d characters.", User.MAX_NAME_LENGTH));
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

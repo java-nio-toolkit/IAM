@@ -182,13 +182,13 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         try (AccessContextData context = snapshot.getContext(AccessContextType.SHA_256))
         {
             return new InteractionMapping.Builder()
-                    .put("kid", snapshot.getName())
+                    .put("kid", snapshot.getUniqueId())
                     .put("alg", getSignType().getName())
                     .put("kty", snapshot.getType().name())
                     .put("usage", snapshot.getUsage().name())
                     .put("flags", AccessEntryFlag.getRaw(AccessEntryFlag.ISSUED))
                     .put("thumbprint", context.digest())
-                    .put("public_key", snapshot.getPublicKey().getEncoded())
+                    .put("public_key", snapshot.getPublic().getEncoded())
                     .toMap();
         }
         catch (Exception ex)

@@ -94,13 +94,13 @@ public class SessionCreateData implements SessionData
                 .put("session_id", sessionId)
                 .put("flags", flags)
                 .put("user_agent", userAgent)
-                .put("alg", entryData.getAccessOption().getMode())
-                .put("kid", entryData.getName())
+                .put("alg", entryData.getMode().getName())
+                .put("kid", entryData.getUniqueId())
                 .put("kty", entryData.getType().name())
                 .put("usage", entryData.getUsage().name().toLowerCase())
                 .put("access_flags", 0L)
                 .put("thumbprint", thumbprint)
-                .put("public_key", entryData.getPublicKey().getEncoded())
+                .put("public_key", entryData.getPublic().getEncoded())
                 .toMap();
     }
 

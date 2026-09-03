@@ -128,11 +128,11 @@ public class UserCreateData implements UserData, SessionData
                 .put("user_agent", userAgent)
                 .put("session_flags", sessionFlags)
                 .put("access_flags", 0L)
-                .put("kid", data.getName())
+                .put("kid", data.getUniqueId())
                 .put("kty", data.getType().name())
-                .put("alg", data.getAccessOption().getMode())
+                .put("alg", data.getMode().getName())
                 .put("usage", data.getUsage().name().toLowerCase())
-                .put("public_key", data.getPublicKey().getEncoded())
+                .put("public_key", data.getPublic().getEncoded())
                 .put("thumbprint", thumbprint)
                 .toMap();
     }
@@ -145,11 +145,11 @@ public class UserCreateData implements UserData, SessionData
                 .put("session_id", sessionId)
                 .put("flags", sessionFlags)
                 .put("user_agent", userAgent)
-                .put("kid", data.getName())
+                .put("kid", data.getUniqueId())
                 .put("kty", data.getType().name())
-                .put("alg", data.getAccessOption().getMode())
+                .put("alg", data.getMode().getName())
                 .put("usage", data.getUsage().name().toLowerCase())
-                .put("public_key", data.getPublicKey().getEncoded())
+                .put("public_key", data.getPublic().getEncoded())
                 .put("thumbprint", thumbprint)
                 .toData();
 

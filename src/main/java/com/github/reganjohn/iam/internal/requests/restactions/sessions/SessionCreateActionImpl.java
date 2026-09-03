@@ -341,10 +341,13 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     private void checkCurve(@Nonnull DataObject rawData)
     {
         SignType signType = SignType.from(rawData.getString(ProofObjectManager.ALG));
-        String type = rawData.getString(ProofObjectManager.KTY);
+        String rawType = rawData.getString(ProofObjectManager.KTY);
+        AccessEntryType type = AccessEntryType.valueOf(rawType);
+        if (type == AccessEntryType.RSA)
+            return;
         String crv = rawData.getString(ProofObjectManager.CRV);
         if (signType == SignType.NONE || signType == SignType.UNKNOWN)
-            throw createParsingException(ProofObjectManager.CRV, IAMImpl.signTypes.get(type));
+            throw createParsingException(ProofObjectManager.CRV, IAMImpl.signTypes.get(rawType));
         else if (signType.hasExtension() && !Helpers.equals(crv, signType.getRawName(), true))
             throw createParsingException(ProofObjectManager.CRV, signType);
     }
@@ -384,7 +387,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     private SessionCreateData fromData(@Nonnull Request request, @Nonnull AccessEntryData entryData,
                                        @Nonnull AccessContextData context, @Nonnull AccessObjectData data)
     {
-        UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublicKey().getEncoded());
+        UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublic().getEncoded());
         String subject = data.getSubject();
         String userAgent = request.getHeaders().get("User-Agent");
         String thumbprint = context.digest();

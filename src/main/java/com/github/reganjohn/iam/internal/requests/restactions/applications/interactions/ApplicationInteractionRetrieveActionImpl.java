@@ -296,7 +296,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     public DataObject fromJSON(@Nonnull AccessEntryData key, @Nonnull AccessObjectData data)
     {
         return DataObject.empty()
-                .put("label", key.getName())
+                .put("label", key.getUniqueId())
                 .put("value", data.getRaw())
                 .put("access", data.getScope())
                 .toData();
