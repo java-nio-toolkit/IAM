@@ -72,21 +72,6 @@ public class WebhookPaginationActionImpl extends AbstractWebhookActionImpl imple
     @Nonnull
     private DataArray fromData(@Nonnull List<Webhook> webhooks)
     {
-        return webhooks.stream().map(this::fromData).collect(Helpers.toDataArray());
-    }
-
-    @Nonnull
-    private DataObject fromData(@Nonnull Webhook webhook)
-    {
-        return DataObject.empty()
-                .put("owner_id", webhook.getOwnerId())
-                .put("webhook_id", webhook.getUniqueId())
-                .put("name", webhook.getName())
-                .put("avatar_id", webhook.getAvatarId())
-                .put("url", webhook.getUrl())
-                .put("scopes", webhook.getScopesRaw())
-                .put("flags", webhook.getFlagsRaw())
-                .put("updated_at", webhook.getTimeUpdated())
-                .toData();
+        return webhooks.stream().map(Webhook::toData).collect(Helpers.toDataArray());
     }
 }

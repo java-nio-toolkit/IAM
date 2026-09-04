@@ -137,7 +137,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID userId = data.getUUID("user_id");
         String username = data.getString("username");
         String avatarId = data.getString("avatar_id", null);
-        long flags = data.getInt("flags");
+        long flags = data.getLong("flags");
         return new UserImpl(api, userId, username, avatarId, flags);
     }
 
@@ -155,7 +155,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         UUID userId = data.getUUID("user_id");
         UUID sessionId = data.getUUID("session_id");
-        long flags = data.getInt("flags");
+        long flags = data.getLong("flags");
         String userAgent = data.getString("user_agent", null);
         String thumbprint = data.getString("thumbprint");
         return new SessionImpl(api, userId, sessionId, flags, thumbprint, userAgent);
@@ -222,7 +222,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         String name = data.getString("name");
         String description = data.getString("description", null);
         String iconId = data.getString("icon_id", null);
-        long flags = data.getInt("flags");
+        long flags = data.getLong("flags");
         List<String> redirectUris = data.getList(String.class, "redirect_uris");
         return new ApplicationImpl(api, applicationId, ownerId, name, description, iconId, flags, redirectUris);
     }

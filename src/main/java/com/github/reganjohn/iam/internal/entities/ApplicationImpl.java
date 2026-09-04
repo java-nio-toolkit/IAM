@@ -191,7 +191,18 @@ public class ApplicationImpl implements Application
     public InteractionCallbackAction<Void> delete()
     {
         long flags = getFlagsRaw() | Application.ApplicationFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE integrations.applications SET flags = ? WHERE owner_id = ? AND application_id = ?", Arrays.asList(flags, getOwnerId(), getUniqueId()));
+        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE integrations.applications SET flags = ? WHERE owner_id = ? AND application_id = ? IF EXISTS", Arrays.asList(flags, getOwnerId(), getUniqueId()))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+                                      @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
+            {
+                if (InteractionUtil.isDone(array))
+                    request.onSuccess(null);
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+            }
+        };
     }
 
     @Override

@@ -102,6 +102,8 @@ public class ApplicationRevokeActionImpl extends AbstractApplicationActionImpl i
         String id = params.get("access_id");
         if (Helpers.isEmpty(id))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!MiscUtil.isUUID(id))
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"access_id\" value is not uuid.");
     }
 
     private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -117,8 +119,9 @@ public class ApplicationRevokeActionImpl extends AbstractApplicationActionImpl i
     {
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         UUID userId = UUID.fromString(json.getSubject());
-        UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        UUID accessId = UUID.fromString(request.getRoute().getMajorParameters().get("access_id"));
+        Map<String, String> params = request.getRoute().getMajorParameters();
+        UUID applicationId = UUID.fromString(params.get("application_id"));
+        UUID accessId = UUID.fromString(params.get("access_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveAccessById(accessId))

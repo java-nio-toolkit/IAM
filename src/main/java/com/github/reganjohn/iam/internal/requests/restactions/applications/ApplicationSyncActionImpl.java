@@ -474,7 +474,7 @@ public class ApplicationSyncActionImpl extends AbstractApplicationActionImpl imp
                     .put("flags", flags)
                     .put("kid", entryData.getUniqueId())
                     .put("kty", entryData.getType().name())
-                    .put("usage", entryData.getUsage().name().toLowerCase())
+                    .put("usage", entryData.getRawUsage())
                     .put("access_id", UUIDv7.randomUUID().toUUID())
                     .put("access_flags", AccessEntryFlag.getRaw(AccessEntryFlag.APPLICATION))
                     .put("thumbprint", thumbprint)

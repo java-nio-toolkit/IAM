@@ -122,7 +122,7 @@ public class PermissionOverrideImpl implements PermissionOverride
     public InteractionCallbackAction<Void> delete()
     {
         long flags = getFlagsRaw() | EntitlementFlag.DELETED.getRawValue();
-        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.entitlements SET flags = ? WHERE user_id = ? AND application_id = ?", Arrays.asList(flags, userId, applicationId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.entitlements SET flags = ? WHERE user_id = ? AND application_id = ? IF EXISTS", Arrays.asList(flags, userId, applicationId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

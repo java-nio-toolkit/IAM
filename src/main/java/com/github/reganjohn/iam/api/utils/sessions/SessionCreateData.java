@@ -25,6 +25,8 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.github.reganjohn.iam.api.requests.restactions.SessionAction.MAX_SESSION_COUNT;
+
 public class SessionCreateData implements SessionData
 {
     private final UUID sessionId;
@@ -97,7 +99,7 @@ public class SessionCreateData implements SessionData
                 .put("alg", entryData.getMode().getName())
                 .put("kid", entryData.getUniqueId())
                 .put("kty", entryData.getType().name())
-                .put("usage", entryData.getUsage().name().toLowerCase())
+                .put("usage", entryData.getRawUsage())
                 .put("access_flags", 0L)
                 .put("thumbprint", thumbprint)
                 .put("public_key", entryData.getPublic().getEncoded())

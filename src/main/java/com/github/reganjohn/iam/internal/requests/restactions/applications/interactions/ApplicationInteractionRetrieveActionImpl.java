@@ -190,7 +190,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
             {
                 return set.stream().anyMatch(interaction ->
                 {
-                    return Helpers.equals(interaction.getThumbprint(), context.digest(), false);
+                    return !interaction.isDeleted() && Helpers.equals(interaction.getThumbprint(), context.digest(), false);
                 });
             });
         }

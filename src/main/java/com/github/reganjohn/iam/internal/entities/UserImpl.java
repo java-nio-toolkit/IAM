@@ -264,7 +264,7 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Integer> retrieveApplicationCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,

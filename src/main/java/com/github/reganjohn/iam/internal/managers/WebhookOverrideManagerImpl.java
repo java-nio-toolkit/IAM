@@ -20,10 +20,12 @@ import com.github.adamorgan.jnt.api.events.Event;
 import com.github.adamorgan.jnt.api.events.GenericEvent;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.*;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.adamorgan.jnt.internal.utils.requestbody.BufferedRequestBody;
 import com.github.reganjohn.iam.api.IAM;
@@ -43,7 +45,11 @@ import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -106,8 +112,10 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
     private void handleInternally(@Nonnull Webhook webhook, @Nonnull DataObject rawData)
     {
         URI uri = URI.create(webhook.getUrl());
+        Checks.check(!MiscUtil.isUnsafeURL(uri), "The URL is not safe.");
+        int port = uri.getPort() == -1 ? 443 : uri.getPort();
         Route route = new Route(Method.POST, uri.getPath().split("/")[1]);
-        api.getSocketManager().connect(uri.getHost(), 443).addListener((ChannelFutureListener) obj ->
+        api.getSocketManager().connect(uri.getHost(), port).addListener((ChannelFutureListener) obj ->
         {
             if (obj.isSuccess())
                 handleSuccess(obj, route, rawData);

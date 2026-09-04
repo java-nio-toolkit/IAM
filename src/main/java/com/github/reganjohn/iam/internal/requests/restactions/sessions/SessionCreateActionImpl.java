@@ -62,6 +62,9 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.util.*;
 
+import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.ALG;
+import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.KID;
+
 public class SessionCreateActionImpl extends AbstractSessionActionImpl implements SessionCreateAction
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
@@ -358,10 +361,12 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+        String id = rawBody.getString(KID, null);
+        SignType type = SignType.from(rawBody.getString(ALG));
         AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
-        AccessEntryData entryData = AbstractEntityBuilder.createAccessEntry(rawBody);
+        AccessEntryData entryData = AbstractEntityBuilder.createAccessEntry(id, type, rawBody);
         try (AccessContextData contextData = entryData.getContext(AccessContextType.SHA_256))
         {
             String uniqueId = UUIDv7.randomUUID().toString();
@@ -401,7 +406,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         if (count == 0)
             throw new ErrorResponseException(ErrorResponse.UNKNOWN_USER);
-        else if (count > MAX_SESSION_COUNT)
+        else if (count >= MAX_SESSION_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_SESSIONS);
         else
             return create(session);

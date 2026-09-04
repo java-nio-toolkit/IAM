@@ -185,7 +185,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                     .put("kid", snapshot.getUniqueId())
                     .put("alg", getSignType().getName())
                     .put("kty", snapshot.getType().name())
-                    .put("usage", snapshot.getUsage().name())
+                    .put("usage", snapshot.getRawUsage())
                     .put("flags", AccessEntryFlag.getRaw(AccessEntryFlag.ISSUED))
                     .put("thumbprint", context.digest())
                     .put("public_key", snapshot.getPublic().getEncoded())

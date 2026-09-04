@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -124,7 +125,7 @@ public class WebhookImpl implements Webhook
     @Override
     public InteractionCallbackAction<Void> delete()
     {
-        long flags = getFlagsRaw() | Webhook.WebhookFlag.DELETED.getRawValue();
+        long flags = getFlagsRaw() | WebhookFlag.DELETED.getRawValue();
         return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET flags = ? WHERE owner_id = ? AND webhook_id = ? IF EXISTS", Arrays.asList(flags, userId, id))
         {
             @Override
@@ -134,8 +135,24 @@ public class WebhookImpl implements Webhook
                 if (InteractionUtil.isDone(array))
                     request.onSuccess(null);
                 else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
             }
         };
+    }
+
+    @Nonnull
+    @Override
+    public DataObject toData()
+    {
+        return DataObject.empty()
+                .put("owner_id", getOwnerId())
+                .put("webhook_id", getUniqueId())
+                .put("name", getName())
+                .put("avatar_id", getAvatarId())
+                .put("url", getUrl())
+                .put("scopes", getScopesRaw())
+                .put("flags", getFlagsRaw())
+                .put("updated_at", getTimeUpdated())
+                .toData();
     }
 }

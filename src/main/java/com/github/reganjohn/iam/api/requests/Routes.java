@@ -27,7 +27,7 @@ public class Routes
         public static final Route CREATE_APPLICATION = new Route(POST, "applications");
         public static final Route CREATE_APPLICATION_ACCESS = new Route(POST, "applications/{application_id}/access");
         public static final Route CREATE_APPLICATION_INTERACTION = new Route(POST, "applications/{application_id}/interactions");
-        public static final Route ACCEPT_APPLICATION_INTERACTION = new Route(PATCH, "users/{user_id}/applications/{application_id}/interactions/{interaction_id}");
+        public static final Route ACCEPT_APPLICATION_INTERACTION = new Route(PATCH, "applications/{application_id}/interactions/{interaction_id}");
         public static final Route EXECUTE_APPLICATION_INTERACTION = new Route(POST, "applications/{application_id}/interactions/{interaction_id}", true);
         public static final Route UPDATE_APPLICATION_ACCESS = new Route(PUT, "users/@me/applications/{application_id}", true);
         public static final Route OVERRIDE_APPLICATION_ACCESS = new Route(PUT, "applications/{application_id}/access/{access_id}");

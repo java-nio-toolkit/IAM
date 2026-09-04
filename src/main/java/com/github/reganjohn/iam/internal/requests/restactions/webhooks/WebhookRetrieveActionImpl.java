@@ -102,7 +102,7 @@ public class WebhookRetrieveActionImpl extends AbstractWebhookActionImpl impleme
         UUID webhookId = UUID.fromString(request.getRoute().getMajorParameters().get("webhook_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveWebhookById(webhookId))
-                .map(this::fromData)
+                .map(Webhook::toData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }
 
@@ -110,20 +110,5 @@ public class WebhookRetrieveActionImpl extends AbstractWebhookActionImpl impleme
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
         context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
-    }
-
-    @Nonnull
-    private DataObject fromData(@Nonnull Webhook webhook)
-    {
-        return DataObject.empty()
-                .put("owner_id", webhook.getOwnerId())
-                .put("webhook_id", webhook.getUniqueId())
-                .put("name", webhook.getName())
-                .put("avatar_id", webhook.getAvatarId())
-                .put("url", webhook.getUrl())
-                .put("scopes", webhook.getScopesRaw())
-                .put("flags", webhook.getFlagsRaw())
-                .put("updated_at", webhook.getTimeUpdated())
-                .toData();
     }
 }

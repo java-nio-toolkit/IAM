@@ -246,13 +246,12 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     private Route.CompiledRoute getRouteCompile(@Nonnull ApplicationContextInteraction interaction)
     {
         Checks.notNull(interaction, "Interaction");
-        return getRouteCompile(interaction.getOwnerId().toString(), interaction.getApplicationId().toString(), interaction.getUniqueId().toString());
+        return getRouteCompile(interaction.getApplicationId().toString(), interaction.getUniqueId().toString());
     }
 
     @Nonnull
-    private Route.CompiledRoute getRouteCompile(@Nonnull String ownerId, @Nonnull String applicationId,
-                                                @Nonnull String interactionId)
+    private Route.CompiledRoute getRouteCompile(@Nonnull String applicationId, @Nonnull String interactionId)
     {
-        return Routes.Applications.ACCEPT_APPLICATION_INTERACTION.compile(ownerId, applicationId, interactionId);
+        return Routes.Applications.ACCEPT_APPLICATION_INTERACTION.compile(applicationId, interactionId);
     }
 }

@@ -90,6 +90,12 @@ public class AccessContextInteractionImpl implements AccessContextInteraction
         return flags;
     }
 
+    @Override
+    public boolean isDeleted()
+    {
+        return getFlags().contains(AccessContextFlag.DELETED);
+    }
+
     @Nonnull
     @Override
     public InteractionCallbackAction<AccessEntryData> retrieveAccess()

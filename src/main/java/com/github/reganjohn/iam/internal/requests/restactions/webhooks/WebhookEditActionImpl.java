@@ -49,6 +49,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -179,14 +180,17 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
 
     private void checkUrl(@Nonnull DataObject raw)
     {
+        String url = raw.getString("url", null);
         if (!raw.hasKey("url"))
             return;
         else if (!raw.isType("url", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not string.");
-        else if (!MiscUtil.isURL(raw.getString("url"), false))
+        else if (!MiscUtil.isURL(url, false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
-        else if (!MiscUtil.isURL(raw.getString("url"), true))
+        else if (!MiscUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
+        else if (MiscUtil.isUnsafeURL(URI.create(url)))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe");
     }
     
     private void handleScopes(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

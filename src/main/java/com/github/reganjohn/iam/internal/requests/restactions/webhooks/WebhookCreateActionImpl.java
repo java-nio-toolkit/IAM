@@ -51,6 +51,8 @@ import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.net.URI;
+import java.net.URL;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -150,14 +152,17 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
 
     private void checkUrl(@Nonnull DataObject raw)
     {
+        String url = raw.getString("url", null);
         if (!raw.hasKey("url"))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!raw.isType("url", DataType.STRING))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not string.");
-        else if (!MiscUtil.isURL(raw.getString("url"), false))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not url.");
+        else if (!MiscUtil.isURL(url, false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
-        else if (!MiscUtil.isURL(raw.getString("url"), true))
+        else if (!MiscUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
+        else if (MiscUtil.isUnsafeURL(URI.create(url)))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe");
     }
 
     private void handleScopes(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody,
@@ -209,7 +214,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
     @CheckReturnValue
     public InteractionCallbackAction<Void> create(@Nonnull WebhookCreateData webhook, int count)
     {
-        if (count > 8)
+        if (count > MAX_WEBHOOK_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS);
         else
             return create(webhook);

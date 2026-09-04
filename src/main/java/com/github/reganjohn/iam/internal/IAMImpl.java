@@ -105,7 +105,7 @@ public class IAMImpl implements IAM
 
     public static void main(String[] args) throws Exception
     {
-        new IAMImpl(8080);
+        new IAMImpl(8080, false);
     }
 
     @Nonnull
@@ -127,7 +127,8 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ClassicRequestSendHandlerImpl::new)
                 .addEventListenerProvider(ClassicResponseReceiveHandlerImpl::new)
                 .addEventListenerProvider(() -> new ClassicIdleObjectManagerImpl(30, 30, 5))
-                .addEventListenerProvider(() -> new PresenceOverrideManagerImpl(manager))
+                .addEventListenerProvider(ProofPresenceManagerImpl::new)
+                .addEventListeners(manager)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
                 .addEventListenerProvider(DigestObjectManagerImpl::new)
                 .setConnectTimeout(10, TimeUnit.SECONDS)
@@ -135,7 +136,7 @@ public class IAMImpl implements IAM
                 .build();
     }
 
-    public IAMImpl(int port) throws Exception
+    public IAMImpl(int port, boolean isTest) throws Exception
     {
         List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jca = buildInstance().awaitReady();
@@ -209,12 +210,15 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new WebhookEditActionImpl(this))
                 .addEventListenerProvider(() -> new WebhookDeleteActionImpl(this))
 
-                .addEventListeners(new ErrorObjectManagerImpl(true))
+                .addEventListeners(new ErrorObjectManagerImpl(false))
                 .build();
-        
-        TimeUnit.SECONDS.sleep(2);
-        AdaMorganClientV2 clientV2 = new AdaMorganClientV2();
-        clientV2.startTest();
+
+        if (isTest)
+        {
+            TimeUnit.SECONDS.sleep(2);
+            AdaMorganClientV2 clientV2 = new AdaMorganClientV2();
+            clientV2.startTest();
+        }
     }
 
     public void cleanup()

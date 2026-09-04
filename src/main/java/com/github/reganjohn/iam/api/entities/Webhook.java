@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.Scope;
@@ -30,7 +31,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public interface Webhook extends IUnique
+public interface Webhook extends IUnique, SerializableData
 {
     /** The maximum length a name can be ({@value}) */
     int MAX_NAME_LENGTH = 80;

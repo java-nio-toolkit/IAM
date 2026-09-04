@@ -491,7 +491,7 @@ public class ApplicationOverrideActionImpl extends AbstractApplicationActionImpl
                     .put("flags", 0L)
                     .put("kid", entryData.getUniqueId())
                     .put("kty", entryData.getType().name())
-                    .put("usage", entryData.getUsage().name().toLowerCase())
+                    .put("usage", entryData.getRawUsage())
                     .put("access_id", interaction.getUniqueId())
                     .put("access_flags", AccessEntryFlag.getRaw(AccessEntryFlag.APPLICATION))
                     .put("old_thumbprint", interaction.getThumbprint())

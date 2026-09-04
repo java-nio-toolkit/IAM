@@ -27,6 +27,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
+import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionOverrideEvent;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -126,11 +127,10 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
     {
         Map<String, String> params = request.getRoute().getMajorParameters();
-        UUID userId = UUID.fromString(params.get("user_id"));
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
         AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        api.retrieveUserById(userId)
+        api.retrieveUserById(UUID.fromString(json.getSubject()))
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveInteractionById(interactionId))
                 .flatMap(interaction -> createResponse(json, interaction))

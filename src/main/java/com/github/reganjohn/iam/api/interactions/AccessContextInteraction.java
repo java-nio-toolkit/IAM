@@ -38,6 +38,8 @@ public interface AccessContextInteraction extends IUnique
 
     long getFlagsRaw();
 
+    boolean isDeleted();
+
     @Nonnull
     @CheckReturnValue
     InteractionCallbackAction<Void> revoke();

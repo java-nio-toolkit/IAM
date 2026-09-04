@@ -131,7 +131,7 @@ public class UserCreateData implements UserData, SessionData
                 .put("kid", data.getUniqueId())
                 .put("kty", data.getType().name())
                 .put("alg", data.getMode().getName())
-                .put("usage", data.getUsage().name().toLowerCase())
+                .put("usage", data.getRawUsage())
                 .put("public_key", data.getPublic().getEncoded())
                 .put("thumbprint", thumbprint)
                 .toMap();
@@ -148,7 +148,7 @@ public class UserCreateData implements UserData, SessionData
                 .put("kid", data.getUniqueId())
                 .put("kty", data.getType().name())
                 .put("alg", data.getMode().getName())
-                .put("usage", data.getUsage().name().toLowerCase())
+                .put("usage", data.getRawUsage())
                 .put("public_key", data.getPublic().getEncoded())
                 .put("thumbprint", thumbprint)
                 .toData();
