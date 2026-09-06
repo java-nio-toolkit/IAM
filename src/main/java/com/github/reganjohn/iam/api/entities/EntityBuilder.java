@@ -199,9 +199,11 @@ public class EntityBuilder extends AbstractEntityBuilder
                 .put("kid", id)
                 .put("alg", alg)
                 .put("kty", type)
-                .put("use", data.getString("usage"))
-                .putAll(rawData)
                 .toData();
+        String usage = data.getString("usage", null);
+        if (usage != null)
+            rawData.put("use", usage);
+        rawEntryData.putAll(rawData);
         return createAccessEntry(id, signType, rawEntryData);
     }
 

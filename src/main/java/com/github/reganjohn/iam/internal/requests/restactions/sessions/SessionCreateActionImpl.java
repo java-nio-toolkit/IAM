@@ -107,8 +107,8 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required.");
         else if (!rawData.hasKey(ProofObjectManager.KTY, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.KTY));
-        else if (!Helpers.contains(IAMImpl.signTypes.keySet(), rawData.getString(ProofObjectManager.KTY), true))
-            throw createParsingException(ProofObjectManager.KTY, IAMImpl.signTypes.keySet());
+        else if (!Helpers.contains(EntityBuilder.SIGN_TYPE_NAMES.keySet(), rawData.getString(ProofObjectManager.KTY), true))
+            throw createParsingException(ProofObjectManager.KTY, EntityBuilder.SIGN_TYPE_NAMES.keySet());
     }
 
     private void handleCanManage(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -185,12 +185,12 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         else if (!rawData.hasKey(ProofObjectManager.CRV, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.CRV));
         else if (!canAccess(rawData.getString(ProofObjectManager.KTY), rawData.getString(ProofObjectManager.CRV)))
-            throw createParsingException(ProofObjectManager.CRV, IAMImpl.signTypes.get(rawData.getString(ProofObjectManager.KTY)));
+            throw createParsingException(ProofObjectManager.CRV, EntityBuilder.SIGN_TYPE_NAMES.get(rawData.getString(ProofObjectManager.KTY)));
     }
 
     private boolean canAccess(String type, String crv)
     {
-        return Helpers.contains(IAMImpl.signTypes.get(type), crv, true);
+        return Helpers.contains(EntityBuilder.SIGN_TYPE_NAMES.get(type), crv, true);
     }
 
     private void handleUniqueId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -244,8 +244,8 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required.");
         else if (!rawData.hasKey(ProofObjectManager.ALG, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.ALG));
-        else if (!Helpers.contains(IAMImpl.signTypes.get(type), rawData.getString(ProofObjectManager.ALG), true))
-            throw createParsingException(ProofObjectManager.ALG, IAMImpl.signTypes.get(type));
+        else if (!Helpers.contains(EntityBuilder.SIGN_TYPE_NAMES.get(type), rawData.getString(ProofObjectManager.ALG), true))
+            throw createParsingException(ProofObjectManager.ALG, EntityBuilder.SIGN_TYPE_NAMES.get(type));
     }
 
     private void handleFields(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -318,7 +318,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         SignType signType = SignType.from(rawData.getString(ProofObjectManager.ALG));
         String type = rawData.getString(ProofObjectManager.KTY);
         if (signType == SignType.NONE || signType == SignType.UNKNOWN)
-            throw createParsingException(ProofObjectManager.ALG, IAMImpl.signTypes.get(type));
+            throw createParsingException(ProofObjectManager.ALG, EntityBuilder.SIGN_TYPE_NAMES.get(type));
         else if (!Helpers.equals(signType.getType(), type, true))
             throw createParsingException(ProofObjectManager.ALG, signType);
     }
@@ -350,7 +350,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             return;
         String crv = rawData.getString(ProofObjectManager.CRV);
         if (signType == SignType.NONE || signType == SignType.UNKNOWN)
-            throw createParsingException(ProofObjectManager.CRV, IAMImpl.signTypes.get(rawType));
+            throw createParsingException(ProofObjectManager.CRV, EntityBuilder.SIGN_TYPE_NAMES.get(rawType));
         else if (signType.hasExtension() && !Helpers.equals(crv, signType.getRawName(), true))
             throw createParsingException(ProofObjectManager.CRV, signType);
     }

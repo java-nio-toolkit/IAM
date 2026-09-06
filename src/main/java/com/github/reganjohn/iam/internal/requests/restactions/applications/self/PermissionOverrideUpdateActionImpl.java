@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.interactions;
+package com.github.reganjohn.iam.internal.requests.restactions.applications.self;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -45,7 +46,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionUpdateAction;
+import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.PermissionOverrideUpdateAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
@@ -69,7 +70,7 @@ import java.util.stream.Collectors;
 
 import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.JKT;
 
-public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionUpdateAction
+public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActionImpl implements PermissionOverrideUpdateAction
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
 
@@ -82,9 +83,9 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
         }
     };
 
-    public ApplicationInteractionUpdateActionImpl(@Nonnull IAMImpl api)
+    public PermissionOverrideUpdateActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.UPDATE_APPLICATION_ACCESS);
+        super(api, Routes.Applications.UPDATE_ENTITLEMENT_ACCESS);
     }
 
     @Override
@@ -215,7 +216,7 @@ public class ApplicationInteractionUpdateActionImpl extends AbstractApplicationA
             if (hasAccess)
                 return createObjectData(manager, permission, contextData, data, actor, manager.getCurrentOrder());
             else
-                throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+                throw new InvalidTokenException();
         });
     }
 

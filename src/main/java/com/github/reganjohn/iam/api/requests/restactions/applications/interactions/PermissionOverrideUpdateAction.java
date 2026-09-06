@@ -18,6 +18,6 @@ package com.github.reganjohn.iam.api.requests.restactions.applications.interacti
 
 import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 
-public interface ApplicationInteractionUpdateAction extends ApplicationAction
+public interface PermissionOverrideUpdateAction extends ApplicationAction
 {
 }

@@ -142,7 +142,7 @@ public class ApplicationImpl implements Application
                 if (!array.isEmpty() && !EntityBuilder.isDelete(array))
                     interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(array.getObject(0)));
                 else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
             }
         };
     }

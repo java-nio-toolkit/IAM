@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.sessions;
 
+import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -182,7 +183,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
             if (hasAccess)
                 return createObjectData(manager, contextData, data, manager.getCurrentOrder());
             else
-                throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+                throw new InvalidTokenException();
         });
     }
 

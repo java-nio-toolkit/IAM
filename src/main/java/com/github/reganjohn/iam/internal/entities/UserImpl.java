@@ -115,7 +115,7 @@ public class UserImpl implements User
                                       @Nonnull BufferArray array) throws Exception
             {
                 if (!array.isEmpty())
-                    interaction.onSuccess(getIAM().getEntityBuilder().createAccessEntry(array.getObject(0)));
+                    interaction.onSuccess(EntityBuilder.createAccessEntry(array.getObject(0)));
                 else
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
             }
@@ -185,7 +185,7 @@ public class UserImpl implements User
                                       @Nonnull InteractionImpl<Webhook> interaction,
                                       @Nonnull BufferArray array)
             {
-                if (array.isEmpty())
+                if (!array.isEmpty())
                     interaction.onSuccess(getIAM().getEntityBuilder().createWebhook(array.getObject(0)));
                 else
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));

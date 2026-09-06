@@ -42,7 +42,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.applications.*;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionOverrideActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionRetrieveActionImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionUpdateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.applications.self.PermissionOverrideUpdateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.self.PermissionOverrideDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.self.PermissionOverrideEditActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.self.PermissionOverridePaginationActionImpl;
@@ -76,19 +76,6 @@ import java.util.concurrent.TimeUnit;
 
 public class IAMImpl implements IAM
 {
-    public static final Map<String, List<String>> signTypes = new ConcurrentHashMap<>();
-
-    static
-    {
-        for (SignType signType : SignType.values())
-        {
-            if (signType.getType() == AccessEntryType.NONE)
-                continue;
-            List<String> set = signTypes.computeIfAbsent(signType.getType().name(), __ -> new ArrayList<>());
-            set.add(signType.getName());
-        }
-    }
-
     static
     {
         if (Security.getProvider("BC") == null)
@@ -105,7 +92,7 @@ public class IAMImpl implements IAM
 
     public static void main(String[] args) throws Exception
     {
-        new IAMImpl(8080, false);
+        new IAMImpl(8080, true);
     }
 
     @Nonnull
@@ -141,7 +128,6 @@ public class IAMImpl implements IAM
         List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jca = buildInstance().awaitReady();
         cleanup();
-        TimeUnit.SECONDS.sleep(2);
         this.manager = new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 60, TimeUnit.SECONDS, audiences);
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
@@ -196,7 +182,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new ApplicationRevokeActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionCreateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionOverrideActionImpl(this))
-                .addEventListenerProvider(() -> new ApplicationInteractionUpdateActionImpl(this))
+                .addEventListenerProvider(() -> new PermissionOverrideUpdateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionRetrieveActionImpl(this))
 
                 .addEventListenerProvider(() -> new PermissionOverridePaginationActionImpl(this))
@@ -210,7 +196,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new WebhookEditActionImpl(this))
                 .addEventListenerProvider(() -> new WebhookDeleteActionImpl(this))
 
-                .addEventListeners(new ErrorObjectManagerImpl(false))
+                .addEventListeners(new ErrorObjectManagerImpl(true))
                 .build();
 
         if (isTest)
