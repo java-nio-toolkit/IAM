@@ -65,27 +65,10 @@ public class PermOverrideManagerImpl extends ClassicObjectManagerImpl implements
         Route route = request.getRoute().getBaseRoute();
         if (route == Routes.Self.GET_SELF && permissions.contains(Permission.VIEW_ACCOUNT))
             context.fireChannelRead(request);
-        else if (route == Routes.Applications.CREATE_APPLICATION_ACCESS && isOwner(request, data))
-            context.fireChannelRead(request);
-        else if (route == Routes.Applications.OVERRIDE_APPLICATION_ACCESS && isOwner(request, data))
-            context.fireChannelRead(request);
-        else if (route == Routes.Applications.DELETE_APPLICATION_ACCESS && isOwner(request, data))
-            context.fireChannelRead(request);
         else if (route.isInteraction())
             context.fireChannelRead(request);
         else
             throw new InsufficientPermissionException();
-    }
-
-    private boolean isOwner(@Nonnull Request request, @Nonnull AccessObjectData data)
-    {
-        Map<String, String> params = request.getRoute().getMajorParameters();
-        String applicationId = params.get("application_id");
-        DataObject raw = data.getActor();
-        if (raw == null)
-            raw = DataObject.empty();
-        String subject = raw.getString("sub");
-        return Helpers.equals(applicationId, subject, true);
     }
 
     @Nonnull

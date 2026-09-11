@@ -19,7 +19,6 @@ package com.github.reganjohn.iam.api.entities;
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
-import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import org.jetbrains.annotations.Unmodifiable;
@@ -100,6 +99,15 @@ public interface Application extends IUnique
     List<String> getRedirectUris();
 
     /**
+     * The origin of this application used to publish its public keys.
+     * <br>The endpoint is resolved by appending {@code /.well-known/jwks.json} to this origin.
+     *
+     * @return The origin of this application
+     */
+    @Nonnull
+    String getOrigin();
+
+    /**
      * The {@link ApplicationFlag Flags} set for the application.
      * <br>Modifying the returned EnumSet will have not actually change the flags of the application.
      *
@@ -120,18 +128,6 @@ public interface Application extends IUnique
      * @return The bitset
      */
     long getFlagsRaw();
-
-    @Nonnull
-    @CheckReturnValue
-    InteractionCallbackAction<Integer> retrieveAccessCount();
-
-    @Nonnull
-    @CheckReturnValue
-    InteractionCallbackAction<AccessContextInteraction> retrieveAccessById(@Nonnull UUID accessId);
-
-    @Nonnull
-    @CheckReturnValue
-    InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess();
 
     @Nonnull
     @CheckReturnValue

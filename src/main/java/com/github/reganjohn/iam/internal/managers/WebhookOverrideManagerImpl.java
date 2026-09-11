@@ -45,11 +45,7 @@ import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.InetAddress;
 import java.net.URI;
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -126,7 +122,6 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
 
     private void handleSuccess(@Nonnull ChannelFuture connect, @Nonnull Route route, @Nonnull DataObject rawData)
     {
-        LOG.debug("The connection was successfully loaded!");
         connect.channel().pipeline().addLast(new WebhookActionImpl(route, rawData));
     }
 
@@ -161,7 +156,7 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
     @CheckReturnValue
     private List<Webhook> retrieveWebhooks(@Nonnull List<Webhook> webhooks, @Nonnull Scope scope)
     {
-        return webhooks.stream().filter(webhook -> webhook.getScopes().contains(scope)).collect(Collectors.toList());
+        return webhooks.stream().filter(webhook -> webhook.hasScope(scope)).collect(Collectors.toList());
     }
 
     @Override

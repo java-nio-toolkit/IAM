@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.entities.IUnique;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.IAM;
@@ -82,7 +83,7 @@ public interface User extends IUnique
 
     @Nonnull
     @CheckReturnValue
-    InteractionCallbackAction<List<AccessEntryData>> retrieveAccess();
+    InteractionCallbackAction<AccessEntryArray> retrieveAccess();
 
     @Nonnull
     @CheckReturnValue

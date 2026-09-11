@@ -16,6 +16,8 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
+import com.github.adamorgan.jnt.api.utils.AccessUtil;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.EntityString;
@@ -85,17 +87,17 @@ public class UserImpl implements User
 
     @Nonnull
     @Override
-    public InteractionCallbackAction<List<AccessEntryData>> retrieveAccess()
+    public InteractionCallbackAction<AccessEntryArray> retrieveAccess()
     {
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.public_keys WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<List<AccessEntryData>> interaction,
+                                      @Nonnull InteractionImpl<AccessEntryArray> interaction,
                                       @Nonnull BufferArray array) throws Exception
             {
                 if (array.isEmpty())
-                    interaction.onSuccess(Collections.emptyList());
+                    interaction.onSuccess(AccessUtil.EMPTY_SET);
                 else
                     interaction.onSuccess(getIAM().getEntityBuilder().createAccessEntries(array));
             }

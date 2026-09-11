@@ -208,7 +208,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         else if (!context.channel().hasAttr(ProofObjectManagerImpl.CONTEXT))
-            throw new ProofAccessException(api.getIdentifierString(), INVALID_REQUEST, "This action requires a signed request.");
+            throw new ProofAccessException(api.getIdentifierString(), INVALID_REQUEST, "This action requires a DPoP proof.");
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();

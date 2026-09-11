@@ -42,7 +42,6 @@ DROP TABLE IF EXISTS users.entitlements;
 DROP TABLE IF EXISTS integrations.applications;
 DROP TABLE IF EXISTS integrations.interactions;
 DROP TABLE IF EXISTS integrations.responses;
-DROP TABLE IF EXISTS integrations.public_keys;
 
 DROP TABLE IF EXISTS users.webhooks;
 
@@ -121,6 +120,7 @@ CREATE TABLE IF NOT EXISTS integrations.applications
     name           TEXT,
     description    TEXT,
     icon_id        TEXT,
+    origin         TEXT,
     flags          BIGINT,
     redirect_uris  LIST<TEXT>,
     PRIMARY KEY ((owner_id), application_id)
@@ -155,18 +155,3 @@ CREATE TABLE IF NOT EXISTS integrations.invites
     content        TEXT,
     PRIMARY KEY ((user_Id), application_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 86400;
-
-CREATE TABLE IF NOT EXISTS integrations.public_keys
-(
-    application_id UUID,
-    owner_id       UUID,
-    access_id      UUID,
-    kid            TEXT,
-    alg            TEXT,
-    kty            TEXT,
-    usage          TEXT,
-    flags          BIGINT,
-    thumbprint     TEXT,
-    public_key     BLOB,
-    PRIMARY KEY ((application_id), access_id)
-) WITH transactional_mode = 'full';

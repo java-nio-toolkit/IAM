@@ -282,11 +282,12 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         String name = json.getString("name", application.getName());
         String description = json.getString("description", application.getDescription());
         String iconId = json.getString("icon_id", application.getIconId());
+        String origin = json.getString("origin", application.getOrigin());
         long flags = json.getLong("flags", application.getFlagsRaw());
         long base = application.getFlagsRaw() & Application.ApplicationFlag.SYSTEM;
         long modifiers = flags & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = editRedirectUris(application, json);
-        return new ApplicationEditData(userId, applicationId, name, description, iconId, base | modifiers, redirectUris);
+        return new ApplicationEditData(userId, applicationId, name, description, iconId, origin, base | modifiers, redirectUris);
     }
 
     @Nonnull

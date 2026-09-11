@@ -149,6 +149,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     @Override
     protected void onCreateSnapshot(@Nonnull AccessEntrySnapshot snapshot)
     {
+        //todo: consider what to do with the key if it wasn't added to the database
         onCreateSnapshot(snapshot, mapFromData(snapshot)).queue(success -> super.onCreateSnapshot(snapshot), Throwable::printStackTrace);
     }
 

@@ -25,6 +25,7 @@ dependencies {
     implementation("org.bouncycastle:bcprov-lts8on:2.73.10")
     implementation("com.adamorgan:JNT:1.0.0_DEV")
     implementation("com.reganjohn:C4J:1.0.0_DEV")
+    implementation("ch.qos.logback:logback-classic:1.5.16")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

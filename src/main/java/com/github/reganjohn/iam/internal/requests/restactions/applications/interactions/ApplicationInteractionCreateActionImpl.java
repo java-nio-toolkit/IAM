@@ -189,15 +189,10 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     private InteractionCallbackAction<Void> create(@Nonnull Application application,
                                                    @Nonnull ApplicationContextInteraction interaction)
     {
-        return application.retrieveAccess().flatMap(interactions ->
-        {
-            if (interactions.isEmpty())
-                throw new ErrorResponseException(ErrorResponse.APPLICATION_CANNOT_ACCEPT_MEMBERS);
-            else if (Helpers.contains(application.getRedirectUris(), interaction.getRedirectUri(), false))
-                return createInteraction(interaction);
-            else
-                throw new ErrorResponseException(ErrorResponse.INVALID_REDIRECT_URI);
-        });
+        if (Helpers.contains(application.getRedirectUris(), interaction.getRedirectUri(), false))
+            return createInteraction(interaction);
+        else
+            throw new ErrorResponseException(ErrorResponse.INVALID_REDIRECT_URI);
     }
 
     @Nonnull

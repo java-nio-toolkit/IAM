@@ -25,12 +25,10 @@ import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
-import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.entities.*;
-import com.github.reganjohn.iam.internal.interactions.AccessContextInteractionImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationCallbackResponseImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
@@ -110,28 +108,6 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public List<AccessContextInteraction> createApplicationAccess(@Nonnull BufferArray array)
-    {
-        List<AccessContextInteraction> interactions = new ArrayList<>();
-        for (BufferObject obj : array)
-        {
-            interactions.add(createApplicationAccess(obj));
-        }
-        return interactions;
-    }
-
-    @Nonnull
-    public AccessContextInteractionImpl createApplicationAccess(@Nonnull BufferObject obj)
-    {
-        UUID ownerId = obj.getUUID("owner_id");
-        UUID applicationId = obj.getUUID("application_id");
-        UUID accessId = obj.getUUID("access_id");
-        long flags = obj.getLong("flags");
-        String thumbprint = obj.getString("thumbprint");
-        return new AccessContextInteractionImpl(api, ownerId, applicationId, accessId, flags, thumbprint);
-    }
-
-    @Nonnull
     public UserImpl createUser(BufferObject data)
     {
         UUID userId = data.getUUID("user_id");
@@ -173,14 +149,12 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public List<AccessEntryData> createAccessEntries(@Nonnull BufferArray data) throws Exception
+    public AccessEntryArray createAccessEntries(@Nonnull BufferArray data) throws Exception
     {
-        List<AccessEntryData> entries = new ArrayList<>();
+        List<AccessEntryData> set = new ArrayList<>();
         for (BufferObject obj : data)
-        {
-            entries.add(createAccessEntry(obj));
-        }
-        return entries;
+            set.add(createAccessEntry(obj));
+        return new AccessEntryArray(set);
     }
 
     @Nonnull
@@ -224,9 +198,10 @@ public class EntityBuilder extends AbstractEntityBuilder
         String name = data.getString("name");
         String description = data.getString("description", null);
         String iconId = data.getString("icon_id", null);
+        String origin = data.getString("origin");
         long flags = data.getLong("flags");
         List<String> redirectUris = data.getList(String.class, "redirect_uris");
-        return new ApplicationImpl(api, applicationId, ownerId, name, description, iconId, flags, redirectUris);
+        return new ApplicationImpl(api, applicationId, ownerId, name, description, iconId, origin, flags, redirectUris);
     }
 
     @Nonnull

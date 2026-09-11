@@ -27,10 +27,7 @@ import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
+import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
@@ -38,15 +35,14 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
-import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.PermissionOverrideUpdateAction;
+import com.github.reganjohn.iam.api.requests.restactions.applications.self.PermissionOverrideUpdateAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
@@ -57,6 +53,7 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -170,8 +167,7 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
                                                                @Nonnull PermissionOverride permission)
     {
         return api.retrieveUserById(permission.getOwnerId())
-                .flatMap(user -> user.retrieveApplicationById(permission.getApplicationId()))
-                .flatMap(Application::retrieveAccess)
+                .flatMap(User::retrieveAccess)
                 .map(this::retrieveThumbprints)
                 .flatMap(thumbprints -> update(context, data, json, thumbprints, permission));
     }
@@ -242,8 +238,22 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
     }
 
     @Nonnull
-    private List<String> retrieveThumbprints(@Nonnull List<AccessContextInteraction> interactions)
+    @Unmodifiable
+    private List<String> retrieveThumbprints(@Nonnull AccessEntryArray interactions)
     {
-        return interactions.stream().map(AccessContextInteraction::getThumbprint).collect(Collectors.toList());
+        return interactions.stream().map(this::retrieveThumbprint).collect(Collectors.toUnmodifiableList());
+    }
+
+    @Nonnull
+    private String retrieveThumbprint(@Nonnull AccessEntryData data)
+    {
+        try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
+        {
+            return context.digest();
+        }
+        catch (Exception ex)
+        {
+            throw new IllegalStateException("Failed to retrieve the snapshot hash", ex);
+        }
     }
 }

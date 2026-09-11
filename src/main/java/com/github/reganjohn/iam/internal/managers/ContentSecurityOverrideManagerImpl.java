@@ -24,6 +24,7 @@ import com.github.adamorgan.jnt.api.interactions.middle.content.context.*;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.internal.managers.AbstractInteractionObjectManagerImpl;
+import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.Unmodifiable;
 

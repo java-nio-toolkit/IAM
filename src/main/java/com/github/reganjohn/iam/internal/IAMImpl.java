@@ -18,6 +18,7 @@ package com.github.reganjohn.iam.internal;
 
 import com.github.adamorgan.jnt.api.JNT;
 import com.github.adamorgan.jnt.api.JNTBuilder;
+import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.socket.DefaultSocketManagerBuilder;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
@@ -64,6 +65,8 @@ import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackRespo
 import com.reganjohn.c4j.internal.managers.SecretAccessManagerImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionCreateActionImpl;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -98,13 +101,17 @@ public class IAMImpl implements IAM
     @Nonnull
     private JCA buildInstance()
     {
-        return JCABuilder.create("localhost", 9042)
+        JCA api = JCABuilder.create("localhost", 9042)
                 .setApplicationName("Test Client")
                 .setProtocolVersion(5)
-                .addEventListener(new SecretAccessManagerImpl("cassandra", "cassandra"))
                 .setCompression(Compression.LZ4)
                 .setDefaultConsistency(Consistency.QUORUM)
+                .setAutoReconnect(true)
                 .build();
+
+        api.addEventListener(new SecretAccessManagerImpl(api, "cassandra", "cassandra"));
+
+        return api;
     }
 
     @Nonnull
@@ -114,11 +121,11 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ClassicRequestSendHandlerImpl::new)
                 .addEventListenerProvider(ClassicResponseReceiveHandlerImpl::new)
                 .addEventListenerProvider(() -> new ClassicIdleObjectManagerImpl(30, 30, 5))
-                .addEventListenerProvider(ProofPresenceManagerImpl::new)
+                .addEventListenerProvider(ProofSignatureManagerImpl::new)
                 .addEventListeners(manager)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
                 .addEventListenerProvider(DigestObjectManagerImpl::new)
-                .setConnectTimeout(10, TimeUnit.SECONDS)
+                .setConnectTimeout(4, TimeUnit.SECONDS)
                 .setKeepAlive(true)
                 .build();
     }
@@ -128,7 +135,7 @@ public class IAMImpl implements IAM
         List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jca = buildInstance().awaitReady();
         cleanup();
-        this.manager = new GlobalAccessManagerImpl(this, SignType.EDDSA, 2, 60, TimeUnit.SECONDS, audiences);
+        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 5, TimeUnit.SECONDS, audiences);
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
@@ -138,10 +145,11 @@ public class IAMImpl implements IAM
                 .addEventListeners(new CookieObjectManagerImpl())
 
                 .addEventListeners(new ContentSecurityOverrideManagerImpl())
+
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
-                .addEventListeners(new ProofPresenceManagerImpl())
+                .addEventListeners(new ProofSignatureManagerImpl())
                 .addEventListeners(manager)
 
                 .addEventListeners(new DigestAccessManagerImpl())
@@ -152,7 +160,9 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
                 //.addEventListenerProvider(() -> new SequentialRestRateLimiter(10, 10, TimeUnit.SECONDS, "user"))
 
+                .addEventListeners(new WebhookOverrideManagerImpl(this))
                 .addEventListeners(new AccessEntryActionImpl())
+
                 .addEventListeners(new PermOverrideManagerImpl())
 
                 .addEventListenerProvider(() -> new UserRetrieveActionImpl(this))
@@ -176,10 +186,6 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new ApplicationEditActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationDeleteActionImpl(this))
 
-                .addEventListenerProvider(() -> new ApplicationAccessActionImpl(this))
-                .addEventListenerProvider(() -> new ApplicationSyncActionImpl(this))
-                .addEventListenerProvider(() -> new ApplicationOverrideActionImpl(this))
-                .addEventListenerProvider(() -> new ApplicationRevokeActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionCreateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionOverrideActionImpl(this))
                 .addEventListenerProvider(() -> new PermissionOverrideUpdateActionImpl(this))
@@ -223,7 +229,6 @@ public class IAMImpl implements IAM
                         "TRUNCATE integrations.interactions",
                         "TRUNCATE integrations.responses",
                         "TRUNCATE integrations.invites",
-                        "TRUNCATE integrations.public_keys"
                 };
 
         for (String statement : statements)

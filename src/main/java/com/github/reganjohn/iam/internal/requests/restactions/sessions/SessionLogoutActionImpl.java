@@ -35,7 +35,7 @@ import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionLogoutA
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.c4j.api.requests.objaction.InteractionContextType;
+import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.MultiValuedMap;
@@ -91,7 +91,7 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
     private InteractionCallbackAction<Void> logout(@Nonnull Placeholder placeholder)
     {
         Checks.notNull(placeholder, "Placeholder");
-        return new InteractionListContextActionImpl<>(api.getJCA(), InteractionContextType.LOGGED, placeholder.toMap());
+        return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, placeholder.toMap());
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

@@ -39,6 +39,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
+import javax.swing.table.TableRowSorter;
 import java.io.IOException;
 import java.security.SignatureException;
 import java.util.Collections;
@@ -58,7 +59,7 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 
     public ErrorObjectManagerImpl(boolean printStackTrace)
     {
-        this.printStackTrace = printStackTrace;
+        this.printStackTrace = true;
     }
 
     @Override

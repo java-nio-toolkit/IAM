@@ -32,18 +32,20 @@ public class ApplicationCreateData implements ApplicationData
     private final String name;
     private final String description;
     private final String iconId;
+    private final String origin;
     private final long flags;
     private final List<String> redirectUris;
 
     public ApplicationCreateData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull String name,
-                                 @Nullable String description, @Nullable String iconId, long flags,
-                                 @Nonnull List<String> redirectUris)
+                                 @Nullable String description, @Nullable String iconId, @Nonnull String origin,
+                                 long flags, @Nonnull List<String> redirectUris)
     {
         this.userId = userId;
         this.applicationId = applicationId;
         this.name = name;
         this.iconId = iconId;
         this.description = description;
+        this.origin = origin;
         this.flags = flags;
         this.redirectUris = redirectUris;
     }
@@ -56,6 +58,7 @@ public class ApplicationCreateData implements ApplicationData
                 .put("application_id", applicationId)
                 .put("name", name)
                 .put("description", description)
+                .put("origin", origin)
                 .put("icon_id", iconId)
                 .put("flags", flags)
                 .put("redirect_uris", redirectUris)

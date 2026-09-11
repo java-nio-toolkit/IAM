@@ -20,13 +20,11 @@ import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -94,30 +92,36 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     }
 
     @Nonnull
-    private InteractionCallbackAction<List<AccessEntryData>> retrieveAccessData(@Nonnull UUID userId,
-                                                                                @Nonnull List<Session> sessions)
+    private InteractionCallbackAction<AccessEntryArray> retrieveAccessData(@Nonnull UUID userId,
+                                                                           @Nonnull List<Session> sessions)
     {
         return api.retrieveUserById(userId)
                 .flatMap(User::retrieveAccess)
-                .map(access -> filter(sessions, new ArrayList<>(access)));
+                .map(access -> filter(sessions, access));
     }
 
     @Nonnull
-    private List<AccessEntryData> filter(@Nonnull List<Session> sessions, @Nonnull List<AccessEntryData> access)
+    private AccessEntryArray filter(@Nonnull List<Session> sessions, @Nonnull AccessEntryArray access)
     {
-        Set<String> thumbprints = sessions.stream().map(Session::getThumbprint).collect(Collectors.toSet());
-        access.removeIf(data ->
+        Set<String> set = new HashSet<>(sessions.size());
+        for (Session session : sessions)
+            set.add(session.getThumbprint());
+        List<AccessEntryData> raw = new ArrayList<>(access.size());
+        for (AccessEntryData data : access)
         {
             try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
             {
-                return !thumbprints.contains(context.digest());
+                if (!Helpers.contains(set, context.digest(), false))
+                {
+                    raw.add(data);
+                }
             }
             catch (Exception ex)
             {
                 throw new IllegalStateException("Failed to retrieve the snapshot hash", ex);
             }
-        });
-        return access;
+        }
+        return new AccessEntryArray(raw);
     }
 
     @Nonnull
@@ -131,7 +135,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     }
 
     @Nonnull
-    private Map<String, DataObject> mapFromData(@Nonnull List<AccessEntryData> entries)
+    private Map<String, DataObject> mapFromData(@Nonnull AccessEntryArray entries)
     {
         Checks.notNull(entries, "Access Entries");
         return entries.stream().map(SessionOverrideData::new).collect(Collectors.toMap(SessionOverrideData::getThumbprint, SessionOverrideData::toData));

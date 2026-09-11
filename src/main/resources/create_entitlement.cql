@@ -14,4 +14,5 @@
  * limitations under the License.
  */
 
-INSERT INTO users.entitlements (user_id, application_id, owner_id, flags, permissions, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO users.entitlements (user_id, application_id, owner_id, flags, permissions, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)

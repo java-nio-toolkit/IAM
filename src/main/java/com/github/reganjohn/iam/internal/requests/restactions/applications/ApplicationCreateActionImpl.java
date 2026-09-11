@@ -255,11 +255,12 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         UUID userId = UUID.fromString(data.getSubject());
         UUIDv7 applicationId = UUIDv7.randomUUID();
         String name = rawBody.getString("name");
-        String description = !rawBody.isEmpty("description") ? rawBody.getString("description") : null;
+        String description = rawBody.getString("description", null);
         String iconId = rawBody.getString("icon_id", null);
+        String origin = rawBody.getString("origin");
         long flags = rawBody.getInt("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = rawBody.getArray("redirect_uris").stream(DataArray::getString).collect(Collectors.toList());
-        return new ApplicationCreateData(userId, applicationId.toUUID(), name, description, iconId, flags, redirectUris);
+        return new ApplicationCreateData(userId, applicationId.toUUID(), name, description, iconId, origin, flags, redirectUris);
     }
 
     @Nonnull

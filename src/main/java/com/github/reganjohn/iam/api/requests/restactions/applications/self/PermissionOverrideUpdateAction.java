@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.requests.restactions.applications;
+package com.github.reganjohn.iam.api.requests.restactions.applications.self;
 
 import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 
-public interface ApplicationAccessAction extends ApplicationAction
+public interface PermissionOverrideUpdateAction extends ApplicationAction
 {
 }

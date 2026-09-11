@@ -64,6 +64,11 @@ public interface Webhook extends IUnique, SerializableData
         return Scope.getScopes(getScopesRaw());
     }
 
+    default boolean hasScope(Scope scope)
+    {
+        return getScopes().contains(scope);
+    }
+
     long getFlagsRaw();
 
     @Nonnull

@@ -39,7 +39,7 @@ import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.c4j.api.requests.objaction.InteractionContextType;
+import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
@@ -176,7 +176,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         UUID interactionId = interaction.getUniqueId();
         UUID userId = UUID.fromString(json.getSubject());
         long permissions = interaction.getPermissionsRaw();
-        return new InteractionListContextActionImpl<>(api.getJCA(), InteractionContextType.LOGGED, new ArrayListValuedHashMap<>())
+        return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
                 .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", userId, applicationId, interactionId)
                 .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions)
                 .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, applicationId, ownerId, 0L, permissions, OffsetDateTime.now())

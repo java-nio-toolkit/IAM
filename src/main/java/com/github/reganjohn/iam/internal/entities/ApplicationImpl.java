@@ -18,10 +18,8 @@ package com.github.reganjohn.iam.internal.entities;
 
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.interactions.AccessContextInteraction;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
@@ -46,11 +44,12 @@ public class ApplicationImpl implements Application
     private final String name;
     private final String description;
     private final String iconId;
+    private final String origin;
     private final long flags;
     private final List<String> redirectUris;
 
     public ApplicationImpl(@Nonnull IAMImpl api, @Nonnull UUID id, @Nonnull UUID ownerId, @Nonnull String name,
-                           @Nullable String description, @Nullable String iconId, long flags,
+                           @Nullable String description, @Nullable String iconId, @Nonnull String origin, long flags,
                            @Nonnull List<String> redirectUris)
     {
         this.api = api;
@@ -59,6 +58,7 @@ public class ApplicationImpl implements Application
         this.name = name;
         this.description = description;
         this.iconId = iconId;
+        this.origin = origin;
         this.flags = flags;
         this.redirectUris = redirectUris;
     }
@@ -114,56 +114,9 @@ public class ApplicationImpl implements Application
 
     @Nonnull
     @Override
-    public InteractionCallbackAction<Integer> retrieveAccessCount()
+    public String getOrigin()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(getUniqueId()))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
-            {
-                request.onSuccess((int) InteractionUtil.count(array));
-            }
-        };
-    }
-
-    @Nonnull
-    @Override
-    public InteractionCallbackAction<AccessContextInteraction> retrieveAccessById(@Nonnull UUID accessId)
-    {
-        Checks.notNull(accessId, "Access ID");
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ? AND access_id = ?", Arrays.asList(getUniqueId(), accessId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<AccessContextInteraction> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
-            }
-        };
-    }
-
-    @Nonnull
-    @Override
-    public InteractionCallbackAction<List<AccessContextInteraction>> retrieveAccess()
-    {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.public_keys WHERE application_id = ?", Collections.singletonList(getUniqueId()))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
-                                      @Nonnull InteractionImpl<List<AccessContextInteraction>> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createApplicationAccess(array));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
-            }
-        };
+        return origin;
     }
 
     @Nonnull
