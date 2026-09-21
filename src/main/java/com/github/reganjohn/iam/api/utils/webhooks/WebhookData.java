@@ -16,15 +16,12 @@
 
 package com.github.reganjohn.iam.api.utils.webhooks;
 
-import com.github.adamorgan.jnt.api.utils.data.SerializableData;
-import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-public interface WebhookData extends SerializableData, InteractionMapping
+public interface WebhookData
 {
     @Nonnull
     UUID getUniqueId();

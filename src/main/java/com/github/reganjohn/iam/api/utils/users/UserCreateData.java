@@ -17,8 +17,8 @@
 package com.github.reganjohn.iam.api.utils.users;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.reganjohn.iam.api.utils.sessions.SessionData;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
+import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import org.jetbrains.annotations.Unmodifiable;
 
@@ -27,31 +27,22 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
-public class UserCreateData implements UserData, SessionData
+public class UserCreateData implements UserData, SerializableData, InteractionMapping
 {
     private final UUID userId;
-    private final UUID sessionId;
     private final String username;
     private final String avatarId;
-    private final String userAgent;
-    private final AccessEntryData data;
     private final long userFlags;
-    private final long sessionFlags;
-    private final String thumbprint;
+    private final SessionCreateData session;
 
-    public UserCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String name,
-                          @Nullable String avatarId, @Nullable String agent, @Nonnull AccessEntryData data,
-                          long userFlags, long sessionFlags, @Nonnull String thumbprint)
+    protected UserCreateData(@Nonnull UUID userId, @Nonnull String name, @Nullable String avatarId,
+                          long userFlags, @Nonnull SessionCreateData session)
     {
         this.userId = userId;
-        this.sessionId = sessionId;
         this.username = name;
         this.avatarId = avatarId;
-        this.userAgent = agent;
-        this.data = data;
         this.userFlags = userFlags;
-        this.sessionFlags = sessionFlags;
-        this.thumbprint = thumbprint;
+        this.session = session;
     }
 
     @Nonnull
@@ -59,13 +50,6 @@ public class UserCreateData implements UserData, SessionData
     public UUID getUserId()
     {
         return userId;
-    }
-
-    @Nonnull
-    @Override
-    public UUID getSessionId()
-    {
-        return sessionId;
     }
 
     @Nonnull
@@ -82,26 +66,6 @@ public class UserCreateData implements UserData, SessionData
         return avatarId;
     }
 
-    @Nullable
-    @Override
-    public String getUserAgent()
-    {
-        return userAgent;
-    }
-
-    @Nonnull
-    @Override
-    public AccessEntryData getAccessEntry()
-    {
-        return data;
-    }
-
-    @Override
-    public long getRawSessionFlags()
-    {
-        return sessionFlags;
-    }
-
     @Override
     public long getRawUserFlags()
     {
@@ -109,10 +73,9 @@ public class UserCreateData implements UserData, SessionData
     }
 
     @Nonnull
-    @Override
-    public String getThumbprint()
+    public SessionCreateData getSession()
     {
-        return thumbprint;
+        return session;
     }
 
     @Nonnull
@@ -124,16 +87,16 @@ public class UserCreateData implements UserData, SessionData
                 .put("username", username)
                 .put("avatar_id", avatarId)
                 .put("user_flags", userFlags)
-                .put("session_id", sessionId)
-                .put("user_agent", userAgent)
-                .put("session_flags", sessionFlags)
+                .put("session_id", session.getSessionId())
+                .put("user_agent", session.getUserAgent())
+                .put("session_flags", session.getRawSessionFlags())
                 .put("access_flags", 0L)
-                .put("kid", data.getUniqueId())
-                .put("kty", data.getType().name())
-                .put("alg", data.getMode().getName())
-                .put("usage", data.getRawUsage())
-                .put("public_key", data.getPublic().getEncoded())
-                .put("thumbprint", thumbprint)
+                .put("kid", session.getAccessEntry().getUniqueId())
+                .put("kty", session.getAccessEntry().getType().name())
+                .put("alg", session.getAccessEntry().getMode().getName())
+                .put("usage", session.getAccessEntry().getRawUsage())
+                .put("public_key", session.getAccessEntry().getPublic().getEncoded())
+                .put("thumbprint", session.getThumbprint())
                 .toMap();
     }
 
@@ -142,15 +105,15 @@ public class UserCreateData implements UserData, SessionData
     public DataObject toData()
     {
         DataObject sessionData = DataObject.empty()
-                .put("session_id", sessionId)
-                .put("flags", sessionFlags)
-                .put("user_agent", userAgent)
-                .put("kid", data.getUniqueId())
-                .put("kty", data.getType().name())
-                .put("alg", data.getMode().getName())
-                .put("usage", data.getRawUsage())
-                .put("public_key", data.getPublic().getEncoded())
-                .put("thumbprint", thumbprint)
+                .put("session_id", session.getSessionId())
+                .put("flags", session.getRawSessionFlags())
+                .put("user_agent", session.getUserAgent())
+                .put("kid", session.getAccessEntry().getUniqueId())
+                .put("kty", session.getAccessEntry().getType().name())
+                .put("alg", session.getAccessEntry().getMode().getName())
+                .put("usage", session.getAccessEntry().getRawUsage())
+                .put("public_key", session.getAccessEntry().getPublic().getEncoded())
+                .put("thumbprint", session.getThumbprint())
                 .toData();
 
         return DataObject.empty()

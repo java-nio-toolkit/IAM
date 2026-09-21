@@ -42,6 +42,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionEditAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.sessions.SessionEditBuilder;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
@@ -194,7 +195,15 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         long flags = json.getLong("flags", session.getFlagsRaw());
         long base = session.getFlagsRaw() & Session.SessionFlag.SYSTEM;
         long modifiers = flags & ~Session.SessionFlag.SYSTEM;
-        return new SessionEditData(userId, sessionId, userAgent, data.getEntryData(), base | modifiers, thumbprint);
+        return new SessionEditBuilder()
+                .setUserId(userId)
+                .setSessionId(sessionId)
+                .setUserAgent(userAgent)
+                .setAccessEntry(data.getEntryData())
+                .setSessionFlags(base | modifiers)
+                .setThumbprint(thumbprint)
+                .setReplace(true)
+                .build();
     }
 
     @Nonnull

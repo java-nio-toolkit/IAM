@@ -16,17 +16,15 @@
 
 package com.github.reganjohn.iam.api.utils.sessions;
 
-import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public interface SessionData extends SerializableData, InteractionMapping
+public interface SessionData
 {
     @Nonnull
     UUID getUserId();

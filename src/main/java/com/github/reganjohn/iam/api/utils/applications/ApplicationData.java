@@ -16,10 +16,42 @@
 
 package com.github.reganjohn.iam.api.utils.applications;
 
-import com.github.adamorgan.jnt.api.utils.data.SerializableData;
-import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
+import com.github.reganjohn.iam.api.entities.Application;
 
-public interface ApplicationData extends SerializableData, InteractionMapping
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.UUID;
+
+public interface ApplicationData
 {
+    @Nonnull
+    UUID getOwnerId();
 
+    @Nonnull
+    UUID getUniqueId();
+
+    @Nonnull
+    String getName();
+
+    @Nullable
+    String getDescription();
+
+    @Nullable
+    String getIconId();
+
+    @Nonnull
+    String getOrigin();
+
+    long getFlagsRaw();
+
+    @Nonnull
+    default EnumSet<Application.ApplicationFlag> getApplicationFlags()
+    {
+        return Application.ApplicationFlag.getFlags(getFlagsRaw());
+    }
+
+    @Nonnull
+    List<String> getRedirectUris();
 }

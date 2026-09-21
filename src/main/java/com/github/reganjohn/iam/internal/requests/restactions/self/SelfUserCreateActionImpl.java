@@ -44,6 +44,9 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserCreateAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.sessions.SessionCreateBuilder;
+import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
+import com.github.reganjohn.iam.api.utils.users.UserCreateBuilder;
 import com.github.reganjohn.iam.api.utils.users.UserCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
@@ -237,7 +240,21 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         String agent = request.getHeaders().get("User-Agent");
         long userFlags = rawData.getLong("flags", 0) & ~User.UserFlag.SYSTEM;
         long sessionFlags = sessionData.getLong("flags", 0) & ~Session.SessionFlag.SYSTEM;
-        return new UserCreateData(userId, sessionId, name, avatarId, agent, entryData, userFlags, sessionFlags, thumbprint);
+        SessionCreateData session = new SessionCreateBuilder()
+                .setUserId(userId)
+                .setSessionId(sessionId)
+                .setUserAgent(agent)
+                .setAccessEntry(entryData)
+                .setSessionFlags(sessionFlags)
+                .setThumbprint(thumbprint)
+                .build();
+        return new UserCreateBuilder()
+                .setUserId(userId)
+                .setName(name)
+                .setAvatarId(avatarId)
+                .setUserFlags(userFlags)
+                .setSession(session)
+                .build();
     }
 
     @Nonnull

@@ -40,6 +40,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.ApplicationCreateAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.applications.ApplicationCreateBuilder;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
@@ -260,7 +261,16 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         String origin = rawBody.getString("origin");
         long flags = rawBody.getInt("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = rawBody.getArray("redirect_uris").stream(DataArray::getString).collect(Collectors.toList());
-        return new ApplicationCreateData(userId, applicationId.toUUID(), name, description, iconId, origin, flags, redirectUris);
+        return new ApplicationCreateBuilder()
+                .setOwnerId(userId)
+                .setUniqueId(applicationId.toUUID())
+                .setName(name)
+                .setDescription(description)
+                .setIconId(iconId)
+                .setOrigin(origin)
+                .setFlags(flags)
+                .setRedirectUris(redirectUris)
+                .build();
     }
 
     @Nonnull

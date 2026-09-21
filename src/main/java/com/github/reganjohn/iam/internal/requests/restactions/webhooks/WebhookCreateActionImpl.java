@@ -39,6 +39,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookCreateAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.webhooks.WebhookCreateBuilder;
 import com.github.reganjohn.iam.api.utils.webhooks.WebhookCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookActionImpl;
@@ -249,7 +250,16 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
         String url = raw.getString("url");
         long flags = raw.getLong("flags", 0) & ~Webhook.WebhookFlag.SYSTEM;
         OffsetDateTime createdAt = OffsetDateTime.now();
-        return new WebhookCreateData(id.toUUID(), name, userId, avatarId, scopes, url, createdAt, flags);
+        return new WebhookCreateBuilder()
+                .setUniqueId(id.toUUID())
+                .setName(name)
+                .setOwnerId(userId)
+                .setAvatarId(avatarId)
+                .setUrl(url)
+                .setTimeUpdated(createdAt)
+                .setFlags(flags)
+                .setScopes(scopes)
+                .build();
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

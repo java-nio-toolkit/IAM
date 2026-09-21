@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.utils.sessions;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 
@@ -25,9 +26,7 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
-import static com.github.reganjohn.iam.api.requests.restactions.SessionAction.MAX_SESSION_COUNT;
-
-public class SessionCreateData implements SessionData
+public class SessionCreateData implements SessionData, SerializableData, InteractionMapping
 {
     private final UUID sessionId;
     private final UUID userId;
@@ -36,7 +35,7 @@ public class SessionCreateData implements SessionData
     private final long flags;
     private final String thumbprint;
 
-    public SessionCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String userAgent,
+    protected SessionCreateData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String userAgent,
                              @Nonnull AccessEntryData entryData, long flags, @Nonnull String thumbprint)
     {
         this.sessionId = sessionId;

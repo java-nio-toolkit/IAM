@@ -16,16 +16,14 @@
 
 package com.github.reganjohn.iam.api.utils.users;
 
-import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.reganjohn.iam.api.entities.User;
-import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public interface UserData extends SerializableData, InteractionMapping
+public interface UserData
 {
     @Nonnull
     UUID getUserId();

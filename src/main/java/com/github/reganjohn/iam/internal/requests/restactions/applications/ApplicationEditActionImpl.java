@@ -39,6 +39,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.ApplicationEditAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.applications.ApplicationEditBuilder;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
@@ -287,7 +288,17 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         long base = application.getFlagsRaw() & Application.ApplicationFlag.SYSTEM;
         long modifiers = flags & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = editRedirectUris(application, json);
-        return new ApplicationEditData(userId, applicationId, name, description, iconId, origin, base | modifiers, redirectUris);
+        return new ApplicationEditBuilder()
+                .setOwnerId(userId)
+                .setUniqueId(applicationId)
+                .setName(name)
+                .setDescription(description)
+                .setIconId(iconId)
+                .setOrigin(origin)
+                .setFlags(base | modifiers)
+                .setRedirectUris(redirectUris)
+                .setReplace(true)
+                .build();
     }
 
     @Nonnull

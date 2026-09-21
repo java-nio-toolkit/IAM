@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.utils.sessions;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 
@@ -25,8 +26,10 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
-public class SessionEditData implements SessionData
+public class SessionEditData implements SessionData, SerializableData, InteractionMapping
 {
+    private final int configuredFields;
+    private final boolean isReplace;
     private final UUID sessionId;
     private final UUID userId;
     private final String userAgent;
@@ -34,9 +37,12 @@ public class SessionEditData implements SessionData
     private final long flags;
     private final String thumbprint;
 
-    public SessionEditData(@Nonnull UUID userId, @Nonnull UUID sessionId, @Nonnull String userAgent,
-                             @Nonnull AccessEntryData entryData, long flags, @Nonnull String thumbprint)
+    protected SessionEditData(int configuredFields, boolean isReplace, @Nonnull UUID userId, @Nonnull UUID sessionId,
+                           @Nullable String userAgent, @Nonnull AccessEntryData entryData, long flags,
+                           @Nonnull String thumbprint)
     {
+        this.configuredFields = configuredFields;
+        this.isReplace = isReplace;
         this.sessionId = sessionId;
         this.userId = userId;
         this.userAgent = userAgent;
@@ -84,6 +90,21 @@ public class SessionEditData implements SessionData
     public String getThumbprint()
     {
         return thumbprint;
+    }
+
+    protected int getConfiguredFields()
+    {
+        return configuredFields;
+    }
+
+    protected boolean isReplace()
+    {
+        return isReplace;
+    }
+
+    protected boolean isSet(int flag)
+    {
+        return isReplace || (configuredFields & flag) != 0;
     }
 
     @Nonnull

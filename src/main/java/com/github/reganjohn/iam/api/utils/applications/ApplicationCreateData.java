@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.utils.applications;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
@@ -25,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class ApplicationCreateData implements ApplicationData
+public class ApplicationCreateData implements ApplicationData, SerializableData, InteractionMapping
 {
     private final UUID userId;
     private final UUID applicationId;
@@ -36,7 +37,7 @@ public class ApplicationCreateData implements ApplicationData
     private final long flags;
     private final List<String> redirectUris;
 
-    public ApplicationCreateData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull String name,
+    protected ApplicationCreateData(@Nonnull UUID userId, @Nonnull UUID applicationId, @Nonnull String name,
                                  @Nullable String description, @Nullable String iconId, @Nonnull String origin,
                                  long flags, @Nonnull List<String> redirectUris)
     {
@@ -48,6 +49,61 @@ public class ApplicationCreateData implements ApplicationData
         this.origin = origin;
         this.flags = flags;
         this.redirectUris = redirectUris;
+    }
+
+    @Nonnull
+    @Override
+    public UUID getOwnerId()
+    {
+        return userId;
+    }
+
+    @Nonnull
+    @Override
+    public UUID getUniqueId()
+    {
+        return applicationId;
+    }
+
+    @Nonnull
+    @Override
+    public String getName()
+    {
+        return name;
+    }
+
+    @Nullable
+    @Override
+    public String getDescription()
+    {
+        return description;
+    }
+
+    @Nullable
+    @Override
+    public String getIconId()
+    {
+        return iconId;
+    }
+
+    @Nonnull
+    @Override
+    public String getOrigin()
+    {
+        return origin;
+    }
+
+    @Override
+    public long getFlagsRaw()
+    {
+        return flags;
+    }
+
+    @Nonnull
+    @Override
+    public List<String> getRedirectUris()
+    {
+        return redirectUris;
     }
 
     @Nonnull

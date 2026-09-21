@@ -101,17 +101,15 @@ public class IAMImpl implements IAM
     @Nonnull
     private JCA buildInstance()
     {
-        JCA api = JCABuilder.create("localhost", 9042)
+
+        return JCABuilder.create("localhost", 9042)
                 .setApplicationName("Test Client")
                 .setProtocolVersion(5)
                 .setCompression(Compression.LZ4)
                 .setDefaultConsistency(Consistency.QUORUM)
+                .setSecret("cassandra", "cassandra")
                 .setAutoReconnect(true)
                 .build();
-
-        api.addEventListener(new SecretAccessManagerImpl(api, "cassandra", "cassandra"));
-
-        return api;
     }
 
     @Nonnull

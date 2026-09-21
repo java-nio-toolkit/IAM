@@ -34,6 +34,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserEditAction;
+import com.github.reganjohn.iam.api.utils.users.UserEditBuilder;
 import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
@@ -172,7 +173,13 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         long flags = data.getLong("flags", user.getFlagsRaw());
         long base = user.getFlagsRaw() & User.UserFlag.SYSTEM;
         long modifiers = flags & ~User.UserFlag.SYSTEM;
-        return new UserEditData(userId, name, avatarId, base | modifiers);
+        return new UserEditBuilder()
+                .setUserId(userId)
+                .setName(name)
+                .setAvatarId(avatarId)
+                .setUserFlags(base | modifiers)
+                .setReplace(true)
+                .build();
     }
 
     @Nonnull

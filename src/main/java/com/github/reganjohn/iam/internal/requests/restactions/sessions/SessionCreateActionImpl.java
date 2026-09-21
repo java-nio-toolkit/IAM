@@ -45,6 +45,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionCreateAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.utils.sessions.SessionCreateBuilder;
 import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
@@ -397,7 +398,14 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         String userAgent = request.getHeaders().get("User-Agent");
         String thumbprint = context.digest();
         UUID userId = UUID.fromString(subject);
-        return new SessionCreateData(userId, sessionId.toUUID(), userAgent, entryData, 0, thumbprint);
+        return new SessionCreateBuilder()
+                .setUserId(userId)
+                .setSessionId(sessionId.toUUID())
+                .setUserAgent(userAgent)
+                .setAccessEntry(entryData)
+                .setSessionFlags(0)
+                .setThumbprint(thumbprint)
+                .build();
     }
 
     @Nonnull

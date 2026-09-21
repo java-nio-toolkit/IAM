@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.utils.webhooks;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 
 import javax.annotation.Nonnull;
@@ -25,7 +26,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
 
-public class WebhookCreateData implements WebhookData
+public class WebhookCreateData implements WebhookData, SerializableData, InteractionMapping
 {
     private final UUID webhookId;
     private final String name;
@@ -36,7 +37,7 @@ public class WebhookCreateData implements WebhookData
     private final OffsetDateTime updatedAt;
     private final long flags;
 
-    public WebhookCreateData(@Nonnull UUID id, @Nonnull String name, @Nonnull UUID userId, @Nullable String avatarId,
+    protected WebhookCreateData(@Nonnull UUID id, @Nonnull String name, @Nonnull UUID userId, @Nullable String avatarId,
                              long scopes, @Nonnull String url, @Nonnull OffsetDateTime updatedAt, long flags)
     {
         this.webhookId = id;

@@ -36,9 +36,10 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookEditAction;
+import com.github.reganjohn.iam.api.utils.webhooks.WebhookEditBuilder;
+import com.github.reganjohn.iam.api.utils.webhooks.WebhookEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookActionImpl;
-import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
@@ -248,7 +249,7 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
     {
         Checks.notNull(webhook, "Webhook");
         Checks.notNull(rawBody, "Body");
-        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :url, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", mapFromData(webhook, rawBody))
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :url, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", fromData(webhook, rawBody))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
@@ -264,17 +265,18 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
     }
 
     @Nonnull
-    private InteractionMapping mapFromData(@Nonnull Webhook webhook, @Nonnull DataObject rawBody)
+    private WebhookEditData fromData(@Nonnull Webhook webhook, @Nonnull DataObject rawBody)
     {
-        return new InteractionMapping.Builder()
-                .put("owner_id", webhook.getOwnerId())
-                .put("webhook_id", webhook.getUniqueId())
-                .put("name", rawBody.getString("name", webhook.getName()))
-                .put("avatar_id", rawBody.getString("avatar_id", webhook.getAvatarId()))
-                .put("endpoint", rawBody.getString("url", webhook.getUrl()))
-                .put("scopes", rawBody.getLong("scopes", webhook.getScopesRaw()))
-                .put("flags", webhook.getFlagsRaw())
-                .put("updated_at", OffsetDateTime.now())
+        return new WebhookEditBuilder()
+                .setOwnerId(webhook.getOwnerId())
+                .setUniqueId(webhook.getUniqueId())
+                .setName(rawBody.getString("name", webhook.getName()))
+                .setAvatarId(rawBody.getString("avatar_id", webhook.getAvatarId()))
+                .setUrl(rawBody.getString("url", webhook.getUrl()))
+                .setScopes(rawBody.getLong("scopes", webhook.getScopesRaw()))
+                .setFlags(webhook.getFlagsRaw())
+                .setTimeUpdated(OffsetDateTime.now())
+                .setReplace(true)
                 .build();
     }
 

@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.utils.users;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import org.jetbrains.annotations.Unmodifiable;
 
@@ -25,15 +26,20 @@ import javax.annotation.Nullable;
 import java.util.Map;
 import java.util.UUID;
 
-public class UserEditData implements UserData
+public class UserEditData implements UserData, SerializableData, InteractionMapping
 {
+    private final int configuredFields;
+    private final boolean isReplace;
     private final UUID userId;
     private final String username;
     private final String avatarId;
     private final long flags;
 
-    public UserEditData(@Nonnull UUID userId, @Nonnull String name, @Nullable String avatarId, long flags)
+    protected UserEditData(int configuredFields, boolean isReplace, @Nonnull UUID userId, @Nonnull String name,
+                        @Nullable String avatarId, long flags)
     {
+        this.configuredFields = configuredFields;
+        this.isReplace = isReplace;
         this.userId = userId;
         this.username = name;
         this.avatarId = avatarId;
@@ -65,6 +71,21 @@ public class UserEditData implements UserData
     public long getRawUserFlags()
     {
         return flags;
+    }
+
+    protected int getConfiguredFields()
+    {
+        return configuredFields;
+    }
+
+    protected boolean isReplace()
+    {
+        return isReplace;
+    }
+
+    protected boolean isSet(int flag)
+    {
+        return isReplace || (configuredFields & flag) != 0;
     }
 
     @Nonnull
