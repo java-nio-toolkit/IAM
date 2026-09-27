@@ -37,7 +37,7 @@ import com.github.reganjohn.iam.api.requests.restactions.applications.Applicatio
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -109,7 +109,7 @@ public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataObject successObj)
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }
 
     @Nonnull

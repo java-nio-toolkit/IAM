@@ -21,30 +21,26 @@ import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.internal.managers.AbstractInteractionObjectManagerImpl;
-import com.github.adamorgan.jnt.internal.utils.Helpers;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.MultiValuedMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class CacheOverrideManagerImpl extends AbstractInteractionObjectManagerImpl
 {
     @Override
-    public void handleResponse(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull Response response)
+    public void handleResponse(@Nonnull ChannelHandlerContext context, @Nullable Request request, @Nonnull Response response)
     {
-        Map<String, String> headers = finalizeHeaders();
-        for (Map.Entry<String, String> entry : headers.entrySet())
-        {
-            MultiValuedMap<String, String> map = response.getHeaders();
-            if (!Helpers.contains(map, entry.getKey(), true))
-            {
-                map.put(entry.getKey(), entry.getValue());
-            }
-        }
+        Map<String, String> map = finalizeHeaders();
+        CaseInsensitiveMap<String, List<String>> headers = new CaseInsensitiveMap<>();
+        map.forEach((k, v) -> headers.put(k, Collections.singletonList(v)));
+        headers.forEach(response.getHeaders()::putIfAbsent);
     }
 
     @Nonnull
@@ -60,7 +56,7 @@ public class CacheOverrideManagerImpl extends AbstractInteractionObjectManagerIm
     @Override
     public boolean filter(@Nullable Request request, @Nonnull Response response)
     {
-        return filter(request.getRoute().getMethod());
+        return request != null && filter(request.getRoute().getMethod());
     }
 
     private boolean filter(@Nonnull Method method)

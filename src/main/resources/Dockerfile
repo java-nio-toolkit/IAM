@@ -1,6 +1,7 @@
 FROM cassandra:6.0-alpha2
 
 COPY init.cql /init.cql
+COPY docker-entrypoint-wrapper.sh /docker-entrypoint-wrapper.sh
 
 RUN sed -i \
     -e 's/^rpc_address:.*/rpc_address: 0.0.0.0/' \
@@ -11,6 +12,10 @@ RUN sed -i \
     -e 's|^#  journal_directory:.*|  journal_directory: /var/lib/cassandra/data/journal|' \
     /etc/cassandra/cassandra.yaml && \
     mkdir -p /var/lib/cassandra/data/journal /opt/cassandra/data && \
-    chown -R cassandra:cassandra /var/lib/cassandra /opt/cassandra
+    chown -R cassandra:cassandra /var/lib/cassandra /opt/cassandra && \
+    chmod +x /docker-entrypoint-wrapper.sh
 
 EXPOSE 7000 7199 9042
+
+ENTRYPOINT ["/docker-entrypoint-wrapper.sh"]
+CMD ["cassandra", "-f"]

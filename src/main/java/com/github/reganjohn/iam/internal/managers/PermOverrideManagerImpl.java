@@ -34,7 +34,6 @@ import com.github.reganjohn.iam.api.exceptions.InsufficientPermissionException;
 import com.github.reganjohn.iam.api.managers.PermOverrideManager;
 import com.github.reganjohn.iam.api.requests.Routes;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;

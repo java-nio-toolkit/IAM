@@ -32,7 +32,7 @@ import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
@@ -114,7 +114,7 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
                 .toData();
 
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, json.toBinary(), true);
-        Response response = new Response(context, StatusReason.TOO_MANY_REQUESTS, new ArrayListValuedHashMap<>(), body);
+        Response response = new Response(context, StatusReason.TOO_MANY_REQUESTS, new CaseInsensitiveMap<>(), body);
         context.writeAndFlush(response);
     }
 
@@ -145,7 +145,7 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
                                @Nonnull StatusReason reason)
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
-        Response response = new Response(context, reason, new ArrayListValuedHashMap<>(), body);
+        Response response = new Response(context, reason, new CaseInsensitiveMap<>(), body);
         context.writeAndFlush(response);
     }
 

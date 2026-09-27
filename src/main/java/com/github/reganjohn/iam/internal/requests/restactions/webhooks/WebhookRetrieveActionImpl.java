@@ -37,8 +37,7 @@ import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookRetriev
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookActionImpl;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -110,6 +109,6 @@ public class WebhookRetrieveActionImpl extends AbstractWebhookActionImpl impleme
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataObject successObj)
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }
 }

@@ -18,11 +18,9 @@ package com.github.reganjohn.iam.internal;
 
 import com.github.adamorgan.jnt.api.JNT;
 import com.github.adamorgan.jnt.api.JNTBuilder;
-import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.socket.DefaultSocketManagerBuilder;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.JNTImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicRequestSendHandlerImpl;
@@ -61,11 +59,8 @@ import com.reganjohn.c4j.api.utils.Compression;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
-import com.reganjohn.c4j.internal.managers.SecretAccessManagerImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionCreateActionImpl;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -73,7 +68,6 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.security.Security;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class IAMImpl implements IAM
@@ -94,7 +88,7 @@ public class IAMImpl implements IAM
 
     public static void main(String[] args) throws Exception
     {
-        new IAMImpl(8080, true);
+        new IAMImpl(8080);
     }
 
     @Nonnull
@@ -127,7 +121,7 @@ public class IAMImpl implements IAM
                 .build();
     }
 
-    public IAMImpl(int port, boolean isTest) throws Exception
+    public IAMImpl(int port) throws Exception
     {
         List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jca = buildInstance().awaitReady();

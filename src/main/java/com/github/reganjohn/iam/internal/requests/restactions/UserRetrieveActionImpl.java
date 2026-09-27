@@ -32,8 +32,7 @@ import com.github.reganjohn.iam.api.requests.restactions.UserRetrieveAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -98,7 +97,7 @@ public class UserRetrieveActionImpl extends AbstractUserActionImpl implements Us
     public void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull User user)
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, fromJSON(user), true);
-        Response response = new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body);
+        Response response = new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body);
         context.writeAndFlush(response);
     }
 

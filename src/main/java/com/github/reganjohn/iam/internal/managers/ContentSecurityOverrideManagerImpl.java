@@ -29,6 +29,8 @@ import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -46,7 +48,7 @@ public class ContentSecurityOverrideManagerImpl extends AbstractInteractionObjec
     @Override
     public void handleResponse(@Nonnull ChannelHandlerContext context, @Nullable Request request, @Nonnull Response response)
     {
-        response.getHeaders().putAll(headers);
+        headers.forEach((key, value) -> response.getHeaders().put(key, new ArrayList<>(List.of(value))));
     }
 
     @Override

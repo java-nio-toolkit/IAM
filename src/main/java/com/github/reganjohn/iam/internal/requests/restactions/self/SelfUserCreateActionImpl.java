@@ -58,7 +58,7 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImp
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -221,39 +221,39 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
             String identifier = api.getJNT().getIdentifierString();
             UUIDv7 userId = UUIDv7.randomUUID();
             AccessObjectData json = EntityBuilder.createObjectData(uniqueId, identifier, userId.toString(), manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
-            UserCreateData rawData = fromData(request, data, contextData, userId.toUUID(), rawBody, sessionData);
+            UserCreateData rawData = fromUserData(request, data, contextData, userId.toUUID(), rawBody, sessionData);
             create(rawData).queue(success -> handleSuccess(context, json), context::fireExceptionCaught);
         }
     }
 
     @Nonnull
-    private UserCreateData fromData(@Nonnull Request request, @Nonnull ProofObjectData assertData,
-                                    @Nonnull AccessContextData context, @Nonnull UUID userId,
-                                    @Nonnull DataObject rawData, @Nonnull DataObject sessionData)
+    private UserCreateData fromUserData(@Nonnull Request request, @Nonnull ProofObjectData assertData,
+                                        @Nonnull AccessContextData context, @Nonnull UUID userId,
+                                        @Nonnull DataObject rawData, @Nonnull DataObject rawSessionData)
     {
-        String name = rawData.getString("username");
-        String thumbprint = context.digest();
-        AccessEntryData entryData = assertData.getEntryData();
-        byte[] rawPublicKey = entryData.getPublic().getEncoded();
-        UUID sessionId = UUIDv7.nameUUIDFromBytes(rawPublicKey).toUUID();
-        String avatarId = rawData.getString("avatar_id", null);
-        String agent = Helpers.get(request.getHeaders(), "User-Agent");
-        long userFlags = rawData.getLong("flags", 0) & ~User.UserFlag.SYSTEM;
-        long sessionFlags = sessionData.getLong("flags", 0) & ~Session.SessionFlag.SYSTEM;
-        SessionCreateData session = new SessionCreateBuilder()
-                .setUserId(userId)
-                .setSessionId(sessionId)
-                .setUserAgent(agent)
-                .setAccessEntry(entryData)
-                .setSessionFlags(sessionFlags)
-                .setThumbprint(thumbprint)
-                .build();
+        SessionCreateData sessionData = fromSessionData(context, request, userId, assertData, rawSessionData);
         return new UserCreateBuilder()
                 .setUserId(userId)
-                .setName(name)
-                .setAvatarId(avatarId)
-                .setUserFlags(userFlags)
-                .setSession(session)
+                .setName(rawData.getString("username"))
+                .setAvatarId(rawData.getString("avatar_id", null))
+                .setUserFlags(rawData.getLong("flags", 0) & ~User.UserFlag.SYSTEM)
+                .setSession(sessionData)
+                .build();
+    }
+
+    @Nonnull
+    private SessionCreateData fromSessionData(@Nonnull AccessContextData context, @Nonnull Request request,
+                                              @Nonnull UUID userId, @Nonnull ProofObjectData assertData,
+                                              @Nonnull DataObject sessionData)
+    {
+        AccessEntryData access = assertData.getEntryData();
+        return new SessionCreateBuilder()
+                .setUserId(userId)
+                .setSessionId(UUIDv7.nameUUIDFromBytes(access.getPublic().getEncoded()).toUUID())
+                .setUserAgent(Helpers.get(request.getHeaders(), "User-Agent"))
+                .setAccessEntry(access)
+                .setSessionFlags(sessionData.getLong("flags", 0) & ~Session.SessionFlag.SYSTEM)
+                .setThumbprint(context.digest())
                 .build();
     }
 
@@ -280,6 +280,6 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), objectData.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.CREATED, new ArrayListValuedHashMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.CREATED, new CaseInsensitiveMap<>(), body));
     }
 }

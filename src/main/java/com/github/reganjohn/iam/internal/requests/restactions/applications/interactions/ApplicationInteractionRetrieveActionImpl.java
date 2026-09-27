@@ -61,7 +61,7 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImp
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
@@ -259,7 +259,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
     }
 
     @Nonnull
@@ -306,7 +306,8 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         {
             LOG.debug("Sending interaction request on route {}", route.getRoute());
             Route.CompiledRoute route = this.route.compile();
-            ArrayListValuedHashMap<String, String> headers = new ArrayListValuedHashMap<>(Collections.singletonMap("Forwarded", "proto=http"));
+            CaseInsensitiveMap<String, List<String>> headers = new CaseInsensitiveMap<>();
+            headers.put("Forwarded", new ArrayList<>(List.of("proto=http")));
             List<ReceivedCookie> cookies = Collections.emptyList();
             context.writeAndFlush(new Request(context, this, route, headers, null, cookies));
         }

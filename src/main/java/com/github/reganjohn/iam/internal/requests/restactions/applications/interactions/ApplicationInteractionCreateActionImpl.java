@@ -47,7 +47,7 @@ import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -221,8 +221,9 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                               @Nonnull ApplicationContextInteraction interaction)
     {
         String uri = getRouteCompile(interaction).getCompiledRoute();
-        Map<String, String> headers = Collections.singletonMap("Location", uri);
-        context.writeAndFlush(new Response(context, StatusReason.CREATED, new ArrayListValuedHashMap<>(headers)))
+        CaseInsensitiveMap<String, List<String>> headers = new CaseInsensitiveMap<>();
+        headers.put("Location", new ArrayList<>(List.of(uri)));
+        context.writeAndFlush(new Response(context, StatusReason.CREATED, headers))
                 .addListener(successObj ->
                 {
                     if (successObj.isSuccess())

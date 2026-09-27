@@ -39,7 +39,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.MultiValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.collections4.multimap.AbstractMultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
@@ -96,7 +96,7 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new ArrayListValuedHashMap<>()));
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
     }
 
     private static class Placeholder
