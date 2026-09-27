@@ -18,7 +18,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
@@ -91,7 +91,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM global.public_keys WHERE thumbprint = ?", Collections.singletonList(thumbprint))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Boolean> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -122,7 +122,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM global.public_keys WHERE thumbprint = ?", Collections.singletonList(context.digest()))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Boolean> interaction,
                                       @Nonnull BufferArray array) throws Exception
             {
@@ -163,7 +163,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_issued_signer.cql"), mapFromData(snapshot))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -186,7 +186,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                     .put("kid", snapshot.getUniqueId())
                     .put("alg", getSignType().getName())
                     .put("kty", snapshot.getType().name())
-                    .put("usage", snapshot.getRawUsage())
+                    .put("usage", snapshot.getUsageRaw())
                     .put("flags", AccessEntryFlag.getRaw(AccessEntryFlag.ISSUED))
                     .put("thumbprint", context.digest())
                     .put("public_key", snapshot.getPublic().getEncoded())

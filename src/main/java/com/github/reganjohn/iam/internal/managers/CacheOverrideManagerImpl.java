@@ -21,7 +21,9 @@ import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.internal.managers.AbstractInteractionObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.MultiValuedMap;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.Nonnull;
@@ -35,7 +37,14 @@ public class CacheOverrideManagerImpl extends AbstractInteractionObjectManagerIm
     public void handleResponse(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull Response response)
     {
         Map<String, String> headers = finalizeHeaders();
-        headers.forEach(response.getHeaders()::putIfAbsent);
+        for (Map.Entry<String, String> entry : headers.entrySet())
+        {
+            MultiValuedMap<String, String> map = response.getHeaders();
+            if (!Helpers.contains(map, entry.getKey(), true))
+            {
+                map.put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     @Nonnull

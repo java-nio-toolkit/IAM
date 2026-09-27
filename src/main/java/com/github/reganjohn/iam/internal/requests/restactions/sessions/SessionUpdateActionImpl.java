@@ -51,7 +51,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.concurrent.FastThreadLocal;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import io.netty.util.internal.StringUtil;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -119,7 +121,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        String accessToken = request.getHeaders().get("Authorization").split(" ")[1];
+        String accessToken = Helpers.get(request.getHeaders(), "Authorization").split(" ")[1];
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessObjectData json = EntityBuilder.createAccessObject(accessToken);
         MessageDigest messageDigest = SHA256.get();
@@ -202,6 +204,6 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body));
     }
 }

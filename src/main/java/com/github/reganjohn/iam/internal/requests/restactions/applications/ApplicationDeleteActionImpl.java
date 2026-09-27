@@ -34,7 +34,8 @@ import com.github.reganjohn.iam.api.requests.restactions.applications.Applicatio
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
@@ -103,6 +104,6 @@ public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl i
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new ArrayListValuedHashMap<>()));
     }
 }

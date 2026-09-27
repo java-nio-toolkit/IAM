@@ -52,12 +52,12 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionAct
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -352,7 +352,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         String crv = rawData.getString(ProofObjectManager.CRV);
         if (signType == SignType.NONE || signType == SignType.UNKNOWN)
             throw createParsingException(ProofObjectManager.CRV, EntityBuilder.SIGN_TYPE_NAMES.get(rawType));
-        else if (signType.hasExtension() && !Helpers.equals(crv, signType.getRawName(), true))
+        else if (signType.hasExtension() && !Helpers.equals(crv, signType.getNameRaw(), true))
             throw createParsingException(ProofObjectManager.CRV, signType);
     }
 
@@ -395,7 +395,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublic().getEncoded());
         String subject = data.getSubject();
-        String userAgent = request.getHeaders().get("User-Agent");
+        String userAgent = Helpers.get(request.getHeaders(), "User-Agent");
         String thumbprint = context.digest();
         UUID userId = UUID.fromString(subject);
         return new SessionCreateBuilder()
@@ -428,7 +428,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_session.cql"), session)
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (array.isEmpty())
@@ -443,6 +443,6 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.CREATED, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.CREATED, new ArrayListValuedHashMap<>(), body));
     }
 }

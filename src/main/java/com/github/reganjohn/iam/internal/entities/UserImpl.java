@@ -29,7 +29,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
@@ -92,7 +92,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.public_keys WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<AccessEntryArray> interaction,
                                       @Nonnull BufferArray array) throws Exception
             {
@@ -112,7 +112,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.public_keys WHERE user_id = ? AND thumbprint = ?", Arrays.asList(userId, thumbprint))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<AccessEntryData> interaction,
                                       @Nonnull BufferArray array) throws Exception
             {
@@ -132,7 +132,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.sessions WHERE user_id = ? AND session_id = ?", Arrays.asList(userId, sessionId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Session> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -151,7 +151,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<List<Session>> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -167,7 +167,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
                 request.onSuccess((int) InteractionUtil.count(array));
@@ -183,7 +183,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.webhooks WHERE owner_id = ? AND webhook_id = ?", Arrays.asList(userId, webhookId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Webhook> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -202,7 +202,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<List<Webhook>> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -218,7 +218,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
                 request.onSuccess((int) InteractionUtil.count(array));
@@ -234,7 +234,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Application> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -253,7 +253,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<List<Application>> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -269,7 +269,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
                 request.onSuccess((int) InteractionUtil.count(array));
@@ -285,7 +285,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.entitlements WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<PermissionOverride> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -304,7 +304,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.entitlements WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<List<PermissionOverride>> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -330,7 +330,7 @@ public class UserImpl implements User
         return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.accounts SET flags = ? WHERE user_id = ? IF EXISTS", Arrays.asList(flags, userId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (InteractionUtil.isDone(array))

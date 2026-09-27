@@ -36,7 +36,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -123,6 +123,6 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new ArrayListValuedHashMap<>()));
     }
 }

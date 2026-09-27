@@ -24,7 +24,6 @@ import com.github.adamorgan.jnt.api.interactions.middle.content.context.*;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.internal.managers.AbstractInteractionObjectManagerImpl;
-import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import io.netty.channel.ChannelHandlerContext;
 import org.jetbrains.annotations.Unmodifiable;
 
@@ -80,8 +79,8 @@ public class ContentSecurityOverrideManagerImpl extends AbstractInteractionObjec
                 .setInteractionResource(InteractionResourceType.SAME_ORIGIN)
                 .setPermittedPolicy(PermittedPolicy.NONE)
                 .setDisabledPermission(InteractionPermission.getPermissions(PERMISSIONS))
-                .withContentMode(ContentSecurityContext.Mode.BLOCK)
-                .withContentFlag(ContentSecurityContext.Flag.DENY)
+                .setContentMode(ContentSecurityContext.Mode.BLOCK)
+                .setContentFlag(ContentSecurityContext.Flag.DENY)
                 .toMap();
     }
 

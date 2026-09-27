@@ -53,12 +53,12 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserAction
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -237,7 +237,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         byte[] rawPublicKey = entryData.getPublic().getEncoded();
         UUID sessionId = UUIDv7.nameUUIDFromBytes(rawPublicKey).toUUID();
         String avatarId = rawData.getString("avatar_id", null);
-        String agent = request.getHeaders().get("User-Agent");
+        String agent = Helpers.get(request.getHeaders(), "User-Agent");
         long userFlags = rawData.getLong("flags", 0) & ~User.UserFlag.SYSTEM;
         long sessionFlags = sessionData.getLong("flags", 0) & ~Session.SessionFlag.SYSTEM;
         SessionCreateData session = new SessionCreateBuilder()
@@ -265,7 +265,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_account.cql"), user)
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (array.isEmpty())
@@ -280,6 +280,6 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), objectData.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.CREATED, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.CREATED, new ArrayListValuedHashMap<>(), body));
     }
 }

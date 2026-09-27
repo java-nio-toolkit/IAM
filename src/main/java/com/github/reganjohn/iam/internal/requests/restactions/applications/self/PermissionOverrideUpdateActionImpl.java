@@ -52,7 +52,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.concurrent.FastThreadLocal;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.CheckReturnValue;
@@ -128,7 +128,7 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        String accessToken = request.getHeaders().get("Authorization").split(" ")[1];
+        String accessToken = Helpers.get(request.getHeaders(), "Authorization").split(" ")[1];
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         AccessObjectData json = EntityBuilder.createAccessObject(accessToken);
         MessageDigest messageDigest = SHA256.get();
@@ -234,7 +234,7 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body));
     }
 
     @Nonnull

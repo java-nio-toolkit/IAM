@@ -94,7 +94,7 @@ public class UserCreateData implements UserData, SerializableData, InteractionMa
                 .put("kid", session.getAccessEntry().getUniqueId())
                 .put("kty", session.getAccessEntry().getType().name())
                 .put("alg", session.getAccessEntry().getMode().getName())
-                .put("usage", session.getAccessEntry().getRawUsage())
+                .put("usage", session.getAccessEntry().getUsageRaw())
                 .put("public_key", session.getAccessEntry().getPublic().getEncoded())
                 .put("thumbprint", session.getThumbprint())
                 .toMap();
@@ -111,7 +111,7 @@ public class UserCreateData implements UserData, SerializableData, InteractionMa
                 .put("kid", session.getAccessEntry().getUniqueId())
                 .put("kty", session.getAccessEntry().getType().name())
                 .put("alg", session.getAccessEntry().getMode().getName())
-                .put("usage", session.getAccessEntry().getRawUsage())
+                .put("usage", session.getAccessEntry().getUsageRaw())
                 .put("public_key", session.getAccessEntry().getPublic().getEncoded())
                 .put("thumbprint", session.getThumbprint())
                 .toData();

@@ -27,6 +27,7 @@ import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserDeleteActi
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.Nonnull;
 import java.util.UUID;
@@ -51,6 +52,6 @@ public class SelfUserDeleteActionImpl extends AbstractUserActionImpl implements 
 
     public void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new ConcurrentHashMap<>()));
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new ArrayListValuedHashMap<>()));
     }
 }

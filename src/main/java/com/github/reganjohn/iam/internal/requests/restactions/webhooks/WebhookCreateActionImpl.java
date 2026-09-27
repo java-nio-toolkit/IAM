@@ -46,7 +46,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookAct
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -229,7 +229,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
         return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_webhook.cql"), webhook)
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (array.isEmpty())

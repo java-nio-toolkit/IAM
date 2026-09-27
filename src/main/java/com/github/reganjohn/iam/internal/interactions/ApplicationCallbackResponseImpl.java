@@ -26,7 +26,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
@@ -109,7 +109,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
         return new InteractionContextActionImpl<>(api.getJCA(), "DELETE FROM integrations.responses WHERE application_id = ? AND interaction_id = ? IF EXISTS", Arrays.asList(getApplicationId(), getInteractionId()))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<ApplicationCallbackResponse> interaction,
                                       @Nonnull BufferArray array)
             {

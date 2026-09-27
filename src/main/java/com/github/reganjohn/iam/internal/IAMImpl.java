@@ -36,7 +36,6 @@ import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
-import com.github.reganjohn.iam.archive.AdaMorganClientV2;
 import com.github.reganjohn.iam.internal.managers.*;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.*;
@@ -61,7 +60,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.Compression;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.managers.SecretAccessManagerImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionCreateActionImpl;
@@ -202,13 +201,6 @@ public class IAMImpl implements IAM
 
                 .addEventListeners(new ErrorObjectManagerImpl(true))
                 .build();
-
-        if (isTest)
-        {
-            TimeUnit.SECONDS.sleep(2);
-            AdaMorganClientV2 clientV2 = new AdaMorganClientV2();
-            clientV2.startTest();
-        }
     }
 
     public void cleanup()
@@ -277,7 +269,7 @@ public class IAMImpl implements IAM
         return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.accounts WHERE user_id = ?", Collections.singletonList(id))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<User> request, @Nonnull BufferArray array)
             {
                 if (!array.isEmpty() && !EntityBuilder.isDelete(array))

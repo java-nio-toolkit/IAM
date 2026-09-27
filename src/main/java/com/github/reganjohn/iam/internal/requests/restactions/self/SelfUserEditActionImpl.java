@@ -41,10 +41,11 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserAction
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -190,7 +191,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.accounts SET username = :username, flags = :flags WHERE user_id = :user_id IF EXISTS", user)
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (InteractionUtil.isDone(array))
@@ -203,6 +204,6 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new ConcurrentHashMap<>()));
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new ArrayListValuedHashMap<>()));
     }
 }

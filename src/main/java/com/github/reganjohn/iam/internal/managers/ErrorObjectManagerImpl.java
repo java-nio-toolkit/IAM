@@ -25,35 +25,25 @@ import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
-import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
-import javax.swing.table.TableRowSorter;
 import java.io.IOException;
 import java.security.SignatureException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringJoiner;
 
 public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 {
     public static final Logger LOG = JNTLogger.getLog(ErrorObjectManagerImpl.class);
 
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
-
-    private static final String ERROR_AUTHORIZATION = "WWW-Authenticate";
 
     private final boolean printStackTrace;
 
@@ -72,8 +62,6 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, ErrorResponse.INVALID_REQUEST_BODY, StatusReason.BAD_REQUEST);
         else if (error instanceof RateLimitedException)
             handleFailure(context, request, (RateLimitedException) error);
-        else if (error instanceof ProofAccessException)
-            handleFailure(context, (ProofAccessException) error);
         else if (error instanceof InvalidTokenException)
             handleFailure(context, ErrorResponse.INVALID_TOKEN, StatusReason.UNAUTHORIZED);
         else if (error instanceof MissingAccessException)
@@ -126,62 +114,13 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
                 .toData();
 
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, json.toBinary(), true);
-        Response response = new Response(context, StatusReason.TOO_MANY_REQUESTS, new CaseInsensitiveMap<>(), body);
+        Response response = new Response(context, StatusReason.TOO_MANY_REQUESTS, new ArrayListValuedHashMap<>(), body);
         context.writeAndFlush(response);
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull SignatureException error)
     {
         handleFailure(context, 0, error.getMessage(), StatusReason.UNAUTHORIZED);
-    }
-
-    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ProofAccessException error)
-    {
-        Map<String, String> headers = new HashMap<>();
-
-        if (Helpers.nonEmpty(error.getNonce()))
-            headers.put("DPoP-Nonce", error.getNonce());
-
-        handleProofAccess(headers, error);
-        ErrorResponseException exception = new ErrorResponseException(50001, error.getMessage());
-        handleFailure(context, exception, headers, StatusReason.UNAUTHORIZED);
-    }
-
-    private void handleProofAccess(@Nonnull Map<String, String> headers, @Nonnull ProofAccessException error)
-    {
-        StringBuilder builder = new StringBuilder(error.getType());
-        appendTo(builder, "realm", error.getScope());
-        appendTo(builder, "algs", getAllowModes());
-        if (Helpers.nonEmpty(error.getCode()))
-            appendTo(builder, "error", error.getCode());
-        if (Helpers.nonEmpty(error.getMeaning()))
-            appendTo(builder, "error_description", error.getMeaning());
-        if (Helpers.nonEmpty(error.getNonce()))
-            appendTo(builder, "next_nonce", error.getNonce());
-        headers.put(ERROR_AUTHORIZATION, builder.toString());
-    }
-
-    private void appendTo(StringBuilder builder, String key, String value)
-    {
-        if (builder.indexOf(" ") != -1)
-            builder.append(",");
-        builder.append(" ")
-                .append(key)
-                .append("=\"")
-                .append(value)
-                .append("\"");
-    }
-
-    @Nonnull
-    private String getAllowModes()
-    {
-        StringJoiner joiner = new StringJoiner(" ");
-        for (SignType type : SignType.values())
-        {
-            if (type.getType() != AccessEntryType.NONE)
-                joiner.add(type.getName());
-        }
-        return joiner.toString();
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull MissingAccessException error)
@@ -193,26 +132,20 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     private void handleFailure(@Nonnull ChannelHandlerContext context, ErrorResponse errorResponse,
                                @Nonnull StatusReason reason)
     {
-        handleFailure(context, new ErrorResponseException(errorResponse), Collections.emptyMap(), reason);
+        handleFailure(context, new ErrorResponseException(errorResponse), reason);
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, int code, @Nonnull String meaning,
                                @Nonnull StatusReason reason)
     {
-        handleFailure(context, new ErrorResponseException(code, meaning), Collections.emptyMap(), reason);
+        handleFailure(context, new ErrorResponseException(code, meaning), reason);
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse,
                                @Nonnull StatusReason reason)
     {
-        handleFailure(context, errorResponse, Collections.emptyMap(), reason);
-    }
-
-    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse,
-                               @Nonnull Map<String, String> header, @Nonnull StatusReason reason)
-    {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
-        Response response = new Response(context, reason, new CaseInsensitiveMap<>(header), body);
+        Response response = new Response(context, reason, new ArrayListValuedHashMap<>(), body);
         context.writeAndFlush(response);
     }
 

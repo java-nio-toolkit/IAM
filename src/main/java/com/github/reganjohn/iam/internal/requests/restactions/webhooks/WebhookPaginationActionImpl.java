@@ -33,7 +33,8 @@ import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookPaginat
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookActionImpl;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -66,7 +67,7 @@ public class WebhookPaginationActionImpl extends AbstractWebhookActionImpl imple
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body));
     }
 
     @Nonnull

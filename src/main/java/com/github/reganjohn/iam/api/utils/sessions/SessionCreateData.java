@@ -98,7 +98,7 @@ public class SessionCreateData implements SessionData, SerializableData, Interac
                 .put("alg", entryData.getMode().getName())
                 .put("kid", entryData.getUniqueId())
                 .put("kty", entryData.getType().name())
-                .put("usage", entryData.getRawUsage())
+                .put("usage", entryData.getUsageRaw())
                 .put("access_flags", 0L)
                 .put("thumbprint", thumbprint)
                 .put("public_key", entryData.getPublic().getEncoded())

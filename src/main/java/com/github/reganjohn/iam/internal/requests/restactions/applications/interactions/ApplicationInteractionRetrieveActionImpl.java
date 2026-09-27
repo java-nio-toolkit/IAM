@@ -56,12 +56,12 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
@@ -211,7 +211,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.responses WHERE application_id = ? AND interaction_id = ?", Arrays.asList(applicationId, interactionId))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<ApplicationCallbackResponse> interaction,
                                       @Nonnull BufferArray array)
             {
@@ -259,7 +259,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataArray successObj)
     {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.OK, new ArrayListValuedHashMap<>(), body));
     }
 
     @Nonnull
@@ -306,7 +306,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         {
             LOG.debug("Sending interaction request on route {}", route.getRoute());
             Route.CompiledRoute route = this.route.compile();
-            CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>(Collections.singletonMap("Forwarded", "proto=http"));
+            ArrayListValuedHashMap<String, String> headers = new ArrayListValuedHashMap<>(Collections.singletonMap("Forwarded", "proto=http"));
             List<ReceivedCookie> cookies = Collections.emptyList();
             context.writeAndFlush(new Request(context, this, route, headers, null, cookies));
         }

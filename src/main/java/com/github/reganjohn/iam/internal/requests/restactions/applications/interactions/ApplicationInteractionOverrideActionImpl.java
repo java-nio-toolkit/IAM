@@ -42,7 +42,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
@@ -141,7 +141,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
                                @Nonnull ApplicationContextInteraction interaction)
     {
         Map<String, String> headers = Collections.singletonMap("Location", withQueryParam(interaction));
-        context.writeAndFlush(new Response(context, StatusReason.SEE_OTHER, new CaseInsensitiveMap<>(headers)))
+        context.writeAndFlush(new Response(context, StatusReason.SEE_OTHER, new ArrayListValuedHashMap<>(headers)))
                 .addListener(successObj ->
                 {
                     if (successObj.isSuccess())

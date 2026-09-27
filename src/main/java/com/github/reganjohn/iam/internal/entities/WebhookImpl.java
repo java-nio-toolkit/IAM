@@ -24,7 +24,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
@@ -129,7 +129,7 @@ public class WebhookImpl implements Webhook
         return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET flags = ? WHERE owner_id = ? AND webhook_id = ? IF EXISTS", Arrays.asList(flags, userId, id))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
                 if (InteractionUtil.isDone(array))

@@ -43,7 +43,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookAct
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.internal.interactions.response.InteractionCallbackResponseImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
@@ -252,7 +252,7 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
         return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :url, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", fromData(webhook, rawBody))
         {
             @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponseImpl response,
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> interaction,
                                       @Nonnull BufferArray array)
             {

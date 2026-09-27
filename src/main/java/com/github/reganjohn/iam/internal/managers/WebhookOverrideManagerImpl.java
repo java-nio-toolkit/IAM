@@ -40,7 +40,8 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
@@ -180,7 +181,7 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
         {
             LOG.debug("Sending webhook request on route {}", route.getRoute());
             BufferedRequestBody body = new BufferedRequestBody(MEDIA_TYPE_JSON, rawData.toBinary(), true);
-            context.writeAndFlush(new Request(context, route.compile(), new CaseInsensitiveMap<>(), body));
+            context.writeAndFlush(new Request(context, route.compile(), new ArrayListValuedHashMap<>(), body));
         }
 
         @Override

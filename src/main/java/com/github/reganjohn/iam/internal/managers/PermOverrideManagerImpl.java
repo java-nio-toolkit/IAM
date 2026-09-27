@@ -34,18 +34,19 @@ import com.github.reganjohn.iam.api.exceptions.InsufficientPermissionException;
 import com.github.reganjohn.iam.api.managers.PermOverrideManager;
 import com.github.reganjohn.iam.api.requests.Routes;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class PermOverrideManagerImpl extends ClassicObjectManagerImpl implements PermOverrideManager
 {
-    private static final CaseInsensitiveMap<String, Permission> PERMISSIONS = new CaseInsensitiveMap<>(toPermMap());
+    private static final Map<String, Permission> PERMISSIONS = new ConcurrentHashMap<>(toPermMap());
 
     @Override
     public void channelRead0(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
