@@ -1,0 +1,5 @@
+{
+  "kty" : "AKP",
+  "alg" : "ML-DSA-44",
+  "usage" : "sig"
+}

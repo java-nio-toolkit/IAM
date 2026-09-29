@@ -1,0 +1,12 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "username" : {
+      "_errors" : [ {
+        "code" : "STRING_TYPE_MAX",
+        "message" : "The \"username\" may not be longer than 32 characters."
+      } ]
+    }
+  }
+}

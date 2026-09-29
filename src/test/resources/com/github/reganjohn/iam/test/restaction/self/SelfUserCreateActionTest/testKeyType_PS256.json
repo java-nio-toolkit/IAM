@@ -1,0 +1,5 @@
+{
+  "kty" : "RSA",
+  "alg" : "PS256",
+  "usage" : "sig"
+}

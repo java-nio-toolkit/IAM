@@ -1,0 +1,5 @@
+{
+  "kty" : "RSA",
+  "alg" : "RS384",
+  "usage" : "sig"
+}

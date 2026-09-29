@@ -1,0 +1,11 @@
+{
+  "username" : "alice",
+  "avatar_id" : "cid",
+  "flags" : 0,
+  "session" : {
+    "flags" : 2,
+    "thumbprint" : "thumbprint",
+    "user_agent" : "iam-test/1.0",
+    "belongs_to_user" : true
+  }
+}

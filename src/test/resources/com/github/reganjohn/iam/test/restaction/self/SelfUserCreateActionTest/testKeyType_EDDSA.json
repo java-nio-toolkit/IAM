@@ -1,0 +1,5 @@
+{
+  "kty" : "OKP",
+  "alg" : "EdDSA",
+  "usage" : "sig"
+}
