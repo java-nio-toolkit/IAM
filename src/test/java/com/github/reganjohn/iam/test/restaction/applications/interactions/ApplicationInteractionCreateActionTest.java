@@ -102,7 +102,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
             if (verified)
                 ((Runnable) invocation.getArgument(3)).run();
             return null;
-        }).when(action).verifyClient(any(), any(), any(), any());
+        }).when(action).checkClient(any(), any(), any(), any());
         doReturn(completed(null)).when(action).createInteraction(created.capture());
         return action;
     }
@@ -204,6 +204,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("finish_nonce_empty", grant(finish(finish -> finish.put("nonce", "")))),
                 arguments("finish_nonce_too_short", grant(finish(finish -> finish.put("nonce", "1")))),
                 arguments("finish_nonce_one_below_minimum", grant(finish(finish -> finish.put("nonce", "a".repeat(15))))),
+                arguments("finish_nonce_one_above_maximum", grant(finish(finish -> finish.put("nonce", "a".repeat(257))))),
                 arguments("finish_nonce_not_string", grant(finish(finish -> finish.put("nonce", 5)))),
                 arguments("finish_hash_method_not_string", grant(finish(finish -> finish.put("hash_method", 5)))),
                 arguments("finish_hash_method_unknown", grant(finish(finish -> finish.put("hash_method", "md5")))));
@@ -446,13 +447,14 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThat(((InteractionCreateEvent) events.get(0)).getInteraction()).isSameAs(interaction);
     }
 
-    @Test
-    void testMinimumNonceLength()
+    @ValueSource(ints = {16, 256})
+    @ParameterizedTest
+    void testNonceLengthBounds(int length)
     {
         withProofOfClient();
         withStoredApplication();
         ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
-        String nonce = "a".repeat(16);
+        String nonce = "a".repeat(length);
 
         assertThatGranting(newAction(created, true), grant(finish(finish -> finish.put("nonce", nonce))))
                 .hasStatus(StatusReason.OK.code)
@@ -633,7 +635,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         {
             ((Runnable) invocation.getArgument(3)).run();
             return null;
-        }).when(action).verifyClient(any(), any(), any(), any());
+        }).when(action).checkClient(any(), any(), any(), any());
         doReturn(failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS))).when(action).createInteraction(any());
 
         assertThatGranting(action, grant().toString())
@@ -654,7 +656,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         when(api.getSocketManager()).thenReturn(manager);
         Runnable verified = mock(Runnable.class);
 
-        newAction().verifyClient(context, channel.attr(ProofObjectManagerImpl.CONTEXT).get(), application, verified);
+        newAction().checkClient(context, channel.attr(ProofObjectManagerImpl.CONTEXT).get(), application, verified);
 
         ArgumentCaptor<SocketAddress> address = ArgumentCaptor.forClass(SocketAddress.class);
         verify(manager).connect(address.capture());
@@ -706,10 +708,10 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 .containsEntry("redirect_uri", CALLBACK)
                 .containsEntry("nonce", "client-nonce")
                 .containsEntry("finish", "finish-nonce")
-                .containsEntry("hash_method", "sha-256")
-                .containsEntry("grant_uri", "https://iam.example/grant")
-                .containsEntry("continue_hash", "continue-hash")
-                .containsEntry("client_jkt", "client-thumbprint")
+                .containsEntry("method_hash", "sha-256")
+                .containsEntry("uri", "https://iam.example/grant")
+                .containsEntry("hash", "continue-hash")
+                .containsEntry("client_thumbprint", "client-thumbprint")
                 .containsEntry("label", "my-token")
                 .containsKeys("interaction_id", "expiry");
     }

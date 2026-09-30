@@ -119,7 +119,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
 
     private void verifyKeys(String origin)
     {
-        new ApplicationInteractionCreateActionImpl(api).verifyClient(context, proof(), newApplication(origin), verified::incrementAndGet);
+        new ApplicationInteractionCreateActionImpl(api).checkClient(context, proof(), newApplication(origin), verified::incrementAndGet);
     }
 
     private RestActionImpl handler()
@@ -362,16 +362,15 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     }
 
     @Test
-    void testAnyUnsafeAddressIsRejected() throws Exception
+    void testRebindToUnsafeAddressIsRejected() throws Exception
     {
         withProof(SignType.ED25519);
         SocketManager manager = withConnection();
-        InetAddress safe = InetAddress.getByAddress(new byte[]{93, (byte) 184, (byte) 216, 34});
         InetAddress unsafe = InetAddress.getByAddress(new byte[]{10, 0, 0, 1});
 
         try (MockedStatic<InetAddress> dns = mockStatic(InetAddress.class))
         {
-            dns.when(() -> InetAddress.getAllByName("rebind.test")).thenReturn(new InetAddress[]{safe, unsafe});
+            dns.when(() -> InetAddress.getByName("rebind.test")).thenReturn(unsafe);
 
             verifyKeys("https://rebind.test");
         }
@@ -388,7 +387,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
 
         try (MockedStatic<InetAddress> dns = mockStatic(InetAddress.class))
         {
-            dns.when(() -> InetAddress.getAllByName("pinned.test")).thenReturn(new InetAddress[]{resolved});
+            dns.when(() -> InetAddress.getByName("pinned.test")).thenReturn(resolved);
 
             verifyKeys("https://pinned.test");
         }
@@ -412,7 +411,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
 
         ClassicResponseReceiveHandlerImpl capped = connection.pipeline().get(ClassicResponseReceiveHandlerImpl.class);
         assertThat(capped).isNotSameAs(original);
-        assertThat(capped.getMaxBufferSize()).isEqualTo(ApplicationInteractionCreateActionImpl.MAX_KEYS_LENGTH);
+        assertThat(capped.getMaxBufferSize()).isEqualTo(ApplicationInteractionCreateActionImpl.MAX_ACCESS_LENGTH);
     }
 
     @Test
@@ -422,7 +421,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         withConnection();
         verifyKeys(ORIGIN);
 
-        connection.advanceTimeBy(ApplicationInteractionCreateActionImpl.KEYS_TIMEOUT, TimeUnit.SECONDS);
+        connection.advanceTimeBy(ApplicationInteractionCreateActionImpl.RETRIEVE_ACCESS_TIMEOUT, TimeUnit.SECONDS);
         connection.runScheduledPendingTasks();
 
         assertRejected();
@@ -436,7 +435,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         verifyKeys(ORIGIN);
         deliver(200, new AccessEntryArray(Collections.singletonList(entry)));
 
-        connection.advanceTimeBy(ApplicationInteractionCreateActionImpl.KEYS_TIMEOUT, TimeUnit.SECONDS);
+        connection.advanceTimeBy(ApplicationInteractionCreateActionImpl.RETRIEVE_ACCESS_TIMEOUT, TimeUnit.SECONDS);
         connection.runScheduledPendingTasks();
 
         channel.checkException();

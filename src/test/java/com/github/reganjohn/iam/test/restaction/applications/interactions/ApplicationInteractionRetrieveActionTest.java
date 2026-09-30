@@ -497,6 +497,63 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
     }
 
     @Test
+    void testUserDenied()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        when(response.isDenied()).thenReturn(true);
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.USER_DENIED));
+
+        verify(response).delete();
+    }
+
+    @Test
+    void testDeniedIsNotIssued()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        when(response.isDenied()).thenReturn(true);
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.USER_DENIED));
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testDeniedReferenceIsChecked()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        when(response.isDenied()).thenReturn(true);
+
+        assertThatContinuing(newAction(response), "GNAP " + TOKEN, body("interact_ref", "another-reference"))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION)
+                .whenHandled();
+
+        verify(response, never()).delete();
+    }
+
+    @Test
+    void testDeniedDeleteFailure()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        when(response.isDenied()).thenReturn(true);
+        InteractionCallbackAction<ApplicationCallbackResponse> deletion = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
+        when(response.delete()).thenReturn(deletion);
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class));
+    }
+
+    @Test
     void testCallbackStatement()
     {
         withJCA();

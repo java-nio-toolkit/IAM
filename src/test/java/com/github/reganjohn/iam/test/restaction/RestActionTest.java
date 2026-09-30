@@ -406,8 +406,8 @@ public class RestActionTest extends IntegrationTest
         }
     }
 
-    protected static String interactionHashOf(String clientNonce, String finishNonce, String interactRef, String grantUri)
+    protected static String interactionHashOf(String clientNonce, String finishNonce, String reference, String grantUri)
     {
-        return digestOf(String.join("\n", clientNonce, finishNonce, interactRef, grantUri));
+        return digestOf(String.join("\n", clientNonce, finishNonce, reference, grantUri));
     }
 }
