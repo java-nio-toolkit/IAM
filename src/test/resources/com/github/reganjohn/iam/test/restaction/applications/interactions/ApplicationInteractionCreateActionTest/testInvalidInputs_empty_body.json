@@ -1,0 +1,18 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "permissions" : {
+      "_errors" : [ {
+        "code" : "BASE_TYPE_REQUIRED",
+        "message" : "This field is required"
+      } ]
+    },
+    "redirect_uri" : {
+      "_errors" : [ {
+        "code" : "BASE_TYPE_REQUIRED",
+        "message" : "This field is required"
+      } ]
+    }
+  }
+}

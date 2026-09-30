@@ -154,6 +154,19 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     }
 
     @CheckReturnValue
+    @Contract("_,_->this")
+    public RestActionAssertions hasHeader(@Nonnull String name, @Nonnull String value)
+    {
+        return checkAssertions(outcome ->
+        {
+            assertThat(outcome.response).isNotNull();
+            assertThat(outcome.response.getHeaders().get(name))
+                    .as("RestAction should answer with the expected %s header", name)
+                    .containsExactly(value);
+        });
+    }
+
+    @CheckReturnValue
     @Contract("_->this")
     public RestActionAssertions hasBodyEqualTo(@Nonnull String expected)
     {

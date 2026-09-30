@@ -29,8 +29,10 @@ import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
+import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
@@ -39,12 +41,14 @@ import com.reganjohn.c4j.api.requests.Consistency;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.internal.JCAImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import io.netty.channel.ChannelInboundHandler;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -318,6 +322,51 @@ public class RestActionTest extends IntegrationTest
     protected void withApplicationCount(User user, InteractionCallbackAction<Integer> result)
     {
         when(user.retrieveApplicationCount()).thenReturn(result);
+    }
+
+    protected static PermissionOverride withEntitlement(UUID userId, UUID applicationId, UUID ownerId, long permissions, long flags)
+    {
+        InteractionCallbackAction<Void> deletion = completed(null);
+        PermissionOverride entitlement = mock(PermissionOverride.class);
+        when(entitlement.getUserId()).thenReturn(userId);
+        when(entitlement.getApplicationId()).thenReturn(applicationId);
+        when(entitlement.getOwnerId()).thenReturn(ownerId);
+        when(entitlement.getPermissionsRaw()).thenReturn(permissions);
+        when(entitlement.getPermissions()).thenReturn(Permission.getPermissions(permissions));
+        when(entitlement.getFlagsRaw()).thenReturn(flags);
+        when(entitlement.getTimeUpdated()).thenReturn(OffsetDateTime.parse("2026-01-01T00:00:00Z"));
+        when(entitlement.delete()).thenReturn(deletion);
+        return entitlement;
+    }
+
+    protected void withEntitlement(User user, UUID applicationId, InteractionCallbackAction<PermissionOverride> result)
+    {
+        when(user.retrieveEntitlementById(applicationId)).thenReturn(result);
+    }
+
+    protected void withEntitlements(User user, InteractionCallbackAction<List<PermissionOverride>> result)
+    {
+        when(user.retrieveEntitlements()).thenReturn(result);
+    }
+
+    protected List<Object> withEventRecorder()
+    {
+        List<Object> events = new ArrayList<>();
+        ChannelInboundHandler recorder = mock(ChannelInboundHandler.class);
+        try
+        {
+            doAnswer(invocation ->
+            {
+                events.add(invocation.getArgument(1));
+                return null;
+            }).when(recorder).userEventTriggered(any(), any());
+        }
+        catch (Exception exception)
+        {
+            throw new IllegalStateException(exception);
+        }
+        channel.pipeline().addLast(recorder);
+        return events;
     }
 
     protected static void assertThatStatementIsBound(InteractionMappingActionImpl<?> action)

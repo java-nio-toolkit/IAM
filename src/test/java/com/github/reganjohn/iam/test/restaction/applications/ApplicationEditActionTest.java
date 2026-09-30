@@ -243,6 +243,8 @@ public class ApplicationEditActionTest extends RestActionTest
             "{\"description\":null}",
             "{\"icon_id\":\"another-cid\"}",
             "{\"flags\":0}",
+            "{\"origin\":5}",
+            "{\"origin\":\"https://other.example\"}",
             "{\"redirect_uris\":[\"https://example.net/callback\"]}",
             "{\"redirect_uris\":[\"https://example.net/callback\",\"https://example.org/other\"]}",
             "{\"name\":\"renamed\",\"description\":\"another\",\"icon_id\":\"another-cid\",\"flags\":8,\"redirect_uris\":[\"https://example.net/callback\"]}"})
@@ -283,6 +285,21 @@ public class ApplicationEditActionTest extends RestActionTest
         assertThat(data.getOrigin()).isEqualTo(ORIGIN);
         assertThat(data.getFlagsRaw()).isEqualTo(4);
         assertThat(data.getRedirectUris()).containsExactly(CALLBACK);
+    }
+
+    @Test
+    void testOriginIsImmutable()
+    {
+        withStoredApplication(0);
+        ArgumentCaptor<ApplicationEditData> modified = ArgumentCaptor.forClass(ApplicationEditData.class);
+
+        assertThatRequestTo(newAction(modified))
+                .withRouteParams(APPLICATION_ID.toString())
+                .withJsonBody(body("origin", "https://other.example"))
+                .hasStatus(StatusReason.NO_CONTENT.code)
+                .whenHandled();
+
+        assertThat(modified.getValue().getOrigin()).isEqualTo(ORIGIN);
     }
 
     @Test
