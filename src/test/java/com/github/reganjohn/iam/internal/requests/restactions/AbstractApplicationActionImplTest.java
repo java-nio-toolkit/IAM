@@ -16,26 +16,16 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions;
 
-import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public class AbstractApplicationActionImplTest
 {
@@ -43,28 +33,6 @@ public class AbstractApplicationActionImplTest
     private static final String FINISH_NONCE = "MBDOFXG4Y5CVJCX821LH";
     private static final String INTERACT_REF = "4IFWWIKYB2PQ6U56NL1";
     private static final String GRANT_URI = "https://server.example.com/tx";
-
-    private static Request requestWith(String name, String value)
-    {
-        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
-        if (name != null)
-            headers.put(name, Collections.singletonList(value));
-        Request request = mock(Request.class);
-        when(request.getHeaders()).thenReturn(headers);
-        return request;
-    }
-
-    static Stream<Arguments> testBaseUri()
-    {
-        return Stream.of(
-                arguments("host_only", "Host", "iam.example", "https://iam.example/"),
-                arguments("host_with_port", "Host", "iam.example:8443", "https://iam.example:8443/"),
-                arguments("forwarded_proto_and_host", "Forwarded", "proto=http;host=edge.example", "http://edge.example/"),
-                arguments("forwarded_quoted", "Forwarded", "host=\"edge.example\";proto=https", "https://edge.example/"),
-                arguments("forwarded_proto_only", "Forwarded", "proto=http", null),
-                arguments("forwarded_malformed", "Forwarded", "garbage", null),
-                arguments("no_headers", null, null, null));
-    }
 
     @Test
     void testHashVectorSha256()
@@ -131,12 +99,5 @@ public class AbstractApplicationActionImplTest
             assertThat(value).matches("[A-Za-z0-9_-]{43}");
             assertThat(IOUtil.decodeURL(value)).hasSize(32);
         });
-    }
-
-    @MethodSource
-    @ParameterizedTest(name = "{0}")
-    void testBaseUri(String name, String header, String value, String expected)
-    {
-        assertThat(AbstractApplicationActionImpl.retrieveBaseUri(requestWith(header, value))).isEqualTo(expected);
     }
 }

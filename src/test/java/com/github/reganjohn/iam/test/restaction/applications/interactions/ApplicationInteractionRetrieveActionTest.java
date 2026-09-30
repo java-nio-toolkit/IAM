@@ -53,6 +53,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -79,6 +80,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
     private static final String TOKEN = "continue-token";
     private static final String REFERENCE = "interaction-reference";
     private static final String USER_KEY = "user-jkt";
+    private static final long ISSUED_LIFETIME = 900;
 
     private String clientKey;
     private AccessContextData selectedContext;
@@ -176,6 +178,9 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         {
             AccessObjectData issued = mock(AccessObjectData.class);
             when(issued.getRaw()).thenReturn(ISSUED_OBJECT);
+            OffsetDateTime issuedAt = OffsetDateTime.now();
+            when(issued.getTimeCreated()).thenReturn(issuedAt);
+            when(issued.getTimeExpiresAt()).thenReturn(issuedAt.plusSeconds(ISSUED_LIFETIME));
             built.when(() -> EntityBuilder.createObjectData(anyString(), anyString(), anyString(), any(UUID.class),
                             any(DataArray.class), any(AccessEntryManager.class), any(AccessContextData.class), anyString(),
                             any(AccessEntryManagerImpl.AccessEntrySnapshot.class)))
@@ -321,9 +326,10 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
                 {
                     assertThat(json.toMap().keySet()).containsExactly("access_token");
                     DataObject token = json.getObject("access_token");
-                    assertThat(token.toMap().keySet()).containsExactlyInAnyOrder("value", "access", "key");
+                    assertThat(token.toMap().keySet()).containsExactlyInAnyOrder("value", "access", "key", "expires_in");
                     assertThat(token.getString("value")).isEqualTo(ISSUED_OBJECT);
                     assertThat(token.getString("key")).isEqualTo(USER_KEY);
+                    assertThat(token.getLong("expires_in")).isEqualTo(ISSUED_LIFETIME);
                     assertThat(token.getArray("access").toString())
                             .isEqualTo(PermissionUtil.toDataArray(Permission.getPermissions(Permission.VIEW_ACCOUNT.getRawValue())).toString());
                 }));
@@ -333,6 +339,24 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         assertThat(issuedActor).isEqualTo(APPLICATION_ID);
         assertThat(issuedPermissions.toString()).isEqualTo(PermissionUtil.toDataArray(Permission.getPermissions(Permission.VIEW_ACCOUNT.getRawValue())).toString());
         assertThat(selectedContext).isSameAs(userContext);
+    }
+
+    @Test
+    void testLabelIsEchoed()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        when(response.getLabel()).thenReturn("my-token");
+        withUserKeys(USER_KEY);
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasStatus(StatusReason.OK.code)
+                .hasJsonBody(json ->
+                {
+                    DataObject token = json.getObject("access_token");
+                    assertThat(token.toMap().keySet()).containsExactlyInAnyOrder("value", "access", "key", "expires_in", "label");
+                    assertThat(token.getString("label")).isEqualTo("my-token");
+                }));
     }
 
     @Test
@@ -438,6 +462,8 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         whenHandled(assertThatContinuing(newAction(response))
                 .hasNoResponse()
                 .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION));
+
+        verify(response, never()).delete();
     }
 
     @Test
@@ -450,6 +476,8 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         whenHandled(assertThatContinuing(newAction(response))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class));
+
+        verify(response, never()).delete();
     }
 
     @Test
@@ -464,6 +492,8 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         whenHandled(assertThatContinuing(newAction(response))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class));
+
+        assertThat(issuedSubject).isEqualTo(USER_ID.toString());
     }
 
     @Test

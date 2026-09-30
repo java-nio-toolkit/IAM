@@ -95,6 +95,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         when(interaction.getUri()).thenReturn(GRANT_URI);
         when(interaction.hash()).thenReturn("continue-hash");
         when(interaction.getThumbprint()).thenReturn("client-jkt");
+        when(interaction.getLabel()).thenReturn("my-token");
         return interaction;
     }
 
@@ -366,12 +367,12 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         assertThat(statements.get(0)[0].toString()).isEqualTo("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?");
         assertThat(Arrays.copyOfRange(statements.get(0), 1, 4)).containsExactly(OWNER_ID, APPLICATION_ID, INTERACTION_ID);
         assertThat(statements.get(1)[0].toString()).contains("INSERT INTO integrations.responses");
-        assertThat(Arrays.copyOfRange(statements.get(1), 1, 10))
-                .containsExactly(INTERACTION_ID, USER_ID, OWNER_ID, APPLICATION_ID, 1L, "reference", "continue-hash", "client-jkt", "user-jkt");
+        assertThat(Arrays.copyOfRange(statements.get(1), 1, 11))
+                .containsExactly(INTERACTION_ID, USER_ID, OWNER_ID, APPLICATION_ID, 1L, "reference", "continue-hash", "client-jkt", "user-jkt", "my-token");
         assertThat(statements.get(2)[0].toString()).contains("INSERT INTO users.entitlements");
         assertThat(Arrays.copyOfRange(statements.get(2), 1, 6)).containsExactly(USER_ID, APPLICATION_ID, OWNER_ID, 0L, 1L);
         assertThat(statements.get(2)[6]).isInstanceOf(OffsetDateTime.class);
-        assertThat(statements.get(1)[0].toString().chars().filter(character -> character == '?').count()).isEqualTo(9);
+        assertThat(statements.get(1)[0].toString().chars().filter(character -> character == '?').count()).isEqualTo(10);
         assertThat(statements.get(2)[0].toString().chars().filter(character -> character == '?').count()).isEqualTo(6);
     }
 }

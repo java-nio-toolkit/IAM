@@ -37,12 +37,14 @@ import com.github.reganjohn.iam.api.events.applications.interactions.Interaction
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionCreateActionImpl;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.embedded.EmbeddedChannel;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -60,6 +62,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -75,9 +78,16 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     private static final UUID OWNER_ID = UUID.fromString("02b1a26a-f033-7e2f-8ba7-543bd0ac755a");
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
     private static final String CALLBACK = "https://example.org/callback";
-    private static final String HOST = "iam.example";
+    private static final String BASE_URI = "https://iam.example/";
+    private static final String CLIENT_NONCE = "client-nonce-0123";
 
     private AccessEntryData proofEntry;
+
+    @BeforeEach
+    void withBaseUri()
+    {
+        when(api.getBaseUri()).thenReturn(BASE_URI);
+    }
 
     private ApplicationInteractionCreateActionImpl newAction()
     {
@@ -121,7 +131,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                         .put("finish", DataObject.empty()
                                 .put("method", "redirect")
                                 .put("uri", CALLBACK)
-                                .put("nonce", "client-nonce")));
+                                .put("nonce", CLIENT_NONCE)));
     }
 
     private static String grant(Consumer<DataObject> change)
@@ -141,6 +151,11 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         return grant -> change.accept(grant.getObject("access_token"));
     }
 
+    private static Consumer<DataObject> clientKey(String proof, DataObject jwk)
+    {
+        return grant -> grant.getObject("client").put("key", DataObject.empty().put("proof", proof).put("jwk", jwk));
+    }
+
     private static Consumer<DataObject> interact(Consumer<DataObject> change)
     {
         return grant -> change.accept(grant.getObject("interact"));
@@ -150,7 +165,6 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     {
         return assertThatRequestTo(action)
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
-                .withHeader("Host", HOST)
                 .withJsonBody(json);
     }
 
@@ -169,6 +183,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("access_unknown_type", grant(token(token -> token.put("access", DataArray.empty().add(DataObject.empty().put("type", "photo").put("actions", DataArray.empty().add("read"))))))),
                 arguments("access_unknown_action", grant(token(token -> token.put("access", DataArray.empty().add(DataObject.empty().put("type", "account").put("actions", DataArray.empty().add("write"))))))),
                 arguments("access_action_not_string", grant(token(token -> token.put("access", DataArray.empty().add(DataObject.empty().put("type", "account").put("actions", DataArray.empty().add(5))))))),
+                arguments("label_not_string", grant(token(token -> token.put("label", 5)))),
                 arguments("missing_client", grant(grant -> grant.remove("client"))),
                 arguments("client_string", grant(grant -> grant.put("client", "instance"))),
                 arguments("missing_interact", grant(grant -> grant.remove("interact"))),
@@ -187,6 +202,8 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("finish_uri_not_url", grant(finish(finish -> finish.put("uri", "not-a-url")))),
                 arguments("finish_nonce_missing", grant(finish(finish -> finish.remove("nonce")))),
                 arguments("finish_nonce_empty", grant(finish(finish -> finish.put("nonce", "")))),
+                arguments("finish_nonce_too_short", grant(finish(finish -> finish.put("nonce", "1")))),
+                arguments("finish_nonce_one_below_minimum", grant(finish(finish -> finish.put("nonce", "a".repeat(15))))),
                 arguments("finish_nonce_not_string", grant(finish(finish -> finish.put("nonce", 5)))),
                 arguments("finish_hash_method_not_string", grant(finish(finish -> finish.put("hash_method", 5)))),
                 arguments("finish_hash_method_unknown", grant(finish(finish -> finish.put("hash_method", "md5")))));
@@ -211,7 +228,6 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatRequestTo(newAction())
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
-                .withHeader("Host", HOST)
                 .withBody(nonObjectBody())
                 .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
                 .hasNoResponse()
@@ -225,7 +241,6 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatRequestTo(newAction())
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
-                .withHeader("Host", HOST)
                 .withBody(mock(RequestBody.class))
                 .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
                 .hasNoResponse()
@@ -240,26 +255,12 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatRequestTo(newAction())
                 .withRouteParams(ownerId, applicationId)
-                .withHeader("Host", HOST)
                 .withJsonBody(grant().toString())
                 .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
                 .hasNoResponse()
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
-    }
-
-    @Test
-    void testMissingHost()
-    {
-        withProofOfClient();
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
-                .withJsonBody(grant().toString())
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
-                .hasNoResponse()
-                .whenHandled();
     }
 
     @MethodSource
@@ -432,15 +433,32 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThat(interaction.getUniqueId()).isNotNull();
         assertThat(interaction.getPermissionsRaw()).isEqualTo(Permission.VIEW_ACCOUNT.getRawValue());
         assertThat(interaction.getRedirectUri()).isEqualTo(CALLBACK);
-        assertThat(interaction.getClientNonce()).isEqualTo("client-nonce");
-        assertThat(interaction.getFinishNonce()).isNotEmpty().isNotEqualTo("client-nonce");
+        assertThat(interaction.getClientNonce()).isEqualTo(CLIENT_NONCE);
+        assertThat(interaction.getFinishNonce()).isNotEmpty().isNotEqualTo(CLIENT_NONCE);
         assertThat(interaction.getMethodHash()).isEqualTo("sha-256");
         assertThat(interaction.getUri()).isEqualTo("https://iam.example/users/" + OWNER_ID + "/applications/" + APPLICATION_ID + "/interactions");
         assertThat(interaction.getTimeExpiresAt()).isBetween(before.plusSeconds(299), OffsetDateTime.now().plusSeconds(301));
         assertThat(interaction.getThumbprint()).isEqualTo(thumbprintOf(proofEntry));
+        assertThat(interaction.getLabel()).isNull();
+        assertThat(interaction.getLabel()).isNull();
         assertThat(events).hasSize(1);
         assertThat(events.get(0)).isInstanceOf(InteractionCreateEvent.class);
         assertThat(((InteractionCreateEvent) events.get(0)).getInteraction()).isSameAs(interaction);
+    }
+
+    @Test
+    void testMinimumNonceLength()
+    {
+        withProofOfClient();
+        withStoredApplication();
+        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
+        String nonce = "a".repeat(16);
+
+        assertThatGranting(newAction(created, true), grant(finish(finish -> finish.put("nonce", nonce))))
+                .hasStatus(StatusReason.OK.code)
+                .whenHandled();
+
+        assertThat(created.getValue().getClientNonce()).isEqualTo(nonce);
     }
 
     @ValueSource(strings = {"sha-256", "sha-384", "sha-512", "sha3-256", "sha3-384", "sha3-512"})
@@ -459,7 +477,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testForwardedBaseUri()
+    void testHostHeadersIgnored()
     {
         withProofOfClient();
         withStoredApplication();
@@ -471,10 +489,10 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 .withHeader("Forwarded", "proto=http;host=edge.example")
                 .withJsonBody(grant().toString())
                 .hasStatus(StatusReason.OK.code)
-                .hasJsonBody(json -> assertThat(json.getObject("interact").getString("redirect")).startsWith("http://edge.example/users/"))
+                .hasJsonBody(json -> assertThat(json.getObject("interact").getString("redirect")).startsWith(BASE_URI + "users/"))
                 .whenHandled();
 
-        assertThat(created.getValue().getUri()).startsWith("http://edge.example/users/");
+        assertThat(created.getValue().getUri()).startsWith(BASE_URI + "users/");
     }
 
     @Test
@@ -490,6 +508,105 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(created.getValue().getPermissionsRaw()).isEqualTo(Permission.VIEW_ACCOUNT.getRawValue());
+    }
+
+    @Test
+    void testLabel()
+    {
+        withProofOfClient();
+        withStoredApplication();
+        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
+
+        assertThatGranting(newAction(created, true), grant(token(token -> token.put("label", "my-token"))))
+                .hasStatus(StatusReason.OK.code)
+                .whenHandled();
+
+        assertThat(created.getValue().getLabel()).isEqualTo("my-token");
+    }
+
+    @Test
+    void testClientKeyOfProof()
+    {
+        withProofOfClient();
+        withStoredApplication();
+        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
+
+        assertThatGranting(newAction(created, true), grant(clientKey("dpop", proofEntry.toData())))
+                .hasStatus(StatusReason.OK.code)
+                .whenHandled();
+
+        assertThat(created.getAllValues()).hasSize(1);
+    }
+
+    @ValueSource(strings = {"httpsig", "mtls", "jwsd", "jws", "DPoP", ""})
+    @ParameterizedTest
+    void testClientKeyWithOtherProof(String proof)
+    {
+        withProofOfClient();
+        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
+
+        assertThatGranting(newAction(created, true), grant(clientKey(proof, proofEntry.toData())))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .whenHandled();
+
+        assertThat(created.getAllValues()).isEmpty();
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testClientKeyOfAnotherKey()
+    {
+        AccessEntryData other = withProof(SignType.ED25519);
+        withProofOfClient();
+        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
+
+        assertThatGranting(newAction(created, true), grant(clientKey("dpop", other.toData())))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .whenHandled();
+
+        assertThat(created.getAllValues()).isEmpty();
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testClientKeyWithoutKeyMaterial()
+    {
+        withProofOfClient();
+
+        assertThatGranting(newAction(), grant(clientKey("dpop", DataObject.empty().put("kty", "OKP"))))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testClientKeyWithoutJwk()
+    {
+        withProofOfClient();
+
+        assertThatGranting(newAction(), grant(grant -> grant.getObject("client").put("key", DataObject.empty().put("proof", "dpop"))))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testClientKeyNotObject()
+    {
+        withProofOfClient();
+
+        assertThatGranting(newAction(), grant(grant -> grant.getObject("client").put("key", "dpop")))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
     }
 
     @Test
@@ -529,7 +646,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     void testClientVerificationRequestsKeys()
     {
         withProofOfClient();
-        Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://localhost:8443", 0, CALLBACK);
+        Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://93.184.216.34:8443", 0, CALLBACK);
         EmbeddedChannel connection = new EmbeddedChannel();
         connection.attr(JNTImpl.IDENTIFIER).set(jnt);
         SocketManager manager = mock(SocketManager.class);
@@ -547,6 +664,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThat(((Request) outbound).getRoute().getCompiledRoute()).isEqualTo(".well-known/jwks.json");
         verify(verified, never()).run();
         connection.finishAndReleaseAll();
+        assertThatThrownBy(channel::checkException).isInstanceOf(InteractionResponseException.class);
     }
 
     @Test
@@ -574,6 +692,8 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         when(interaction.getUri()).thenReturn("https://iam.example/grant");
         when(interaction.hash()).thenReturn("continue-hash");
         when(interaction.getThumbprint()).thenReturn("client-thumbprint");
+        when(interaction.getLabel()).thenReturn("my-token");
+        when(interaction.getLabel()).thenReturn("my-token");
 
         InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().createInteraction(interaction);
 
@@ -590,6 +710,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 .containsEntry("grant_uri", "https://iam.example/grant")
                 .containsEntry("continue_hash", "continue-hash")
                 .containsEntry("client_jkt", "client-thumbprint")
+                .containsEntry("label", "my-token")
                 .containsKeys("interaction_id", "expiry");
     }
 

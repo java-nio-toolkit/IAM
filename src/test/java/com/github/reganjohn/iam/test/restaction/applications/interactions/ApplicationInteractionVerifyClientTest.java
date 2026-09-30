@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.test.restaction.applications.interactions;
 
+import com.github.adamorgan.jnt.api.exceptions.BufferLimitedException;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -29,6 +30,7 @@ import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.ResponseBody;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.JNTImpl;
+import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.reganjohn.iam.api.entities.Application;
@@ -48,10 +50,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import java.net.ConnectException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -60,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +72,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
 {
     private static final UUID OWNER_ID = UUID.fromString("02b1a26a-f033-7e2f-8ba7-543bd0ac755a");
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
+    private static final String ORIGIN = "https://93.184.216.34";
 
     private EmbeddedChannel connection;
     private final AtomicInteger verified = new AtomicInteger();
@@ -74,8 +80,16 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     @AfterEach
     void closeConnection()
     {
-        if (connection != null)
-            connection.finishAndReleaseAll();
+        if (connection == null)
+            return;
+        connection.finishAndReleaseAll();
+        try
+        {
+            channel.checkException();
+        }
+        catch (InteractionResponseException ignored)
+        {
+        }
     }
 
     private Application newApplication(String origin)
@@ -153,7 +167,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         connection = new EmbeddedChannel();
         withSocketManager(() -> connection.newFailedFuture(new ConnectException("refused")));
 
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         assertThatThrownBy(channel::checkException).isInstanceOf(InteractionResponseException.class);
         assertThat(verified.get()).isZero();
@@ -165,11 +179,11 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         withProof(SignType.ED25519);
         SocketManager manager = withConnection();
 
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         ArgumentCaptor<SocketAddress> address = ArgumentCaptor.forClass(SocketAddress.class);
         verify(manager).connect(address.capture());
-        assertThat(((InetSocketAddress) address.getValue()).getHostString()).isEqualTo("localhost");
+        assertThat(((InetSocketAddress) address.getValue()).getAddress().getHostAddress()).isEqualTo("93.184.216.34");
         assertThat(((InetSocketAddress) address.getValue()).getPort()).isEqualTo(443);
     }
 
@@ -179,7 +193,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         withProof(SignType.ED25519);
         SocketManager manager = withConnection();
 
-        verifyKeys("https://localhost:8443");
+        verifyKeys("https://93.184.216.34:8443");
 
         ArgumentCaptor<SocketAddress> address = ArgumentCaptor.forClass(SocketAddress.class);
         verify(manager).connect(address.capture());
@@ -192,7 +206,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         withProof(SignType.ED25519);
         withConnection();
 
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         Object outbound = connection.readOutbound();
         assertThat(outbound).isInstanceOf(Request.class);
@@ -206,7 +220,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         AccessEntryData entry = withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         deliver(200, new AccessEntryArray(Collections.singletonList(entry)));
 
@@ -220,7 +234,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         deliver(200, new AccessEntryArray(Collections.singletonList(mock(AccessEntryData.class))));
 
@@ -232,7 +246,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         deliver(200, new AccessEntryArray(Collections.emptyList()));
 
@@ -245,7 +259,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         deliver(code, new AccessEntryArray(Collections.emptyList()));
 
@@ -258,7 +272,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         AccessEntryData entry = withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         deliver(code, new AccessEntryArray(Collections.singletonList(entry)));
 
@@ -270,7 +284,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
 
         deliver(mock(ResponseBody.class), 200, new AccessEntryArray(Collections.emptyList()));
 
@@ -282,7 +296,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
         JacksonResponseBody body = mock(JacksonResponseBody.class);
         when(body.isObject()).thenReturn(false);
 
@@ -296,7 +310,7 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
     {
         withProof(SignType.ED25519);
         withConnection();
-        verifyKeys("https://localhost");
+        verifyKeys(ORIGIN);
         RestActionImpl handler = handler();
 
         try
@@ -307,6 +321,149 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         {
             throw new IllegalStateException(exception);
         }
+
+        assertRejected();
+    }
+
+    private void assertNotConnected(SocketManager manager)
+    {
+        verify(manager, never()).connect(any(SocketAddress.class));
+        assertThatThrownBy(channel::checkException)
+                .isInstanceOf(InteractionResponseException.class)
+                .satisfies(error -> assertThat(((InteractionResponseException) error).getError()).isEqualTo(InteractionResponse.INVALID_CLIENT));
+        assertThat(verified.get()).isZero();
+    }
+
+    @ValueSource(strings = {
+            "https://127.0.0.1", "https://10.0.0.1", "https://172.16.0.1", "https://192.168.1.1",
+            "https://169.254.169.254", "https://0.0.0.0", "https://224.0.0.1",
+            "https://[::1]", "https://[fe80::1]", "https://[fc00::1]"
+    })
+    @ParameterizedTest
+    void testUnsafeAddressIsRejected(String origin)
+    {
+        withProof(SignType.ED25519);
+        SocketManager manager = withConnection();
+
+        verifyKeys(origin);
+
+        assertNotConnected(manager);
+    }
+
+    @Test
+    void testUnresolvableHostIsRejected()
+    {
+        withProof(SignType.ED25519);
+        SocketManager manager = withConnection();
+
+        verifyKeys("https://unresolvable.invalid");
+
+        assertNotConnected(manager);
+    }
+
+    @Test
+    void testAnyUnsafeAddressIsRejected() throws Exception
+    {
+        withProof(SignType.ED25519);
+        SocketManager manager = withConnection();
+        InetAddress safe = InetAddress.getByAddress(new byte[]{93, (byte) 184, (byte) 216, 34});
+        InetAddress unsafe = InetAddress.getByAddress(new byte[]{10, 0, 0, 1});
+
+        try (MockedStatic<InetAddress> dns = mockStatic(InetAddress.class))
+        {
+            dns.when(() -> InetAddress.getAllByName("rebind.test")).thenReturn(new InetAddress[]{safe, unsafe});
+
+            verifyKeys("https://rebind.test");
+        }
+
+        assertNotConnected(manager);
+    }
+
+    @Test
+    void testConnectsToResolvedAddress() throws Exception
+    {
+        withProof(SignType.ED25519);
+        SocketManager manager = withConnection();
+        InetAddress resolved = InetAddress.getByAddress("pinned.test", new byte[]{93, (byte) 184, (byte) 216, 34});
+
+        try (MockedStatic<InetAddress> dns = mockStatic(InetAddress.class))
+        {
+            dns.when(() -> InetAddress.getAllByName("pinned.test")).thenReturn(new InetAddress[]{resolved});
+
+            verifyKeys("https://pinned.test");
+        }
+
+        ArgumentCaptor<SocketAddress> address = ArgumentCaptor.forClass(SocketAddress.class);
+        verify(manager).connect(address.capture());
+        assertThat(((InetSocketAddress) address.getValue()).isUnresolved()).isFalse();
+        assertThat(((InetSocketAddress) address.getValue()).getAddress()).isSameAs(resolved);
+    }
+
+    @Test
+    void testResponseSizeIsCapped()
+    {
+        withProof(SignType.ED25519);
+        connection = new EmbeddedChannel(new ClassicResponseReceiveHandlerImpl());
+        connection.attr(JNTImpl.IDENTIFIER).set(jnt);
+        ClassicResponseReceiveHandlerImpl original = connection.pipeline().get(ClassicResponseReceiveHandlerImpl.class);
+        withSocketManager(() -> connection.newSucceededFuture());
+
+        verifyKeys(ORIGIN);
+
+        ClassicResponseReceiveHandlerImpl capped = connection.pipeline().get(ClassicResponseReceiveHandlerImpl.class);
+        assertThat(capped).isNotSameAs(original);
+        assertThat(capped.getMaxBufferSize()).isEqualTo(ApplicationInteractionCreateActionImpl.MAX_KEYS_LENGTH);
+    }
+
+    @Test
+    void testKeysTimeout()
+    {
+        withProof(SignType.ED25519);
+        withConnection();
+        verifyKeys(ORIGIN);
+
+        connection.advanceTimeBy(ApplicationInteractionCreateActionImpl.KEYS_TIMEOUT, TimeUnit.SECONDS);
+        connection.runScheduledPendingTasks();
+
+        assertRejected();
+    }
+
+    @Test
+    void testKeysTimeoutAfterVerified()
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        withConnection();
+        verifyKeys(ORIGIN);
+        deliver(200, new AccessEntryArray(Collections.singletonList(entry)));
+
+        connection.advanceTimeBy(ApplicationInteractionCreateActionImpl.KEYS_TIMEOUT, TimeUnit.SECONDS);
+        connection.runScheduledPendingTasks();
+
+        channel.checkException();
+        assertThat(verified.get()).isEqualTo(1);
+    }
+
+    @Test
+    void testConnectionClosedWithoutResponse()
+    {
+        withProof(SignType.ED25519);
+        withConnection();
+        verifyKeys(ORIGIN);
+
+        connection.close();
+
+        assertRejected();
+    }
+
+    @Test
+    void testUnexpectedFailure() throws Exception
+    {
+        withProof(SignType.ED25519);
+        withConnection();
+        verifyKeys(ORIGIN);
+        RestActionImpl handler = handler();
+
+        handler.exceptionCaught(connection.pipeline().context(handler), new BufferLimitedException(1 << 17, 1 << 16));
 
         assertRejected();
     }
