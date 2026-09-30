@@ -44,17 +44,12 @@ public abstract class AbstractApplicationActionImpl extends AbstractOverrideActi
         else if (array.size() > Application.MAX_URL_COUNT)
             throw new DataObjectParsingException(BASE_TYPE_MAX_LENGTH,
                     Helpers.format("Must be %s or fewer in length.", Application.MAX_URL_COUNT));
-        else if (!matchesAll(array, JsonNode::isTextual))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"redirect_urls\" contains value which is not a string.");
-        else if (!matchesAll(array, node -> node.textValue().length() <= Application.MAX_URL_LENGTH))
+        else if (!array.allMatch(JsonNode::isTextual))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"redirect_uris\" contains value which is not a string.");
+        else if (!array.allMatch(node -> node.textValue().length() <= Application.MAX_URL_LENGTH))
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"redirect_uris\" value may not be longer than %d characters.", Application.MAX_URL_LENGTH));
-        else if (!matchesAll(array, node -> MiscUtil.isURL(node.textValue(), false)))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_urls\" contains value which is not a url.");
-    }
-
-    private static boolean matchesAll(@Nonnull DataArray array, @Nonnull Predicate<JsonNode> predicate)
-    {
-        return StreamSupport.stream(array.spliterator(), false).allMatch(predicate);
+        else if (!array.allMatch(node -> MiscUtil.isURL(node.textValue(), false)))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_uris\" contains value which is not a url.");
     }
 }

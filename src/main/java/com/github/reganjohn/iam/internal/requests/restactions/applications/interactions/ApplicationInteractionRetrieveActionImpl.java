@@ -18,7 +18,6 @@ package com.github.reganjohn.iam.internal.requests.restactions.applications.inte
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.exceptions.MissingAccessException;
-import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.requests.*;
@@ -32,7 +31,6 @@ import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.ResponseBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
-import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
@@ -67,7 +65,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.*;
 
-import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.INVALID_REQUEST;
 
 public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionRetrieveAction
 {
@@ -143,13 +140,11 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        else if (!context.channel().hasAttr(ProofObjectManagerImpl.CONTEXT))
-            throw new ProofAccessException(api.getIdentifierString(), INVALID_REQUEST, "This action requires a DPoP proof.");
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
-        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
-        retrieveCallbackResponse(applicationId, interactionId).queue(response -> handleInternally(context, data, response));
+        ProofObjectData data = retrieveSelfProof(context);
+        retrieveCallbackResponse(applicationId, interactionId).queue(response -> handleInternally(context, data, response), context::fireExceptionCaught);
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull ProofObjectData data,
@@ -200,7 +195,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<ApplicationCallbackResponse> retrieveCallbackResponse(@Nonnull UUID applicationId,
+    public InteractionCallbackAction<ApplicationCallbackResponse> retrieveCallbackResponse(@Nonnull UUID applicationId,
                                                                                             @Nonnull UUID interactionId)
     {
         Checks.notNull(interactionId, "Interaction ID");
@@ -318,16 +313,14 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
             else if (response.code >= 300 && response.code < 400)
                 reject(context);
             else
-                handleResponse(response, response.getBody());
+                handleResponse(context, response, response.getBody());
         }
 
-        private void handleResponse(@Nonnull Response response, ResponseBody body) throws Exception
+        private void handleResponse(@Nonnull ChannelHandlerContext context, @Nonnull Response response, ResponseBody body) throws Exception
         {
             LOG.debug("The interaction request was successfully finished with status {}", response.code);
-            if (!(body instanceof JacksonResponseBody))
-                throw new IllegalStateException("..."); //todo: add message!
-            else if (!((JacksonResponseBody) body).isObject())
-                throw new IllegalStateException("..."); //todo: add message!
+            if (!(body instanceof JacksonResponseBody) || !((JacksonResponseBody) body).isObject())
+                fail(context);
             else
                 handleResponse((JacksonResponseBody) body);
         }
@@ -352,13 +345,20 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         private void reject(@Nonnull ChannelHandlerContext context)
         {
             LOG.warn("The interaction requests do not allow the use of redirects.");
-            context.close();
+            fail(context);
+        }
+
+        private void fail(@Nonnull ChannelHandlerContext connection)
+        {
+            this.context.fireExceptionCaught(new ErrorResponseException(ErrorResponse.SERVER_ERROR));
+            connection.close();
         }
 
         @Override
         public void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull InvalidResponseException ex)
         {
             LOG.warn("The interaction request finished with an fail", ex);
+            fail(context);
         }
     }
 }

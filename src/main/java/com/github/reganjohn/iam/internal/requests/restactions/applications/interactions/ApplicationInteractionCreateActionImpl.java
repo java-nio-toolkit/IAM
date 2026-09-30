@@ -25,9 +25,7 @@ import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -164,9 +162,8 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                                   @Nonnull DataObject rawBody)
     {
-        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
         Map<String, String> params = request.getRoute().getMajorParameters();
-        UUID userId = UUID.fromString(data.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUIDv7.randomUUID().toUUID();
         long permissions = rawBody.getLong("permissions");
@@ -197,7 +194,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> createInteraction(@Nonnull ApplicationContextInteraction interaction)
+    public InteractionCallbackAction<Void> createInteraction(@Nonnull ApplicationContextInteraction interaction)
     {
         Checks.notNull(interaction, "Interaction");
         InteractionMapping mapping = mapFromData(interaction);

@@ -23,10 +23,9 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
@@ -138,19 +137,20 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
                                   @Nonnull DataObject rawBody)
     {
         Map<String, String> params = request.getRoute().getMajorParameters();
-        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(data.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(params.get("application_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveEntitlementById(applicationId))
                 .flatMap(entitlement -> modify(entitlement, rawBody))
-                .queue(success -> handleSuccess(context));
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> modify(@Nonnull PermissionOverride override, @Nonnull DataObject rawBody)
+    public InteractionCallbackAction<Void> modify(@Nonnull PermissionOverride override, @Nonnull DataObject rawBody)
     {
+        Checks.notNull(override, "Entitlement");
+        Checks.notNull(rawBody, "Body");
         InteractionMapping map = new InteractionMapping.Builder()
                 .put("user_id", override.getUserId())
                 .put("application_id", override.getApplicationId())

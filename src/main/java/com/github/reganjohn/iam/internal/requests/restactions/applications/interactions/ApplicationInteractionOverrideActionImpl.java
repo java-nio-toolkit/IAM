@@ -22,8 +22,6 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.Query;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -128,11 +126,11 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        api.retrieveUserById(UUID.fromString(json.getSubject()))
+        UUID userId = retrieveSelfUserId(context);
+        api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveInteractionById(interactionId))
-                .flatMap(interaction -> createResponse(json, interaction))
+                .flatMap(interaction -> createResponse(userId, interaction))
                 .queue(interaction -> handleSuccess(context, interaction), context::fireExceptionCaught);
     }
 
@@ -168,13 +166,12 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull AccessObjectData json,
+    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId,
                                                                                    @Nonnull ApplicationContextInteraction interaction)
     {
         UUID ownerId = interaction.getOwnerId();
         UUID applicationId = interaction.getApplicationId();
         UUID interactionId = interaction.getUniqueId();
-        UUID userId = UUID.fromString(json.getSubject());
         long permissions = interaction.getPermissionsRaw();
         return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
                 .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", userId, applicationId, interactionId)

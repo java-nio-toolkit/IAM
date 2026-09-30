@@ -128,17 +128,21 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        String accessToken = Helpers.get(request.getHeaders(), "Authorization").split(" ")[1];
-        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
+        String authorization = Helpers.get(request.getHeaders(), "Authorization");
+        String[] parts = Helpers.nonEmpty(authorization) ? authorization.split(" ") : new String[0];
+        if (parts.length != 2)
+            throw new ErrorResponseException(ErrorResponse.UNAUTHORIZED);
+        String accessToken = parts[1];
+        ProofObjectData data = retrieveSelfProof(context);
         AccessObjectData json = EntityBuilder.createAccessObject(accessToken);
         MessageDigest messageDigest = SHA256.get();
         try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
         {
             byte[] hash = messageDigest.digest(accessToken.getBytes(StandardCharsets.UTF_8));
             if (!Helpers.equals(json.getThumbprint(), contextData.digest(), false))
-                throw new IllegalArgumentException("Provided proof is not in the same public key as access token.");
+                throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
             else if (!Helpers.equals(IOUtil.encodeURL(hash), data.getAccessTokenHash(), false))
-                throw new IllegalArgumentException("Provided proof is not for the same access token.");
+                throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
             else
                 handleInternally(context, request, json, contextData);
         }
@@ -183,17 +187,19 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
     {
         DataObject contextData = json.getContextData();
         if (contextData == null)
-            throw new IllegalStateException("The confirmation is required option and cannot be missing!");
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else if (json.getActor() == null)
             throw new ErrorResponseException(ErrorResponse.ONLY_APPLICATION_ALLOWED);
         else if (!json.getActor().hasKey("sub", DataType.STRING))
-            throw new IllegalArgumentException("Cannot be an actor without subject!");
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+        else if (!MiscUtil.isUUID(json.getActor().getString("sub")))
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else if (!contextData.hasKey(JKT))
-            throw new IllegalArgumentException("The thumbprint is required option and cannot be missing!");
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else if (!contextData.isType(JKT, DataType.STRING))
-            throw new IllegalArgumentException("The JWK Thumbprint within the confirmation object must be a string!");
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else if (!Helpers.contains(thumbprints, contextData.getString(JKT), false))
-            throw new IllegalStateException("The access token thumbprint does not match the entitlement thumbprint.");
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else
             return update(context, permission, data, json, json.getActor());
     }

@@ -50,6 +50,7 @@ import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -130,6 +131,10 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
             throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"origin\" value may not be empty.");
         else if (!MiscUtil.isURL(body.getString("origin"), false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not url.");
+        else if (!MiscUtil.isURL(body.getString("origin"), true))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe.");
+        else if (MiscUtil.isUnsafeURL(URI.create(body.getString("origin"))))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe.");
     }
 
     private void handleDescription(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
