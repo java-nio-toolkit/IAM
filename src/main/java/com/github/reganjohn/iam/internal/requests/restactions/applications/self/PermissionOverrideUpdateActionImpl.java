@@ -170,7 +170,7 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
                                                                @Nonnull AccessObjectData json,
                                                                @Nonnull PermissionOverride permission)
     {
-        return api.retrieveUserById(permission.getOwnerId())
+        return api.retrieveUserById(permission.getUserId())
                 .flatMap(User::retrieveAccess)
                 .map(this::retrieveThumbprints)
                 .flatMap(thumbprints -> update(context, data, json, thumbprints, permission));

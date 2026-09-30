@@ -27,6 +27,7 @@ import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
@@ -35,6 +36,16 @@ public abstract class AbstractApplicationActionImpl extends AbstractOverrideActi
     public AbstractApplicationActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {
         super(api, route);
+    }
+
+
+    protected void checkOwnerId(@Nonnull Map<String, String> params)
+    {
+        String id = params.get("user_id");
+        if (Helpers.isEmpty(id))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!MiscUtil.isUUID(id))
+            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"user_id\" value is not uuid.");
     }
 
     protected void checkRedirectUris(@Nonnull DataArray array)

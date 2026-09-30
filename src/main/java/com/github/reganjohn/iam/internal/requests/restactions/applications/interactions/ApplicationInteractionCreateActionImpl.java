@@ -65,7 +65,25 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         if (!(request.getBody() instanceof JacksonRequestBody && ((JacksonRequestBody) request.getBody()).isObject()))
             throw new ErrorResponseException(ErrorResponse.INVALID_FROM_OBJECT_BODY);
         else
-            handleUniqueId(context, request, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
+            handleOwnerId(context, request, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
+    }
+
+    private void handleOwnerId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                               @Nonnull DataObject rawData,
+                               @Nonnull List<InvalidResponseException.SchemaError> errors)
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkOwnerId(request.getRoute().getMajorParameters());
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("user_id", ex, errors);
+        }
+        finally
+        {
+            handleUniqueId(context, request, rawData, errors);
+        }
     }
 
     private void handleUniqueId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -163,13 +181,13 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                                   @Nonnull DataObject rawBody)
     {
         Map<String, String> params = request.getRoute().getMajorParameters();
-        UUID userId = retrieveSelfUserId(context);
+        UUID ownerId = UUID.fromString(params.get("user_id"));
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUIDv7.randomUUID().toUUID();
         long permissions = rawBody.getLong("permissions");
         String uri = rawBody.getString("redirect_uri");
         OffsetDateTime expires = OffsetDateTime.now().plusSeconds(300);
-        handleInternally(context, new ApplicationContextInteractionImpl(api, userId, applicationId, interactionId, expires, permissions, uri));
+        handleInternally(context, new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expires, permissions, uri));
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context,
@@ -239,12 +257,12 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     private Route.CompiledRoute getRouteCompile(@Nonnull ApplicationContextInteraction interaction)
     {
         Checks.notNull(interaction, "Interaction");
-        return getRouteCompile(interaction.getApplicationId().toString(), interaction.getUniqueId().toString());
+        return getRouteCompile(interaction.getOwnerId().toString(), interaction.getApplicationId().toString(), interaction.getUniqueId().toString());
     }
 
     @Nonnull
-    private Route.CompiledRoute getRouteCompile(@Nonnull String applicationId, @Nonnull String interactionId)
+    private Route.CompiledRoute getRouteCompile(@Nonnull String ownerId, @Nonnull String applicationId, @Nonnull String interactionId)
     {
-        return Routes.Applications.ACCEPT_APPLICATION_INTERACTION.compile(applicationId, interactionId);
+        return Routes.Applications.ACCEPT_APPLICATION_INTERACTION.compile(ownerId, applicationId, interactionId);
     }
 }

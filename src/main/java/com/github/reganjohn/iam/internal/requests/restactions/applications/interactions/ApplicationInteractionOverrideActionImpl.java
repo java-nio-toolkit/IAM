@@ -57,7 +57,24 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        handleApplicationId(context, request, new ArrayList<>());
+        handleOwnerId(context, request, new ArrayList<>());
+    }
+
+    private void handleOwnerId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                               @Nonnull List<InvalidResponseException.SchemaError> errors)
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkOwnerId(request.getRoute().getMajorParameters());
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("user_id", ex, errors);
+        }
+        finally
+        {
+            handleApplicationId(context, request, errors);
+        }
     }
 
     private void handleApplicationId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -124,10 +141,11 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
     {
         Map<String, String> params = request.getRoute().getMajorParameters();
+        UUID ownerId = UUID.fromString(params.get("user_id"));
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
         UUID userId = retrieveSelfUserId(context);
-        api.retrieveUserById(userId)
+        api.retrieveUserById(ownerId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveInteractionById(interactionId))
                 .flatMap(interaction -> createResponse(userId, interaction))
@@ -174,7 +192,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         UUID interactionId = interaction.getUniqueId();
         long permissions = interaction.getPermissionsRaw();
         return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
-                .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", userId, applicationId, interactionId)
+                .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", ownerId, applicationId, interactionId)
                 .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions)
                 .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, applicationId, ownerId, 0L, permissions, OffsetDateTime.now())
                 .map(unused -> interaction);
