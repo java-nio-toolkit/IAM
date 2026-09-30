@@ -214,15 +214,17 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     }
 
     private void handleResponse(@Nonnull ChannelHandlerContext context, @Nonnull String thumbprint,
-                                @Nonnull String token, @Nonnull String interactRef,
+                                @Nonnull String token, @Nonnull String reference,
                                 @Nonnull ApplicationCallbackResponse response)
     {
         if (!hasModified(thumbprint, response.getClientThumbprint()))
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT));
         else if (!hasModified(digest(token), response.getContinueHash()))
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION));
-        else if (!hasModified(interactRef, response.getInteractionReference()))
+        else if (!hasModified(reference, response.getInteractionReference()))
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_INTERACTION));
+        else if (response.isDenied())
+            response.delete().queue(deleted -> context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.USER_DENIED)), context::fireExceptionCaught);
         else
             retrieveAccessData(context, response)
                     .flatMap(data -> response.delete().map(deleted -> toData(response, data)))

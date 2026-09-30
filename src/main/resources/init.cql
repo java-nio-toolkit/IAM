@@ -128,34 +128,35 @@ CREATE TABLE IF NOT EXISTS integrations.applications
 
 CREATE TABLE IF NOT EXISTS integrations.interactions
 (
-    user_id        UUID,
-    application_id UUID,
-    interaction_id UUID,
-    permissions    BIGINT,
-    redirect_uri   TEXT,
-    expiry         TIMESTAMP,
-    nonce          TEXT,
-    finish         TEXT,
-    hash_method    TEXT,
-    grant_uri      TEXT,
-    continue_hash  TEXT,
-    client_jkt     TEXT,
-    label          TEXT,
+    user_id           UUID,
+    application_id    UUID,
+    interaction_id    UUID,
+    permissions       BIGINT,
+    redirect_uri      TEXT,
+    expiry            TIMESTAMP,
+    nonce             TEXT,
+    finish            TEXT,
+    method_hash       TEXT,
+    uri               TEXT,
+    hash              TEXT,
+    client_thumbprint TEXT,
+    label             TEXT,
     PRIMARY KEY ((user_id, application_id), interaction_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 300;
 
 CREATE TABLE IF NOT EXISTS integrations.responses
 (
-    application_id UUID,
-    interaction_id UUID,
-    user_id        UUID,
-    owner_id       UUID,
-    permissions    BIGINT,
-    interact_ref   TEXT,
-    continue_hash  TEXT,
-    client_jkt     TEXT,
-    user_jkt       TEXT,
-    label          TEXT,
+    application_id    UUID,
+    interaction_id    UUID,
+    user_id           UUID,
+    owner_id          UUID,
+    permissions       BIGINT,
+    reference         TEXT,
+    hash              TEXT,
+    client_thumbprint TEXT,
+    thumbprint        TEXT,
+    label             TEXT,
+    denied            BOOLEAN,
     PRIMARY KEY ((application_id), interaction_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 60;
 

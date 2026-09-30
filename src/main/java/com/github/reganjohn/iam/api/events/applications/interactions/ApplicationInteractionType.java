@@ -20,4 +20,5 @@ public enum ApplicationInteractionType
 {
     CREATED,
     ACCEPTED,
+    DENIED
 }

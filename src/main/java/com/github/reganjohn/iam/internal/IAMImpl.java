@@ -38,6 +38,7 @@ import com.github.reganjohn.iam.internal.managers.*;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.*;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionCreateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionOverrideActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.self.*;
@@ -180,6 +181,7 @@ public class IAMImpl implements IAM
 
                 .addEventListenerProvider(() -> new ApplicationInteractionCreateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionOverrideActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationInteractionDeleteActionImpl(this))
                 .addEventListenerProvider(() -> new PermissionOverrideUpdateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionRetrieveActionImpl(this))
 

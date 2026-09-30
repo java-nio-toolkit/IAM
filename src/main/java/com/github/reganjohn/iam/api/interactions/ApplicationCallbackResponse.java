@@ -59,6 +59,7 @@ public interface ApplicationCallbackResponse
     @Nonnull
     @CheckReturnValue
     InteractionCallbackAction<ApplicationCallbackResponse> delete();
+
     @Nonnull
     String getInteractionReference();
 
@@ -73,4 +74,6 @@ public interface ApplicationCallbackResponse
 
     @Nullable
     String getLabel();
+
+    boolean isDenied();
 }

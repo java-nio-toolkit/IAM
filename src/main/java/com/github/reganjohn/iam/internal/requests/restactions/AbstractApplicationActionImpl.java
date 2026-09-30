@@ -138,9 +138,9 @@ public abstract class AbstractApplicationActionImpl extends AbstractOverrideActi
 
     @Nonnull
     protected static String hash(@Nonnull String method, @Nonnull String clientNonce,
-                                 @Nonnull String finishNonce, @Nonnull String interact,
+                                 @Nonnull String finishNonce, @Nonnull String reference,
                                  @Nonnull String uri)
     {
-        return digest(method, clientNonce + "\n" + finishNonce + "\n" + interact + "\n" + uri);
+        return digest(method, clientNonce + "\n" + finishNonce + "\n" + reference + "\n" + uri);
     }
 }

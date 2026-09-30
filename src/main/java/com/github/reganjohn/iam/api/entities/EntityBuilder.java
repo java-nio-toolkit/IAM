@@ -240,10 +240,10 @@ public class EntityBuilder extends AbstractEntityBuilder
         String uri = data.getString("redirect_uri");
         String clientNonce = data.getString("nonce");
         String finishNonce = data.getString("finish");
-        String hashMethod = data.getString("hash_method");
-        String grantUri = data.getString("grant_uri");
-        String continueHash = data.getString("continue_hash");
-        String clientThumbprint = data.getString("client_jkt");
+        String hashMethod = data.getString("method_hash");
+        String grantUri = data.getString("uri");
+        String continueHash = data.getString("hash");
+        String clientThumbprint = data.getString("client_thumbprint");
         String label = data.getString("label", null);
         return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri,
                 clientNonce, finishNonce, hashMethod, grantUri, continueHash, clientThumbprint, label);
@@ -257,13 +257,14 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
         long rawPermissions = data.getLong("permissions");
-        String interactionReference = data.getString("interact_ref");
-        String continueHash = data.getString("continue_hash");
-        String clientThumbprint = data.getString("client_jkt");
-        String userThumbprint = data.getString("user_jkt");
+        String interactionReference = data.getString("reference");
+        String continueHash = data.getString("hash");
+        String clientThumbprint = data.getString("client_thumbprint");
+        String userThumbprint = data.getString("thumbprint");
         String label = data.getString("label", null);
+        boolean denied = data.getBoolean("denied", false);
         return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions,
-                interactionReference, continueHash, clientThumbprint, userThumbprint, label);
+                interactionReference, continueHash, clientThumbprint, userThumbprint, label, denied);
     }
 
     @Nonnull

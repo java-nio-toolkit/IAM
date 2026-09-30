@@ -14,5 +14,5 @@
  * limitations under the License.
  */
 
-INSERT INTO integrations.interactions (user_id, application_id, interaction_id, expiry, permissions, redirect_uri, nonce, finish, hash_method, grant_uri, continue_hash, client_jkt, label)
-VALUES (:user_id, :application_id, :interaction_id, :expiry, :permissions, :redirect_uri, :nonce, :finish, :hash_method, :grant_uri, :continue_hash, :client_jkt, :label);
+INSERT INTO integrations.interactions (user_id, application_id, interaction_id, expiry, permissions, redirect_uri, nonce, finish, method_hash, uri, hash, client_thumbprint, label)
+VALUES (:user_id, :application_id, :interaction_id, :expiry, :permissions, :redirect_uri, :nonce, :finish, :method_hash, :uri, :hash, :client_thumbprint, :label);

@@ -42,16 +42,18 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     private final UUID applicationId;
     private final UUID interactionId;
     private final long rawPermissions;
-    private final String interactionReference;
+    private final String reference;
     private final String continueHash;
     private final String clientThumbprint;
     private final String userThumbprint;
     private final String label;
+    private final boolean denied;
 
     public ApplicationCallbackResponseImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
                                            @Nonnull UUID applicationId, @Nonnull UUID interactionId, long permissions,
-                                           @Nonnull String interactionReference, @Nonnull String continueHash,
-                                           @Nonnull String clientThumbprint, @Nonnull String userThumbprint, @Nullable String label)
+                                           @Nonnull String reference, @Nonnull String continueHash,
+                                           @Nonnull String clientThumbprint, @Nonnull String userThumbprint,
+                                           @Nullable String label, boolean denied)
     {
         this.api = api;
         this.userId = userId;
@@ -59,11 +61,12 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
         this.applicationId = applicationId;
         this.interactionId = interactionId;
         this.rawPermissions = permissions;
-        this.interactionReference = interactionReference;
+        this.reference = reference;
         this.continueHash = continueHash;
         this.clientThumbprint = clientThumbprint;
         this.userThumbprint = userThumbprint;
         this.label = label;
+        this.denied = denied;
     }
 
     @Nonnull
@@ -132,11 +135,12 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
             }
         };
     }
+
     @Nonnull
     @Override
     public String getInteractionReference()
     {
-        return interactionReference;
+        return reference;
     }
 
     @Nonnull
@@ -165,5 +169,11 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     public String getLabel()
     {
         return label;
+    }
+
+    @Override
+    public boolean isDenied()
+    {
+        return denied;
     }
 }

@@ -19,6 +19,7 @@ package com.github.reganjohn.iam.internal.requests.restactions.applications.inte
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
+import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.Query;
@@ -54,7 +55,12 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
 {
     public ApplicationInteractionOverrideActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.ACCEPT_APPLICATION_INTERACTION);
+        this(api, Routes.Applications.ACCEPT_APPLICATION_INTERACTION);
+    }
+
+    protected ApplicationInteractionOverrideActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
+    {
+        super(api, route);
     }
 
     @Override
@@ -171,10 +177,10 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context,
-                               @Nonnull ApplicationContextInteraction interaction, @Nonnull String interactRef)
+                               @Nonnull ApplicationContextInteraction interaction, @Nonnull String reference)
     {
         CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
-        headers.put("Location", Collections.singletonList(withQueryParam(interaction, interactRef)));
+        headers.put("Location", Collections.singletonList(withQueryParam(interaction, reference)));
         context.writeAndFlush(new Response(context, StatusReason.SEE_OTHER, headers))
                 .addListener(successObj ->
                 {
@@ -185,31 +191,43 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
                 });
     }
 
-    private void onEvent(@Nonnull ChannelHandlerContext context, @Nonnull ApplicationContextInteraction interaction)
+    protected void onEvent(@Nonnull ChannelHandlerContext context, @Nonnull ApplicationContextInteraction interaction)
     {
         context.fireUserEventTriggered(new InteractionOverrideEvent(interaction));
     }
 
     @Nonnull
-    private String withQueryParam(@Nonnull ApplicationContextInteraction interaction, @Nonnull String interact)
+    private String withQueryParam(@Nonnull ApplicationContextInteraction interaction, @Nonnull String reference)
     {
         Checks.notNull(interaction, "Interaction");
         String method = interaction.getMethodHash();
         String clientNonce = interaction.getClientNonce();
         String finishNonce = interaction.getFinishNonce();
         String uri = interaction.getUri();
-        String hash = hash(method, clientNonce, finishNonce, interact, uri);
+        String hash = hash(method, clientNonce, finishNonce, reference, uri);
         return new Query(interaction.getRedirectUri())
                 .withQueryParam("hash", hash)
-                .withQueryParam("interact_ref", interact)
+                .withQueryParam("interact_ref", reference)
                 .toString();
     }
 
     @Nonnull
     @CheckReturnValue
     public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId, @Nonnull String userThumbprint,
-                                                                                   @Nonnull String interactRef,
+                                                                                   @Nonnull String reference,
                                                                                    @Nonnull ApplicationContextInteraction interaction)
+    {
+        return createResponse(userId, userThumbprint, reference, interaction, false)
+                .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, interaction.getApplicationId(), interaction.getOwnerId(), 0L, interaction.getPermissionsRaw(), OffsetDateTime.now())
+                .map(unused -> interaction);
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    protected InteractionListContextActionImpl<Object> createResponse(@Nonnull UUID userId, @Nonnull String userThumbprint,
+                                                                      @Nonnull String reference,
+                                                                      @Nonnull ApplicationContextInteraction interaction,
+                                                                      boolean denied)
     {
         UUID ownerId = interaction.getOwnerId();
         UUID applicationId = interaction.getApplicationId();
@@ -218,8 +236,6 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
                 .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", ownerId, applicationId, interactionId)
                 .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions,
-                        interactRef, interaction.hash(), interaction.getThumbprint(), userThumbprint, interaction.getLabel())
-                .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, applicationId, ownerId, 0L, permissions, OffsetDateTime.now())
-                .map(unused -> interaction);
+                        reference, interaction.hash(), interaction.getThumbprint(), userThumbprint, interaction.getLabel(), denied);
     }
 }
