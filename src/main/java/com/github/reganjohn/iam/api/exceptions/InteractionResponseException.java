@@ -35,12 +35,4 @@ public class InteractionResponseException extends RuntimeException
     {
         return error;
     }
-
-    @Nonnull
-    public DataObject getObject()
-    {
-        return DataObject.empty()
-                .put("error", DataObject.empty().put("code", error.getCode()))
-                .toData();
-    }
 }

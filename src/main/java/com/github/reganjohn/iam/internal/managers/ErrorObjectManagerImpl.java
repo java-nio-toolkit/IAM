@@ -28,10 +28,12 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
@@ -107,11 +109,35 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, errorResponse, StatusReason.BAD_REQUEST);
     }
 
-    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull InteractionResponseException error)
+    private ChannelFuture handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull InteractionResponseException ex)
     {
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, error.getObject().toBinary(), true);
-        Response response = new Response(context, error.getError().getStatus(), new CaseInsensitiveMap<>(), body);
-        context.writeAndFlush(response);
+        DataObject raw = DataObject.empty()
+                .put("error", Helpers.singletonData("code", ex.getError().getCode()))
+                .toData();
+        
+        switch (ex.getError())
+        {
+            case INVALID_CLIENT:
+            case INVALID_CONTINUATION:
+                return handleFailure(context, StatusReason.UNAUTHORIZED, raw);
+            case UNKNOWN_INTERACTION:
+                return handleFailure(context, StatusReason.NOT_FOUND, raw);
+            case TOO_MANY_ATTEMPTS:
+                return handleFailure(context, StatusReason.TOO_MANY_REQUESTS, raw);
+            case INVALID_INTERACTION:
+            case USER_DENIED:
+            case REQUEST_DENIED:
+                return handleFailure(context, StatusReason.FORBIDDEN, raw);
+            default:
+                return handleFailure(context, StatusReason.BAD_REQUEST, raw);
+        }
+    }
+
+    private ChannelFuture handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull StatusReason reason, @Nonnull DataObject raw)
+    {
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, raw.toBinary(), true);
+        Response response = new Response(context, reason, new CaseInsensitiveMap<>(), body);
+        return context.writeAndFlush(response);
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

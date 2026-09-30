@@ -16,40 +16,30 @@
 
 package com.github.reganjohn.iam.api.exceptions;
 
-import com.github.adamorgan.jnt.api.requests.StatusReason;
-
 import javax.annotation.Nonnull;
 
 public enum InteractionResponse
 {
-    INVALID_REQUEST("invalid_request", StatusReason.BAD_REQUEST),
-    INVALID_CLIENT("invalid_client", StatusReason.UNAUTHORIZED),
-    INVALID_INTERACTION("invalid_interaction", StatusReason.FORBIDDEN),
-    INVALID_FLAG("invalid_flag", StatusReason.BAD_REQUEST),
-    INVALID_CONTINUATION("invalid_continuation", StatusReason.UNAUTHORIZED),
-    USER_DENIED("user_denied", StatusReason.FORBIDDEN),
-    REQUEST_DENIED("request_denied", StatusReason.FORBIDDEN),
-    UNKNOWN_INTERACTION("unknown_interaction", StatusReason.NOT_FOUND),
-    TOO_MANY_ATTEMPTS("too_many_attempts", StatusReason.TOO_MANY_REQUESTS);
+    INVALID_REQUEST("invalid_request"),
+    INVALID_FLAG("invalid_flag"),
+    INVALID_CLIENT("invalid_client"),
+    INVALID_CONTINUATION("invalid_continuation"),
+    UNKNOWN_INTERACTION("unknown_interaction"),
+    TOO_MANY_ATTEMPTS("too_many_attempts"),
+    INVALID_INTERACTION("invalid_interaction"),
+    USER_DENIED("user_denied"),
+    REQUEST_DENIED("request_denied");
 
     private final String code;
-    private final StatusReason status;
 
-    InteractionResponse(@Nonnull String code, @Nonnull StatusReason status)
+    InteractionResponse(@Nonnull String code)
     {
         this.code = code;
-        this.status = status;
     }
 
     @Nonnull
     public String getCode()
     {
         return code;
-    }
-
-    @Nonnull
-    public StatusReason getStatus()
-    {
-        return status;
     }
 }
