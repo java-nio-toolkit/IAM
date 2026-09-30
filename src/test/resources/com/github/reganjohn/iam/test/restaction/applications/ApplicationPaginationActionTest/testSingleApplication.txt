@@ -1,0 +1,1 @@
+[{"user_id":"01a0f15f-ef22-7d1e-9a96-432acf9b644f","application_id":"04d3c48c-1255-7041-8dc9-765df2ce977c","name":"first","origin":"https://example.org","description":null,"icon_id":null,"flags":0,"redirect_uris":["https://example.org/callback"]}]

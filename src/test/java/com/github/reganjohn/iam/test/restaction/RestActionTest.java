@@ -29,6 +29,7 @@ import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
+import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
 
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -285,6 +287,37 @@ public class RestActionTest extends IntegrationTest
     protected void withWebhookCount(User user, InteractionCallbackAction<Integer> result)
     {
         when(user.retrieveWebhookCount()).thenReturn(result);
+    }
+
+    protected static Application withApplication(UUID applicationId, UUID ownerId, String name, String description, String iconId, String origin, long flags, String... redirectUris)
+    {
+        InteractionCallbackAction<Void> deletion = completed(null);
+        Application application = mock(Application.class);
+        when(application.getUniqueId()).thenReturn(applicationId);
+        when(application.getOwnerId()).thenReturn(ownerId);
+        when(application.getName()).thenReturn(name);
+        when(application.getDescription()).thenReturn(description);
+        when(application.getIconId()).thenReturn(iconId);
+        when(application.getOrigin()).thenReturn(origin);
+        when(application.getFlagsRaw()).thenReturn(flags);
+        when(application.getRedirectUris()).thenReturn(Arrays.asList(redirectUris));
+        when(application.delete()).thenReturn(deletion);
+        return application;
+    }
+
+    protected void withApplication(User user, UUID applicationId, InteractionCallbackAction<Application> result)
+    {
+        when(user.retrieveApplicationById(applicationId)).thenReturn(result);
+    }
+
+    protected void withApplications(User user, InteractionCallbackAction<List<Application>> result)
+    {
+        when(user.retrieveApplications()).thenReturn(result);
+    }
+
+    protected void withApplicationCount(User user, InteractionCallbackAction<Integer> result)
+    {
+        when(user.retrieveApplicationCount()).thenReturn(result);
     }
 
     protected static void assertThatStatementIsBound(InteractionMappingActionImpl<?> action)

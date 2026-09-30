@@ -1,0 +1,12 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "application_id" : {
+      "_errors" : [ {
+        "code" : "UUID_TYPE_COERCE",
+        "message" : "The \"application_id\" value is not uuid."
+      } ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "flags" : {
+      "_errors" : [ {
+        "code" : "NUMBER_TYPE_MIN",
+        "message" : "Value \"flags\" should be greater than or equal to 0."
+      } ]
+    }
+  }
+}
