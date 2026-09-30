@@ -25,7 +25,6 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.SerializableData;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.Session;
@@ -55,8 +54,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        handleInternally(context, UUID.fromString(json.getSubject()));
+        handleInternally(context, retrieveSelfUserId(context));
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
@@ -110,7 +108,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
         {
             try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
             {
-                if (!Helpers.contains(set, context.digest(), false))
+                if (set.contains(context.digest()))
                 {
                     raw.add(data);
                 }

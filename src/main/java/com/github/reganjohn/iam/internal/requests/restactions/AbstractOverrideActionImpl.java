@@ -17,8 +17,14 @@
 package com.github.reganjohn.iam.internal.requests.restactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.SignType;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
+import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -26,12 +32,14 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.restactions.AbstractOverrideAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.UUID;
 
 public abstract class AbstractOverrideActionImpl extends RestActionImpl implements AbstractOverrideAction
 {
@@ -68,19 +76,41 @@ public abstract class AbstractOverrideActionImpl extends RestActionImpl implemen
     }
 
     @Nonnull
-    protected DataObjectParsingException createParsingException(@Nonnull String location, @Nonnull SignType type)
-    {
-        return createParsingException(location, Collections.singletonList(type.getType().name()));
-    }
-
-    @Nonnull
-    protected DataObjectParsingException createParsingException(@Nonnull String location,
-                                                                @Nonnull Collection<String> set)
+    protected DataObjectParsingException createParsingException(@Nonnull Collection<String> set)
     {
         StringJoiner joiner = new StringJoiner(", ");
         for (String type : set)
             joiner.add("'" + type + "'");
         return new DataObjectParsingException(BASE_TYPE_CHOICES,
-                Helpers.format("Value of field \"%s\" must be one of (%s).", location, joiner));
+                Helpers.format("Value must be one of (%s).", joiner));
+    }
+    @Nonnull
+    protected AccessObjectData retrieveSelfAccess(@Nonnull ChannelHandlerContext context)
+    {
+        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        if (data == null)
+            throw new ErrorResponseException(ErrorResponse.MISSING_ACCESS);
+        else
+            return data;
+    }
+
+    @Nonnull
+    protected UUID retrieveSelfUserId(@Nonnull ChannelHandlerContext context)
+    {
+        AccessObjectData data = retrieveSelfAccess(context);
+        if (!MiscUtil.isUUID(data.getSubject()))
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+        else
+            return UUID.fromString(data.getSubject());
+    }
+
+    @Nonnull
+    protected ProofObjectData retrieveSelfProof(@Nonnull ChannelHandlerContext context)
+    {
+        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
+        if (data == null)
+            throw new ProofAccessException(api.getIdentifierString(), "invalid_request", "This action requires a DPoP proof.");
+        else
+            return data;
     }
 }

@@ -21,8 +21,6 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Session;
@@ -95,12 +93,11 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
     {
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(json.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
         api.retrieveUserById(userId)
                 .flatMap(User::retrieveSessionCount)
-                .map(count -> delete(userId, sessionId, count))
+                .flatMap(count -> delete(userId, sessionId, count))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 

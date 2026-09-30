@@ -22,9 +22,7 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Session;
@@ -48,7 +46,7 @@ import java.util.UUID;
 
 public class SessionRetrieveActionImpl extends AbstractSessionActionImpl implements SessionRetrieveAction
 {
-    private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
+    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
     public SessionRetrieveActionImpl(@Nonnull IAMImpl api)
     {
@@ -64,10 +62,10 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl impleme
     private void handleUniqueId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                                 @Nonnull List<ErrorResponseException.SchemaError> schemaErrors)
     {
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        UUID userId = retrieveSelfUserId(context);
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
-            checkUniqueID(json.getSubject(), request.getRoute().getMajorParameters());
+            checkUniqueID(request.getRoute().getMajorParameters());
         }
         catch (DataObjectParsingException ex)
         {
@@ -75,28 +73,25 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl impleme
         }
         finally
         {
-            handleInternally(context, request, json, schemaErrors);
+            handleInternally(context, request, userId, schemaErrors);
         }
     }
 
-    private void checkUniqueID(String userId, @Nonnull Map<String, String> params)
+    private void checkUniqueID(@Nonnull Map<String, String> params)
     {
         String id = params.get("session_id");
         if (Helpers.isEmpty(id))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
-        else if (!MiscUtil.isUUID(userId))
-            throw new DataObjectParsingException(UUID_TYPE_COERCE, "The subject value is not uuid.");
         else if (!MiscUtil.isUUID(id))
             throw new DataObjectParsingException(UUID_TYPE_COERCE, "The \"session_id\" value is not uuid.");
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                  @Nonnull AccessObjectData json,
+                                  @Nonnull UUID userId,
                                   @Nonnull List<ErrorResponseException.SchemaError> errors)
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        UUID userId = UUID.fromString(json.getSubject());
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID sessionId = UUID.fromString(params.get("session_id"));
         api.retrieveUserById(userId)

@@ -25,12 +25,9 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
-import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -171,11 +168,10 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        ProofObjectData data = retrieveSelfProof(context);
+        UUID userId = retrieveSelfUserId(context);
         try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
         {
-            UUID userId = UUID.fromString(json.getSubject());
             UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
             api.retrieveUserById(userId)
                     .flatMap(user -> user.retrieveSessionById(sessionId))

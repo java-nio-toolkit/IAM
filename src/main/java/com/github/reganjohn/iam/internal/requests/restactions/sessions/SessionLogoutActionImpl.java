@@ -20,10 +20,7 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
-import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
@@ -60,9 +57,8 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(json.getSubject());
+        ProofObjectData data = retrieveSelfProof(context);
+        UUID userId = retrieveSelfUserId(context);
         PublicKey publicKey = data.getEntryData().getPublic();
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(publicKey.getEncoded());
         api.retrieveUserById(userId)

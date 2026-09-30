@@ -32,7 +32,6 @@ import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -108,8 +107,15 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required.");
         else if (!rawData.hasKey(ProofObjectManager.KTY, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.KTY));
-        else if (!Helpers.contains(EntityBuilder.SIGN_TYPE_NAMES.keySet(), rawData.getString(ProofObjectManager.KTY), true))
-            throw createParsingException(ProofObjectManager.KTY, EntityBuilder.SIGN_TYPE_NAMES.keySet());
+        else if (!Helpers.contains(getTypes(), rawData.getString(ProofObjectManager.KTY), true))
+            throw createParsingException(getTypes());
+    }
+
+    private List<String> getTypes()
+    {
+        List<String> types = new ArrayList<>(EntityBuilder.SIGN_TYPE_NAMES.keySet());
+        types.remove(AccessEntryType.OCT.name().toLowerCase(Locale.ROOT));
+        return types;
     }
 
     private void handleCanManage(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -186,12 +192,23 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         else if (!rawData.hasKey(ProofObjectManager.CRV, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.CRV));
         else if (!canAccess(rawData.getString(ProofObjectManager.KTY), rawData.getString(ProofObjectManager.CRV)))
-            throw createParsingException(ProofObjectManager.CRV, EntityBuilder.SIGN_TYPE_NAMES.get(rawData.getString(ProofObjectManager.KTY)));
+            throw createParsingException(getCurves(rawData.getString(ProofObjectManager.KTY)));
     }
 
     private boolean canAccess(String type, String crv)
     {
-        return Helpers.contains(EntityBuilder.SIGN_TYPE_NAMES.get(type), crv, true);
+        return Helpers.contains(getCurves(type), crv, true);
+    }
+
+    private List<String> getCurves(String type)
+    {
+        List<String> curves = new ArrayList<>();
+        for (SignType signType : SignType.values())
+        {
+            if (signType.hasExtension() && Helpers.equals(signType.getTypeRaw(), type, true) && !curves.contains(signType.getNameRaw()))
+                curves.add(signType.getNameRaw());
+        }
+        return curves;
     }
 
     private void handleUniqueId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -246,7 +263,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         else if (!rawData.hasKey(ProofObjectManager.ALG, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.ALG));
         else if (!Helpers.contains(EntityBuilder.SIGN_TYPE_NAMES.get(type), rawData.getString(ProofObjectManager.ALG), true))
-            throw createParsingException(ProofObjectManager.ALG, EntityBuilder.SIGN_TYPE_NAMES.get(type));
+            throw createParsingException(EntityBuilder.SIGN_TYPE_NAMES.get(type));
     }
 
     private void handleFields(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -319,9 +336,9 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         SignType signType = SignType.from(rawData.getString(ProofObjectManager.ALG));
         String type = rawData.getString(ProofObjectManager.KTY);
         if (signType == SignType.NONE || signType == SignType.UNKNOWN)
-            throw createParsingException(ProofObjectManager.ALG, EntityBuilder.SIGN_TYPE_NAMES.get(type));
+            throw createParsingException(EntityBuilder.SIGN_TYPE_NAMES.get(type));
         else if (!Helpers.equals(signType.getType(), type, true))
-            throw createParsingException(ProofObjectManager.ALG, signType);
+            throw createParsingException(EntityBuilder.SIGN_TYPE_NAMES.get(type));
     }
 
     private void handleCurve(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -351,9 +368,9 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             return;
         String crv = rawData.getString(ProofObjectManager.CRV);
         if (signType == SignType.NONE || signType == SignType.UNKNOWN)
-            throw createParsingException(ProofObjectManager.CRV, EntityBuilder.SIGN_TYPE_NAMES.get(rawType));
+            throw createParsingException(EntityBuilder.SIGN_TYPE_NAMES.get(rawType));
         else if (signType.hasExtension() && !Helpers.equals(crv, signType.getNameRaw(), true))
-            throw createParsingException(ProofObjectManager.CRV, signType);
+            throw createParsingException(Collections.singletonList(signType.getNameRaw()));
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -364,7 +381,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         String id = rawBody.getString(KID, null);
         SignType type = SignType.from(rawBody.getString(ALG));
-        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
+        UUID userId = retrieveSelfUserId(context);
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
         AccessEntryData entryData = AbstractEntityBuilder.createAccessEntry(id, type, rawBody);
@@ -372,7 +389,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         {
             String uniqueId = UUIDv7.randomUUID().toString();
             String issuer = api.getJNT().getIdentifierString();
-            String subject = data.getSubject();
+            String subject = userId.toString();
             AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
             SessionCreateData rawData = fromData(request, entryData, contextData, json);
             handleInternally(context, json, rawData);
@@ -422,7 +439,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> create(@Nonnull SessionCreateData session)
+    public InteractionCallbackAction<Void> create(@Nonnull SessionCreateData session)
     {
         Checks.notNull(session, "Session");
         return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_session.cql"), session)

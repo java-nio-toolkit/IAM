@@ -17,34 +17,15 @@
 package com.github.reganjohn.iam.internal.requests.restactions;
 
 import com.github.adamorgan.jnt.api.requests.Route;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
-import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.restactions.UserAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
-import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.Nonnull;
-import java.util.UUID;
 
 public abstract class AbstractUserActionImpl extends AbstractOverrideActionImpl implements UserAction
 {
     public AbstractUserActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {
         super(api, route);
-    }
-
-    @Nonnull
-    protected UUID retrieveSelfUserId(@Nonnull ChannelHandlerContext context)
-    {
-        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        if (data == null)
-            throw new ErrorResponseException(ErrorResponse.MISSING_ACCESS);
-        else if (!MiscUtil.isUUID(data.getSubject()))
-            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
-        else
-            return UUID.fromString(data.getSubject());
     }
 }
