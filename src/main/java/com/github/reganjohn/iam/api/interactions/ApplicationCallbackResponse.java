@@ -23,6 +23,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.EnumSet;
 import java.util.UUID;
 
@@ -69,4 +70,7 @@ public interface ApplicationCallbackResponse
 
     @Nonnull
     String getThumbprint();
+
+    @Nullable
+    String getLabel();
 }

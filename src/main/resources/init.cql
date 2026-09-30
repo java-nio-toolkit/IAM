@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS integrations.interactions
     grant_uri      TEXT,
     continue_hash  TEXT,
     client_jkt     TEXT,
+    label          TEXT,
     PRIMARY KEY ((user_id, application_id), interaction_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 300;
 
@@ -154,6 +155,7 @@ CREATE TABLE IF NOT EXISTS integrations.responses
     continue_hash  TEXT,
     client_jkt     TEXT,
     user_jkt       TEXT,
+    label          TEXT,
     PRIMARY KEY ((application_id), interaction_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 60;
 

@@ -21,6 +21,7 @@ import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -39,13 +40,14 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
     private final String grantUri;
     private final String continueHash;
     private final String clientThumbprint;
+    private final String label;
 
     public ApplicationContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull UUID ownerId, @Nonnull UUID applicationId,
                                              @Nonnull UUID interactionId, @Nonnull OffsetDateTime expiresAt,
                                              long permissions, @Nonnull String uri, @Nonnull String clientNonce,
                                              @Nonnull String finishNonce, @Nonnull String hashMethod,
                                              @Nonnull String grantUri, @Nonnull String continueHash,
-                                             @Nonnull String clientThumbprint)
+                                             @Nonnull String clientThumbprint, @Nullable String label)
     {
         this.api = api;
         this.ownerId = ownerId;
@@ -60,6 +62,7 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
         this.grantUri = grantUri;
         this.continueHash = continueHash;
         this.clientThumbprint = clientThumbprint;
+        this.label = label;
     }
 
     @Nonnull
@@ -149,5 +152,12 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
     public String getThumbprint()
     {
         return clientThumbprint;
+    }
+
+    @Nullable
+    @Override
+    public String getLabel()
+    {
+        return label;
     }
 }

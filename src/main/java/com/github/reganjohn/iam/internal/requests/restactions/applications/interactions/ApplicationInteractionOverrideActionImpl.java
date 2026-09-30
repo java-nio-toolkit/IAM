@@ -218,7 +218,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
                 .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", ownerId, applicationId, interactionId)
                 .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions,
-                        interactRef, interaction.hash(), interaction.getThumbprint(), userThumbprint)
+                        interactRef, interaction.hash(), interaction.getThumbprint(), userThumbprint, interaction.getLabel())
                 .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, applicationId, ownerId, 0L, permissions, OffsetDateTime.now())
                 .map(unused -> interaction);
     }

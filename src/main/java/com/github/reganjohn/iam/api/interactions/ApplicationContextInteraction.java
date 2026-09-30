@@ -21,6 +21,7 @@ import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.time.OffsetDateTime;
 import java.util.EnumSet;
 import java.util.UUID;
@@ -67,4 +68,7 @@ public interface ApplicationContextInteraction extends IUnique
 
     @Nonnull
     String getThumbprint();
+
+    @Nullable
+    String getLabel();
 }

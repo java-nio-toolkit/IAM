@@ -311,7 +311,7 @@ public class UserImpl implements User
                 if (!array.isEmpty())
                     interaction.onSuccess(getIAM().getEntityBuilder().createPermissionOverrides(array));
                 else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
+                    interaction.onSuccess(Collections.emptyList());
             }
         };
     }

@@ -63,6 +63,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -223,9 +224,9 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         else if (!hasModified(interactRef, response.getInteractionReference()))
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_INTERACTION));
         else
-            response.delete()
-                    .flatMap(deleted -> retrieveAccessData(context, deleted))
-                    .queue(data -> handleSuccess(context, toData(response, data)), context::fireExceptionCaught);
+            retrieveAccessData(context, response)
+                    .flatMap(data -> response.delete().map(deleted -> toData(response, data)))
+                    .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }
 
     @Nonnull
@@ -235,7 +236,10 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
                 .put("value", data.getRaw())
                 .put("access", PermissionUtil.toDataArray(response.getPermissions()))
                 .put("key", response.getThumbprint())
+                .put("expires_in", Duration.between(data.getTimeCreated(), data.getTimeExpiresAt()).getSeconds())
                 .toData();
+        if (response.getLabel() != null)
+            raw.put("label", response.getLabel());
         return Helpers.singletonData("access_token", raw);
     }
 

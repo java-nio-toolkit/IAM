@@ -30,6 +30,7 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImp
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -45,11 +46,12 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     private final String continueHash;
     private final String clientThumbprint;
     private final String userThumbprint;
+    private final String label;
 
     public ApplicationCallbackResponseImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
                                            @Nonnull UUID applicationId, @Nonnull UUID interactionId, long permissions,
                                            @Nonnull String interactionReference, @Nonnull String continueHash,
-                                           @Nonnull String clientThumbprint, @Nonnull String userThumbprint)
+                                           @Nonnull String clientThumbprint, @Nonnull String userThumbprint, @Nullable String label)
     {
         this.api = api;
         this.userId = userId;
@@ -61,6 +63,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
         this.continueHash = continueHash;
         this.clientThumbprint = clientThumbprint;
         this.userThumbprint = userThumbprint;
+        this.label = label;
     }
 
     @Nonnull
@@ -155,5 +158,12 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     public String getThumbprint()
     {
         return userThumbprint;
+    }
+
+    @Nullable
+    @Override
+    public String getLabel()
+    {
+        return label;
     }
 }

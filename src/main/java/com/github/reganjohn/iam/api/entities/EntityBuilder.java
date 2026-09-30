@@ -18,6 +18,7 @@ package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
+import com.github.adamorgan.jnt.api.utils.TimeUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.*;
@@ -73,7 +74,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         long now = System.currentTimeMillis();
         OffsetDateTime offset = Helpers.toOffset(now);
-        OffsetDateTime expiresAt = snapshot.getTimeExpiresAt();
+        OffsetDateTime expiresAt = offset.plus(manager.getTimeoutDuration());
         List<String> audiences = manager.getAudiences();
         DataObject actor = rawActor != null ? Helpers.singletonData("sub", rawActor) : null;
         AccessOptionData optionData = new AccessOptionData(snapshot.getUniqueId(), type, manager.getSignType(), snapshot);
@@ -160,7 +161,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     @Nonnull
     public static AccessEntryData createAccessEntry(@Nonnull BufferObject data) throws Exception
     {
-        String id = data.getString("kid");
+        String id = data.getString("kid", null);
         byte[] publicKey = data.getBytes("public_key");
         String type = data.getString("kty");
         String alg = data.getString("alg");
@@ -170,10 +171,11 @@ public class EntityBuilder extends AbstractEntityBuilder
         PublicKey key = keyFactory.generatePublic(keySpec);
         DataObject rawData = createAccessSecretData(AccessEntryType.valueOf(type), new KeyPair(key, null), true);
         DataObject rawEntryData = DataObject.empty()
-                .put("kid", id)
                 .put("alg", alg)
                 .put("kty", type)
                 .toData();
+        if (id != null)
+            rawEntryData.put("kid", id);
         String usage = data.getString("usage", null);
         if (usage != null)
             rawData.put("use", usage);
@@ -242,8 +244,9 @@ public class EntityBuilder extends AbstractEntityBuilder
         String grantUri = data.getString("grant_uri");
         String continueHash = data.getString("continue_hash");
         String clientThumbprint = data.getString("client_jkt");
+        String label = data.getString("label", null);
         return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri,
-                clientNonce, finishNonce, hashMethod, grantUri, continueHash, clientThumbprint);
+                clientNonce, finishNonce, hashMethod, grantUri, continueHash, clientThumbprint, label);
     }
 
     @Nonnull
@@ -258,8 +261,9 @@ public class EntityBuilder extends AbstractEntityBuilder
         String continueHash = data.getString("continue_hash");
         String clientThumbprint = data.getString("client_jkt");
         String userThumbprint = data.getString("user_jkt");
+        String label = data.getString("label", null);
         return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions,
-                interactionReference, continueHash, clientThumbprint, userThumbprint);
+                interactionReference, continueHash, clientThumbprint, userThumbprint, label);
     }
 
     @Nonnull

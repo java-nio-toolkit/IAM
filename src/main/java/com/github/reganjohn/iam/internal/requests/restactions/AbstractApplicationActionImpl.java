@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.internal.requests.restactions;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
@@ -143,28 +142,5 @@ public abstract class AbstractApplicationActionImpl extends AbstractOverrideActi
                                  @Nonnull String uri)
     {
         return digest(method, clientNonce + "\n" + finishNonce + "\n" + interact + "\n" + uri);
-    }
-
-    @Nullable
-    protected static String retrieveBaseUri(@Nonnull Request request)
-    {
-        String proto = "https";
-        String host = Helpers.get(request.getHeaders(), "Host");
-        String forwarded = Helpers.get(request.getHeaders(), "Forwarded");
-        if (Helpers.nonEmpty(forwarded))
-        {
-            for (String element : forwarded.split("[;,]"))
-            {
-                String[] pair = element.trim().split("=", 2);
-                if (pair.length != 2)
-                    continue;
-                String value = pair[1].trim().replace("\"", "");
-                if (pair[0].trim().equalsIgnoreCase("proto"))
-                    proto = value;
-                else if (pair[0].trim().equalsIgnoreCase("host"))
-                    host = value;
-            }
-        }
-        return Helpers.isEmpty(host) ? null : proto + "://" + host + "/";
     }
 }

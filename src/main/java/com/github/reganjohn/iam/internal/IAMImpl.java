@@ -81,12 +81,13 @@ public class IAMImpl implements IAM
     private final JCA jca;
     private final GlobalAccessManager manager;
     private final SocketManager socketManager;
+    private final String baseUri;
 
     private final EntityBuilder entityBuilder = new EntityBuilder(this);
 
     public static void main(String[] args) throws Exception
     {
-        new IAMImpl(8080);
+        new IAMImpl(8080, "https://localhost.com");
     }
 
     @Nonnull
@@ -119,12 +120,14 @@ public class IAMImpl implements IAM
                 .build();
     }
 
-    public IAMImpl(int port) throws Exception
+    public IAMImpl(int port, @Nonnull String baseUri) throws Exception
     {
+        Checks.notEmpty(baseUri, "Base URI");
+        this.baseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
         List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jca = buildInstance().awaitReady();
         cleanup();
-        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 5, TimeUnit.SECONDS, audiences);
+        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, audiences);
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
@@ -270,6 +273,12 @@ public class IAMImpl implements IAM
                     request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
             }
         };
+    }
+
+    @Nonnull
+    public String getBaseUri()
+    {
+        return baseUri;
     }
 
     @Nonnull
