@@ -1,0 +1,91 @@
+/*
+ * Copyright 2026 Ada Morgan, John Regan and the IAM contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.github.reganjohn.iam.test.managers;
+
+import com.github.adamorgan.jnt.api.requests.MediaType;
+import com.github.adamorgan.jnt.api.requests.Response;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
+import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
+import com.github.reganjohn.iam.test.IntegrationTest;
+import io.netty.util.CharsetUtil;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class ErrorObjectManagerTest extends IntegrationTest
+{
+    private Response handle(Throwable error)
+    {
+        try
+        {
+            new ErrorObjectManagerImpl(false).exceptionCaught(context, error);
+        }
+        catch (Exception exception)
+        {
+            throw new IllegalStateException(exception);
+        }
+        Object outbound = channel.readOutbound();
+        assertThat(outbound).isInstanceOf(Response.class);
+        return (Response) outbound;
+    }
+
+    private static String read(Response response)
+    {
+        BufferedResponseBody body = (BufferedResponseBody) response.getBody();
+        try
+        {
+            return body.next().toString(CharsetUtil.UTF_8);
+        }
+        finally
+        {
+            body.close();
+        }
+    }
+
+    @EnumSource(InteractionResponse.class)
+    @ParameterizedTest
+    void testInteractionResponse(InteractionResponse error)
+    {
+        Response response = handle(new InteractionResponseException(error));
+
+        assertThat(response.code).isEqualTo(error.getStatus().code);
+        assertThat(response.getBody().contentType()).isEqualTo(MediaType.parse("application/json; charset=utf-8"));
+        DataObject json = DataObject.fromJson(read(response));
+        assertThat(json.toMap().keySet()).containsExactly("error");
+        assertThat(json.getObject("error").toMap().keySet()).containsExactly("code");
+        assertThat(json.getObject("error").getString("code")).isEqualTo(error.getCode());
+    }
+
+    @Test
+    void testInteractionResponseCodes()
+    {
+        assertThat(InteractionResponse.values()).extracting(InteractionResponse::getCode).containsExactlyInAnyOrder(
+                "invalid_request", "invalid_client", "invalid_interaction", "invalid_flag", "invalid_continuation",
+                "user_denied", "request_denied", "unknown_interaction", "too_many_attempts");
+    }
+
+    @Test
+    void testInteractionResponseMessage()
+    {
+        assertThat(new InteractionResponseException(InteractionResponse.INVALID_CLIENT)).hasMessage("invalid_client");
+    }
+}

@@ -17,13 +17,9 @@
 package com.github.reganjohn.iam.test.restaction.applications.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
-import com.github.adamorgan.jnt.api.exceptions.MissingAccessException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
-import com.github.adamorgan.jnt.api.requests.Request;
-import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
@@ -32,53 +28,37 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
-import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
-import com.github.adamorgan.jnt.api.utils.responsebody.ResponseBody;
-import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
+import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
-import com.github.adamorgan.jnt.internal.JNTImpl;
-import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
-import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.reganjohn.iam.api.Permission;
-import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionRetrieveActionImpl;
+import com.github.reganjohn.iam.internal.utils.PermissionUtil;
+import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.embedded.EmbeddedChannel;
-import io.netty.util.CharsetUtil;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
-import java.net.ConnectException;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.UUID;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -96,82 +76,119 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
     private static final UUID INTERACTION_ID = UUID.fromString("05e4d59d-2366-7152-9eda-876e03dfa88d");
+    private static final String TOKEN = "continue-token";
+    private static final String REFERENCE = "interaction-reference";
+    private static final String USER_KEY = "user-jkt";
 
-    private EmbeddedChannel connection;
+    private String clientKey;
+    private AccessContextData selectedContext;
+    private String issuedSubject;
+    private UUID issuedActor;
+    private DataArray issuedPermissions;
 
     private ApplicationInteractionRetrieveActionImpl newAction()
     {
         return new ApplicationInteractionRetrieveActionImpl(api);
     }
 
-    @AfterEach
-    void closeConnection()
+    private void withProofOfClient()
     {
-        if (connection != null)
-            connection.finishAndReleaseAll();
-    }
-
-    private ApplicationInteractionRetrieveActionImpl newAction(ApplicationCallbackResponse callback)
-    {
-        ApplicationInteractionRetrieveActionImpl action = spy(newAction());
-        InteractionCallbackAction<ApplicationCallbackResponse> retrieval = completed(callback);
-        doReturn(retrieval).when(action).retrieveCallbackResponse(APPLICATION_ID, INTERACTION_ID);
-        return action;
-    }
-
-    private ApplicationCallbackResponse newCallback(String origin)
-    {
-        Application application = withApplication(APPLICATION_ID, USER_ID, "app", null, null, origin, 0, origin + "/callback");
-        InteractionCallbackAction<Application> retrieval = completed(application);
-        ApplicationCallbackResponse callback = mock(ApplicationCallbackResponse.class);
-        when(callback.getUserId()).thenReturn(USER_ID);
-        when(callback.getApplicationId()).thenReturn(APPLICATION_ID);
-        when(callback.getInteractionId()).thenReturn(INTERACTION_ID);
-        when(callback.getPermissionsRaw()).thenReturn(1L);
-        when(callback.getPermissions()).thenReturn(Permission.getPermissions(1L));
-        when(callback.retrieveApplication()).thenReturn(retrieval);
-        return callback;
-    }
-
-    private SocketManager withSocketManager(Supplier<ChannelFuture> connect)
-    {
-        SocketManager manager = mock(SocketManager.class);
-        when(manager.connect(any(SocketAddress.class))).thenAnswer(invocation -> connect.get());
-        when(api.getSocketManager()).thenReturn(manager);
-        return manager;
-    }
-
-    private SocketManager withConnection()
-    {
-        connection = new EmbeddedChannel();
-        connection.attr(JNTImpl.IDENTIFIER).set(jnt);
-        return withSocketManager(() -> connection.newSucceededFuture());
-    }
-
-    private RestActionImpl interactionHandler()
-    {
-        return (RestActionImpl) connection.pipeline().last();
-    }
-
-    private Response jwks(ChannelHandlerContext ctx, int code)
-    {
-        JacksonResponseBody body = mock(JacksonResponseBody.class);
-        when(body.isObject()).thenReturn(true);
-        when(body.getObject()).thenReturn(DataObject.empty());
-        return new Response(ctx, code, "status", new CaseInsensitiveMap<>(), body);
-    }
-
-    private void deliver(ResponseBody body)
-    {
-        RestActionImpl handler = interactionHandler();
-        ChannelHandlerContext handlerContext = connection.pipeline().context(handler);
-        try
+        AccessEntryData entry = withProof(SignType.ED25519);
+        try (AccessContextData contextData = entry.getContext(AccessContextType.SHA_256))
         {
-            handler.handleResponse(handlerContext, mock(Request.class), new Response(handlerContext, 200, "status", new CaseInsensitiveMap<>(), body));
+            clientKey = contextData.digest();
         }
         catch (Exception exception)
         {
             throw new IllegalStateException(exception);
+        }
+    }
+
+    private ApplicationCallbackResponse newResponse(String clientThumbprint, String continueHash, String reference)
+    {
+        ApplicationCallbackResponse response = mock(ApplicationCallbackResponse.class);
+        InteractionCallbackAction<ApplicationCallbackResponse> deletion = completed(response);
+        when(response.getUserId()).thenReturn(USER_ID);
+        when(response.getApplicationId()).thenReturn(APPLICATION_ID);
+        when(response.getInteractionId()).thenReturn(INTERACTION_ID);
+        when(response.getPermissionsRaw()).thenReturn(Permission.VIEW_ACCOUNT.getRawValue());
+        when(response.getPermissions()).thenReturn(Permission.getPermissions(Permission.VIEW_ACCOUNT.getRawValue()));
+        when(response.getClientThumbprint()).thenReturn(clientThumbprint);
+        when(response.getContinueHash()).thenReturn(continueHash);
+        when(response.getInteractionReference()).thenReturn(reference);
+        when(response.getThumbprint()).thenReturn(USER_KEY);
+        when(response.delete()).thenReturn(deletion);
+        return response;
+    }
+
+    private ApplicationCallbackResponse newResponse()
+    {
+        return newResponse(clientKey, digestOf(TOKEN), REFERENCE);
+    }
+
+    private ApplicationInteractionRetrieveActionImpl newAction(ApplicationCallbackResponse response)
+    {
+        ApplicationInteractionRetrieveActionImpl action = spy(newAction());
+        InteractionCallbackAction<ApplicationCallbackResponse> retrieval = completed(response);
+        doReturn(retrieval).when(action).retrieveCallbackResponse(APPLICATION_ID, INTERACTION_ID);
+        return action;
+    }
+
+    private static AccessEntryData entryOf(String thumbprint, AccessContextData[] holder)
+    {
+        AccessContextData contextData = mock(AccessContextData.class);
+        when(contextData.digest()).thenReturn(thumbprint);
+        AccessEntryData entry = mock(AccessEntryData.class);
+        when(entry.getContext(AccessContextType.SHA_256)).thenReturn(contextData);
+        if (holder != null)
+            holder[0] = contextData;
+        return entry;
+    }
+
+    private AccessContextData withUserKeys(String... thumbprints)
+    {
+        AccessContextData[] selected = new AccessContextData[1];
+        AccessEntryData[] entries = new AccessEntryData[thumbprints.length];
+        for (int i = 0; i < thumbprints.length; i++)
+            entries[i] = entryOf(thumbprints[i], thumbprints[i].equals(USER_KEY) ? selected : null);
+        User user = withUser(USER_ID, "alice", null, 0);
+        withAccessEntries(user, completed(new AccessEntryArray(Arrays.asList(entries))));
+        withRetrieval(USER_ID, completed(user));
+        return selected[0];
+    }
+
+    private RestActionAssertions assertThatContinuing(ApplicationInteractionRetrieveActionImpl action, String authorization, String json)
+    {
+        RestActionAssertions assertions = assertThatRequestTo(action)
+                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withJsonBody(json);
+        return authorization == null ? assertions : assertions.withHeader("Authorization", authorization);
+    }
+
+    private RestActionAssertions assertThatContinuing(ApplicationInteractionRetrieveActionImpl action)
+    {
+        return assertThatContinuing(action, "GNAP " + TOKEN, body("interact_ref", REFERENCE));
+    }
+
+    private void whenHandled(RestActionAssertions assertions)
+    {
+        try (MockedStatic<EntityBuilder> built = mockStatic(EntityBuilder.class))
+        {
+            AccessObjectData issued = mock(AccessObjectData.class);
+            when(issued.getRaw()).thenReturn(ISSUED_OBJECT);
+            built.when(() -> EntityBuilder.createObjectData(anyString(), anyString(), anyString(), any(UUID.class),
+                            any(DataArray.class), any(AccessEntryManager.class), any(AccessContextData.class), anyString(),
+                            any(AccessEntryManagerImpl.AccessEntrySnapshot.class)))
+                    .thenAnswer(invocation ->
+                    {
+                        issuedSubject = invocation.getArgument(2);
+                        issuedActor = invocation.getArgument(3);
+                        issuedPermissions = invocation.getArgument(4);
+                        selectedContext = invocation.getArgument(6);
+                        return issued;
+                    });
+
+            assertions.whenHandled();
         }
     }
 
@@ -187,16 +204,67 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
                 arguments("both_invalid", "not-a-uuid", "not-a-uuid"));
     }
 
+    static Stream<Arguments> testInvalidBody()
+    {
+        return Stream.of(
+                arguments("empty_object", body()),
+                arguments("reference_not_string", body("interact_ref", 5)),
+                arguments("reference_empty", body("interact_ref", "")),
+                arguments("reference_null", "{\"interact_ref\":null}"),
+                arguments("reference_array", body("interact_ref", DataArray.empty())));
+    }
+
     @MethodSource
     @ParameterizedTest
     void testInvalidIds(String name, String applicationId, String interactionId)
     {
-        withProof(SignType.ED25519);
+        withProofOfClient();
 
         assertThatRequestTo(newAction())
                 .withRouteParams(applicationId, interactionId)
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .withHeader("Authorization", "GNAP " + TOKEN)
+                .withJsonBody(body("interact_ref", REFERENCE))
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasNoResponse()
+                .whenHandled();
+    }
+
+    @MethodSource
+    @ParameterizedTest(name = "{0}")
+    void testInvalidBody(String name, String json)
+    {
+        withProofOfClient();
+
+        assertThatContinuing(newAction(), "GNAP " + TOKEN, json)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasNoResponse()
+                .whenHandled();
+    }
+
+    @Test
+    void testNonObject()
+    {
+        withProofOfClient();
+
+        assertThatRequestTo(newAction())
+                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withHeader("Authorization", "GNAP " + TOKEN)
+                .withBody(nonObjectBody())
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasNoResponse()
+                .whenHandled();
+    }
+
+    @Test
+    void testForeignBody()
+    {
+        withProofOfClient();
+
+        assertThatRequestTo(newAction())
+                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withHeader("Authorization", "GNAP " + TOKEN)
+                .withBody(mock(RequestBody.class))
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -204,252 +272,198 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
     @Test
     void testMissingProof()
     {
-        assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+        assertThatContinuing(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ProofAccessException.class)
                 .whenHandled();
     }
 
+    @ValueSource(strings = {"", "GNAP", "GNAP ", "Bearer continue-token", "DPoP continue-token", "GNAP first second", "continue-token"})
+    @ParameterizedTest
+    void testMalformedAuthorization(String authorization)
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+
+        assertThatContinuing(newAction(response), authorization, body("interact_ref", REFERENCE))
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
+                .hasNoResponse()
+                .whenHandled();
+
+        verify(response, never()).delete();
+    }
+
+    @Test
+    void testMissingAuthorization()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+
+        assertThatContinuing(newAction(response), null, body("interact_ref", REFERENCE))
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
+                .hasNoResponse()
+                .whenHandled();
+
+        verify(response, never()).delete();
+    }
+
+    @Test
+    void testValidContinuation()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        AccessContextData userContext = withUserKeys("another-jkt", USER_KEY, "third-jkt");
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasStatus(StatusReason.OK.code)
+                .hasContentType(ApplicationInteractionRetrieveActionImpl.MEDIA_TYPE_JSON)
+                .hasJsonBody(json ->
+                {
+                    assertThat(json.toMap().keySet()).containsExactly("access_token");
+                    DataObject token = json.getObject("access_token");
+                    assertThat(token.toMap().keySet()).containsExactlyInAnyOrder("value", "access", "key");
+                    assertThat(token.getString("value")).isEqualTo(ISSUED_OBJECT);
+                    assertThat(token.getString("key")).isEqualTo(USER_KEY);
+                    assertThat(token.getArray("access").toString())
+                            .isEqualTo(PermissionUtil.toDataArray(Permission.getPermissions(Permission.VIEW_ACCOUNT.getRawValue())).toString());
+                }));
+
+        verify(response).delete();
+        assertThat(issuedSubject).isEqualTo(USER_ID.toString());
+        assertThat(issuedActor).isEqualTo(APPLICATION_ID);
+        assertThat(issuedPermissions.toString()).isEqualTo(PermissionUtil.toDataArray(Permission.getPermissions(Permission.VIEW_ACCOUNT.getRawValue())).toString());
+        assertThat(selectedContext).isSameAs(userContext);
+    }
+
+    @Test
+    void testSchemeIsCaseInsensitive()
+    {
+        withProofOfClient();
+        withUserKeys(USER_KEY);
+
+        whenHandled(assertThatContinuing(newAction(newResponse()), "gnap " + TOKEN, body("interact_ref", REFERENCE))
+                .hasStatus(StatusReason.OK.code));
+    }
+
     @Test
     void testUnknownInteraction()
     {
-        withProof(SignType.ED25519);
+        withProofOfClient();
         ApplicationInteractionRetrieveActionImpl action = spy(newAction());
         InteractionCallbackAction<ApplicationCallbackResponse> retrieval = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
         doReturn(retrieval).when(action).retrieveCallbackResponse(APPLICATION_ID, INTERACTION_ID);
 
-        assertThatRequestTo(action)
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+        assertThatContinuing(action)
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
+                .whenHandled();
+    }
+
+    @Test
+    void testOtherRetrievalFailure()
+    {
+        withProofOfClient();
+        ApplicationInteractionRetrieveActionImpl action = spy(newAction());
+        InteractionCallbackAction<ApplicationCallbackResponse> retrieval = failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS));
+        doReturn(retrieval).when(action).retrieveCallbackResponse(APPLICATION_ID, INTERACTION_ID);
+
+        assertThatContinuing(action)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
                 .whenHandled();
     }
 
     @Test
-    void testUnknownApplication()
+    void testAnotherClientKey()
     {
-        withProof(SignType.ED25519);
-        ApplicationCallbackResponse callback = mock(ApplicationCallbackResponse.class);
-        InteractionCallbackAction<Application> retrieval = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
-        when(callback.retrieveApplication()).thenReturn(retrieval);
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse("another-client-jkt", digestOf(TOKEN), REFERENCE);
 
-        assertThatRequestTo(newAction(callback))
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+        assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
                 .whenHandled();
+
+        verify(response, never()).delete();
     }
 
     @Test
-    void testConnectFailure()
+    void testAnotherToken()
     {
-        withProof(SignType.ED25519);
-        ConnectException failure = new ConnectException("refused");
-        connection = new EmbeddedChannel();
-        withSocketManager(() -> connection.newFailedFuture(failure));
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse(clientKey, digestOf("another-token"), REFERENCE);
 
-        assertThatRequestTo(newAction(newCallback("https://localhost")))
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+        assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasFailureMatching(error -> error == failure)
-                .whenHandled();
-    }
-
-    @Test
-    void testDefaultPort()
-    {
-        withProof(SignType.ED25519);
-        SocketManager manager = withConnection();
-
-        assertThatRequestTo(newAction(newCallback("https://localhost")))
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
-                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
                 .whenHandled();
 
-        ArgumentCaptor<SocketAddress> address = ArgumentCaptor.forClass(SocketAddress.class);
-        verify(manager).connect(address.capture());
-        assertThat(((InetSocketAddress) address.getValue()).getHostString()).isEqualTo("localhost");
-        assertThat(((InetSocketAddress) address.getValue()).getPort()).isEqualTo(443);
+        verify(response, never()).delete();
     }
 
-    @Test
-    void testExplicitPort()
-    {
-        withProof(SignType.ED25519);
-        SocketManager manager = withConnection();
-
-        assertThatRequestTo(newAction(newCallback("https://localhost:8443")))
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
-                .hasNoResponse()
-                .whenHandled();
-
-        ArgumentCaptor<SocketAddress> address = ArgumentCaptor.forClass(SocketAddress.class);
-        verify(manager).connect(address.capture());
-        assertThat(((InetSocketAddress) address.getValue()).getPort()).isEqualTo(8443);
-    }
-
-    @Test
-    void testKeysRequest()
-    {
-        withProof(SignType.ED25519);
-        withConnection();
-
-        assertThatRequestTo(newAction(newCallback("https://localhost")))
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
-                .hasNoResponse()
-                .whenHandled();
-
-        Object outbound = connection.readOutbound();
-        assertThat(outbound).isInstanceOf(Request.class);
-        Request request = (Request) outbound;
-        assertThat(request.getRoute().getCompiledRoute()).isEqualTo(".well-known/jwks.json");
-        assertThat(request.getHeaders().get("Forwarded")).containsExactly("proto=http");
-    }
-
-    private void deliver(int code, AccessEntryArray keys, AccessObjectData issued)
-    {
-        try (MockedStatic<AbstractEntityBuilder> parsed = mockStatic(AbstractEntityBuilder.class);
-             MockedStatic<EntityBuilder> built = mockStatic(EntityBuilder.class))
-        {
-            parsed.when(() -> AbstractEntityBuilder.createAccessEntryArray(any(DataObject.class))).thenReturn(keys);
-            built.when(() -> EntityBuilder.createObjectData(anyString(), anyString(), anyString(), any(UUID.class),
-                            any(DataArray.class), any(AccessEntryManager.class), any(AccessContextData.class), anyString(),
-                            any(AccessEntryManagerImpl.AccessEntrySnapshot.class)))
-                    .thenReturn(issued);
-            RestActionImpl handler = interactionHandler();
-            ChannelHandlerContext handlerContext = connection.pipeline().context(handler);
-
-            handler.handleResponse(handlerContext, mock(Request.class), jwks(handlerContext, code));
-        }
-        catch (Exception exception)
-        {
-            throw new IllegalStateException(exception);
-        }
-    }
-
-    private void handleRequest(ApplicationCallbackResponse callback)
-    {
-        assertThatRequestTo(newAction(callback))
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
-                .hasNoResponse()
-                .whenHandled();
-    }
-
-    @Test
-    void testValidInteraction()
-    {
-        withProof(SignType.ED25519);
-        withConnection();
-        ApplicationCallbackResponse callback = newCallback("https://localhost");
-        InteractionCallbackAction<ApplicationCallbackResponse> deletion = completed(callback);
-        when(callback.delete()).thenReturn(deletion);
-        AccessEntryData proofEntry = channel.attr(ProofObjectManagerImpl.CONTEXT).get().getEntryData();
-        AccessEntryData first = mock(AccessEntryData.class);
-        when(first.getUniqueId()).thenReturn("first-key");
-        AccessContextData firstContext = mock(AccessContextData.class);
-        when(first.getContext(AccessContextType.SHA_256)).thenReturn(firstContext);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withAccessEntries(user, completed(new AccessEntryArray(Collections.singletonList(first))));
-        withRetrieval(USER_ID, completed(user));
-        AccessObjectData issued = mock(AccessObjectData.class);
-        when(issued.getRaw()).thenReturn(ISSUED_OBJECT);
-        when(issued.getScope()).thenReturn(Collections.emptyList());
-
-        handleRequest(callback);
-        deliver(200, new AccessEntryArray(Collections.singletonList(proofEntry)), issued);
-
-        Object outbound = channel.readOutbound();
-        assertThat(outbound).isInstanceOf(Response.class);
-        Response response = (Response) outbound;
-        assertThat(response.code).isEqualTo(StatusReason.OK.code);
-        BufferedResponseBody body = (BufferedResponseBody) response.getBody();
-        String text = body.next().toString(CharsetUtil.UTF_8);
-        body.close();
-        assertThat(text).isEqualTo("[{\"label\":\"first-key\",\"value\":\"" + ISSUED_OBJECT + "\",\"access\":[]}]");
-        verify(callback).delete();
-    }
-
-    @Test
-    void testProofOfAnotherApplication()
-    {
-        withProof(SignType.ED25519);
-        withConnection();
-        ApplicationCallbackResponse callback = newCallback("https://localhost");
-        AccessEntryData foreign = mock(AccessEntryData.class);
-
-        handleRequest(callback);
-        deliver(200, new AccessEntryArray(Collections.singletonList(foreign)), mock(AccessObjectData.class));
-
-        assertThatThrownBy(channel::checkException).isInstanceOf(MissingAccessException.class);
-        assertThat((Object) channel.readOutbound()).isNull();
-        verify(callback, never()).delete();
-    }
-
-    @Test
-    void testRedirectIsRejected()
-    {
-        withProof(SignType.ED25519);
-        withConnection();
-        ApplicationCallbackResponse callback = newCallback("https://localhost");
-
-        handleRequest(callback);
-        deliver(302, new AccessEntryArray(Collections.emptyList()), mock(AccessObjectData.class));
-
-        assertThatThrownBy(channel::checkException).isInstanceOf(ErrorResponseException.class);
-        assertThat(connection.isOpen()).isFalse();
-        assertThat((Object) channel.readOutbound()).isNull();
-        verify(callback, never()).delete();
-    }
-
-    @ValueSource(ints = {400, 404, 500, 503})
+    @ValueSource(strings = {"another-reference", "INTERACTION-REFERENCE", "interaction-reference "})
     @ParameterizedTest
-    void testKeysRequestFailure(int code)
+    void testAnotherReference(String reference)
     {
-        withProof(SignType.ED25519);
-        withConnection();
-        ApplicationCallbackResponse callback = newCallback("https://localhost");
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
 
-        handleRequest(callback);
-        deliver(code, new AccessEntryArray(Collections.emptyList()), mock(AccessObjectData.class));
+        assertThatContinuing(newAction(response), "GNAP " + TOKEN, body("interact_ref", reference))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION)
+                .whenHandled();
 
-        assertThatThrownBy(channel::checkException).isInstanceOf(ErrorResponseException.class);
-        assertThat(connection.isOpen()).isFalse();
-        verify(callback, never()).delete();
+        verify(response, never()).delete();
     }
 
     @Test
-    void testForeignKeysBody()
+    void testClientIsCheckedFirst()
     {
-        withProof(SignType.ED25519);
-        withConnection();
-        ApplicationCallbackResponse callback = newCallback("https://localhost");
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse("another-client-jkt", digestOf("another-token"), "another-reference");
 
-        handleRequest(callback);
-        deliver(mock(ResponseBody.class));
-
-        assertThatThrownBy(channel::checkException).isInstanceOf(ErrorResponseException.class);
-        assertThat(connection.isOpen()).isFalse();
-        verify(callback, never()).delete();
+        assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .whenHandled();
     }
 
     @Test
-    void testKeysBodyIsNotObject()
+    void testUserKeyIsGone()
     {
-        withProof(SignType.ED25519);
-        withConnection();
-        ApplicationCallbackResponse callback = newCallback("https://localhost");
-        JacksonResponseBody body = mock(JacksonResponseBody.class);
-        when(body.isObject()).thenReturn(false);
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        withUserKeys("another-jkt");
 
-        handleRequest(callback);
-        deliver(body);
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION));
+    }
 
-        assertThatThrownBy(channel::checkException).isInstanceOf(ErrorResponseException.class);
-        assertThat(connection.isOpen()).isFalse();
-        verify(callback, never()).delete();
+    @Test
+    void testUnknownUser()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class));
+    }
+
+    @Test
+    void testDeleteFailure()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        InteractionCallbackAction<ApplicationCallbackResponse> deletion = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
+        when(response.delete()).thenReturn(deletion);
+        withUserKeys(USER_KEY);
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class));
     }
 
     @Test

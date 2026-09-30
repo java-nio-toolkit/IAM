@@ -47,9 +47,13 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -383,5 +387,27 @@ public class RestActionTest extends IntegrationTest
         JacksonRequestBody body = mock(JacksonRequestBody.class);
         when(body.isObject()).thenReturn(false);
         return body;
+    }
+    protected static String digestOf(String value)
+    {
+        return digestOf("SHA-256", value);
+    }
+
+    protected static String digestOf(String algorithm, String value)
+    {
+        try
+        {
+            byte[] digest = MessageDigest.getInstance(algorithm).digest(value.getBytes(StandardCharsets.US_ASCII));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+        }
+        catch (NoSuchAlgorithmException exception)
+        {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    protected static String interactionHashOf(String clientNonce, String finishNonce, String interactRef, String grantUri)
+    {
+        return digestOf(String.join("\n", clientNonce, finishNonce, interactRef, grantUri));
     }
 }

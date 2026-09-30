@@ -24,6 +24,8 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractOverrideActionImpl;
 import com.github.reganjohn.iam.test.PrettyRepresentation;
 import com.github.reganjohn.iam.test.util.SnapshotHandler;
@@ -164,6 +166,24 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
                     .as("RestAction should answer with the expected %s header", name)
                     .containsExactly(value);
         });
+    }
+
+    @CheckReturnValue
+    @Contract("_->this")
+    public RestActionAssertions hasInteractionResponse(@Nonnull InteractionResponse error)
+    {
+        return checkAssertions(outcome ->
+        {
+            assertThat(outcome.failure).isInstanceOf(InteractionResponseException.class);
+            assertThat(((InteractionResponseException) outcome.failure).getError()).isEqualTo(error);
+        });
+    }
+
+    @CheckReturnValue
+    @Contract("_->this")
+    public RestActionAssertions hasJsonBody(@Nonnull ThrowingConsumer<DataObject> assertion)
+    {
+        return checkAssertions(outcome -> assertion.acceptThrows(DataObject.fromJson(readBody(outcome))));
     }
 
     @CheckReturnValue

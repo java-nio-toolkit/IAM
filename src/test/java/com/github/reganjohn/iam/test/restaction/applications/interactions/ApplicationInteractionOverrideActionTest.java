@@ -16,7 +16,12 @@
 
 package com.github.reganjohn.iam.test.restaction.applications.interactions;
 
+import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.SignType;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionOverrideEvent;
@@ -61,10 +66,18 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
     private static final UUID INTERACTION_ID = UUID.fromString("05e4d59d-2366-7152-9eda-876e03dfa88d");
     private static final String CALLBACK = "https://example.org/callback";
+    private static final String GRANT_URI = "https://iam.example/users/02b1a26a-f033-7e2f-8ba7-543bd0ac755a/applications/04d3c48c-1255-7041-8dc9-765df2ce977c/interactions";
+
+    private AccessEntryData proofEntry;
 
     private ApplicationInteractionOverrideActionImpl newAction()
     {
         return new ApplicationInteractionOverrideActionImpl(api);
+    }
+
+    private void withProofOfUser()
+    {
+        proofEntry = withProof(SignType.ED25519);
     }
 
     private static ApplicationContextInteraction newInteraction()
@@ -76,6 +89,12 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         when(interaction.getPermissionsRaw()).thenReturn(1L);
         when(interaction.getRedirectUri()).thenReturn(CALLBACK);
         when(interaction.getTimeExpiresAt()).thenReturn(OffsetDateTime.parse("2026-01-01T00:05:00Z"));
+        when(interaction.getClientNonce()).thenReturn("client-nonce");
+        when(interaction.getFinishNonce()).thenReturn("finish-nonce");
+        when(interaction.getMethodHash()).thenReturn("sha-256");
+        when(interaction.getUri()).thenReturn(GRANT_URI);
+        when(interaction.hash()).thenReturn("continue-hash");
+        when(interaction.getThumbprint()).thenReturn("client-jkt");
         return interaction;
     }
 
@@ -109,26 +128,31 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 (action, context) -> {});
     }
 
+    private static String thumbprintOf(AccessEntryData entry)
+    {
+        try (AccessContextData contextData = entry.getContext(AccessContextType.SHA_256))
+        {
+            return contextData.digest();
+        }
+        catch (Exception exception)
+        {
+            throw new IllegalStateException(exception);
+        }
+    }
+
     static Stream<Arguments> testInvalidIds()
     {
         return Stream.of(
-                arguments("application_empty", "", INTERACTION_ID.toString()),
-                arguments("application_not_uuid", "not-a-uuid", INTERACTION_ID.toString()),
-                arguments("application_too_short", "04d3c48c-1255-7041-8dc9", INTERACTION_ID.toString()),
-                arguments("interaction_empty", APPLICATION_ID.toString(), ""),
-                arguments("interaction_not_uuid", APPLICATION_ID.toString(), "not-a-uuid"),
-                arguments("interaction_too_short", APPLICATION_ID.toString(), "05e4d59d-2366-7152-9eda"),
-                arguments("both_invalid", "not-a-uuid", "not-a-uuid"));
-    }
-
-    static Stream<Arguments> testInvalidOwnerId()
-    {
-        return Stream.of(
-                arguments("empty", ""),
-                arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "02b1a26a-f033-7e2f-8ba7"),
-                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
-                arguments("without_dashes", "02b1a26af0337e2f8ba7543bd0ac755a"));
+                arguments("application_empty", OWNER_ID.toString(), "", INTERACTION_ID.toString()),
+                arguments("application_not_uuid", OWNER_ID.toString(), "not-a-uuid", INTERACTION_ID.toString()),
+                arguments("application_too_short", OWNER_ID.toString(), "04d3c48c-1255-7041-8dc9", INTERACTION_ID.toString()),
+                arguments("interaction_empty", OWNER_ID.toString(), APPLICATION_ID.toString(), ""),
+                arguments("interaction_not_uuid", OWNER_ID.toString(), APPLICATION_ID.toString(), "not-a-uuid"),
+                arguments("interaction_too_short", OWNER_ID.toString(), APPLICATION_ID.toString(), "05e4d59d-2366-7152-9eda"),
+                arguments("owner_empty", "", APPLICATION_ID.toString(), INTERACTION_ID.toString()),
+                arguments("owner_not_uuid", "not-a-uuid", APPLICATION_ID.toString(), INTERACTION_ID.toString()),
+                arguments("owner_too_short", "02b1a26a-f033-7e2f-8ba7", APPLICATION_ID.toString(), INTERACTION_ID.toString()),
+                arguments("all_invalid", "not-a-uuid", "not-a-uuid", "not-a-uuid"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -142,28 +166,12 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidIds(String name, String applicationId, String interactionId)
+    void testInvalidIds(String name, String ownerId, String applicationId, String interactionId)
     {
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
-                .withRouteParams(OWNER_ID.toString(), applicationId, interactionId)
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
-                .hasNoResponse()
-                .whenHandled();
-
-        verify(api, never()).retrieveUserById(any());
-    }
-
-    @MethodSource
-    @ParameterizedTest
-    void testInvalidOwnerId(String name, String ownerId)
-    {
-        withAccess(USER_ID);
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(ownerId, APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(ownerId, applicationId, interactionId)
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot(name)
                 .hasNoResponse()
@@ -175,29 +183,75 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     @Test
     void testValidInteraction()
     {
+        withProofOfUser();
         ApplicationContextInteraction interaction = newInteraction();
         withStoredInteraction(interaction);
         List<Object> events = withEventRecorder();
         ArgumentCaptor<UUID> accepted = ArgumentCaptor.forClass(UUID.class);
+        ArgumentCaptor<String> thumbprint = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> reference = ArgumentCaptor.forClass(String.class);
         ApplicationInteractionOverrideActionImpl action = spy(newAction());
-        doReturn(completed(interaction)).when(action).createResponse(accepted.capture(), any());
+        doReturn(completed(interaction)).when(action).createResponse(accepted.capture(), thumbprint.capture(), reference.capture(), any());
 
         assertThatRequestTo(action)
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasStatus(StatusReason.SEE_OTHER.code)
-                .hasHeader("Location", CALLBACK + "?application_id=" + APPLICATION_ID + "&interaction_id=" + INTERACTION_ID)
+                .checkAssertions(outcome ->
+                {
+                    String hash = interactionHashOf("client-nonce", "finish-nonce", reference.getValue(), GRANT_URI);
+                    assertThat(outcome.response.getHeaders().get("Location"))
+                            .containsExactly(CALLBACK + "?hash=" + hash + "&interact_ref=" + reference.getValue());
+                })
                 .hasNoBody()
                 .whenHandled();
 
         assertThat(accepted.getValue()).isEqualTo(USER_ID);
+        assertThat(thumbprint.getValue()).isEqualTo(thumbprintOf(proofEntry));
+        assertThat(reference.getValue()).matches("[A-Za-z0-9_-]{43}");
         assertThat(events).hasSize(1);
         assertThat(events.get(0)).isInstanceOf(InteractionOverrideEvent.class);
         assertThat(((InteractionOverrideEvent) events.get(0)).getInteraction()).isSameAs(interaction);
     }
 
     @Test
-    void testUnknownUser()
+    void testReferenceIsNotReused()
     {
+        withProofOfUser();
+        ApplicationContextInteraction interaction = newInteraction();
+        withStoredInteraction(interaction);
+        ArgumentCaptor<String> reference = ArgumentCaptor.forClass(String.class);
+        ApplicationInteractionOverrideActionImpl action = spy(newAction());
+        doReturn(completed(interaction)).when(action).createResponse(any(), any(), reference.capture(), any());
+
+        for (int i = 0; i < 2; i++)
+        {
+            assertThatRequestTo(action)
+                    .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                    .hasStatus(StatusReason.SEE_OTHER.code)
+                    .whenHandled();
+        }
+
+        assertThat(reference.getAllValues()).hasSize(2).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void testMissingProof()
+    {
+        withStoredInteraction(newInteraction());
+
+        assertThatRequestTo(newAction())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .hasNoResponse()
+                .hasFailureOfType(ProofAccessException.class)
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testUnknownOwner()
+    {
+        withProofOfUser();
         withAccess(USER_ID);
         withRetrieval(OWNER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
 
@@ -212,6 +266,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     @Test
     void testUnknownApplication()
     {
+        withProofOfUser();
         User owner = withUser(OWNER_ID, "bob", null, 0);
         withApplication(owner, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
         withAccess(USER_ID);
@@ -228,6 +283,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     @Test
     void testUnknownInteraction()
     {
+        withProofOfUser();
         Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://example.org", 0, CALLBACK);
         InteractionCallbackAction<ApplicationContextInteraction> retrieval = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
         when(application.retrieveInteractionById(INTERACTION_ID)).thenReturn(retrieval);
@@ -247,9 +303,10 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     @Test
     void testResponseFailure()
     {
+        withProofOfUser();
         withStoredInteraction(newInteraction());
         ApplicationInteractionOverrideActionImpl action = spy(newAction());
-        doReturn(failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS))).when(action).createResponse(any(), any());
+        doReturn(failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS))).when(action).createResponse(any(), any(), any(), any());
 
         assertThatRequestTo(action)
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
@@ -298,7 +355,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
 
         try (MockedConstruction<InteractionListContextActionImpl> construction = mockResponse(statements))
         {
-            InteractionCallbackAction<ApplicationContextInteraction> response = newAction().createResponse(USER_ID, interaction);
+            InteractionCallbackAction<ApplicationContextInteraction> response = newAction().createResponse(USER_ID, "user-jkt", "reference", interaction);
             response.queue(accepted -> result[0] = accepted, failure -> {});
 
             assertThat(construction.constructed()).hasSize(1);
@@ -309,9 +366,12 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         assertThat(statements.get(0)[0].toString()).isEqualTo("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?");
         assertThat(Arrays.copyOfRange(statements.get(0), 1, 4)).containsExactly(OWNER_ID, APPLICATION_ID, INTERACTION_ID);
         assertThat(statements.get(1)[0].toString()).contains("INSERT INTO integrations.responses");
-        assertThat(Arrays.copyOfRange(statements.get(1), 1, 6)).containsExactly(INTERACTION_ID, USER_ID, OWNER_ID, APPLICATION_ID, 1L);
+        assertThat(Arrays.copyOfRange(statements.get(1), 1, 10))
+                .containsExactly(INTERACTION_ID, USER_ID, OWNER_ID, APPLICATION_ID, 1L, "reference", "continue-hash", "client-jkt", "user-jkt");
         assertThat(statements.get(2)[0].toString()).contains("INSERT INTO users.entitlements");
         assertThat(Arrays.copyOfRange(statements.get(2), 1, 6)).containsExactly(USER_ID, APPLICATION_ID, OWNER_ID, 0L, 1L);
         assertThat(statements.get(2)[6]).isInstanceOf(OffsetDateTime.class);
+        assertThat(statements.get(1)[0].toString().chars().filter(character -> character == '?').count()).isEqualTo(9);
+        assertThat(statements.get(2)[0].toString().chars().filter(character -> character == '?').count()).isEqualTo(6);
     }
 }
