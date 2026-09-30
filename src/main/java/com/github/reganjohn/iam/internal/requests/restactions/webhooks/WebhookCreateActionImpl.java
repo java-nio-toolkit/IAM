@@ -24,10 +24,8 @@ import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -125,7 +123,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
     private void checkAvatarId(@Nonnull DataObject raw)
     {
         if (!raw.hasKey("avatar_id"))
-            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+            return;
         else if (!raw.isType("avatar_id", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"avatar_id\" value is not string.");
         else if (raw.getString("avatar_id").length() > Webhook.ICON_CID_MAX_LENGTH)
@@ -156,13 +154,13 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
         if (!raw.hasKey("url"))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!raw.isType("url", DataType.STRING))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not url.");
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not string.");
         else if (!MiscUtil.isURL(url, false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
         else if (!MiscUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
         else if (MiscUtil.isUnsafeURL(URI.create(url)))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe");
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
     }
 
     private void handleScopes(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody,
@@ -201,8 +199,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody)
     {
-        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(data.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         WebhookCreateData webhook = fromData(userId, rawBody);
         api.retrieveUserById(userId)
                 .flatMap(User::retrieveWebhookCount)
@@ -214,7 +211,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
     @CheckReturnValue
     public InteractionCallbackAction<Void> create(@Nonnull WebhookCreateData webhook, int count)
     {
-        if (count > MAX_WEBHOOK_COUNT)
+        if (count >= MAX_WEBHOOK_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS);
         else
             return create(webhook);

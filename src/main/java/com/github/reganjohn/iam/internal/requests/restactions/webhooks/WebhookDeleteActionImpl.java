@@ -21,8 +21,6 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Webhook;
@@ -92,12 +90,11 @@ public class WebhookDeleteActionImpl extends AbstractWebhookActionImpl implement
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
     {
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(json.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         UUID webhookId = UUID.fromString(request.getRoute().getMajorParameters().get("webhook_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveWebhookById(webhookId))
-                .map(Webhook::delete)
+                .flatMap(Webhook::delete)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 

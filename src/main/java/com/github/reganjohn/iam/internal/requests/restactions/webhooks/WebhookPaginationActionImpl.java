@@ -21,9 +21,7 @@ import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
@@ -50,8 +48,7 @@ public class WebhookPaginationActionImpl extends AbstractWebhookActionImpl imple
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        handleInternally(context, UUID.fromString(json.getSubject()));
+        handleInternally(context, retrieveSelfUserId(context));
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)

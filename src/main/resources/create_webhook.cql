@@ -15,4 +15,4 @@
  */
 
 INSERT INTO users.webhooks (owner_id, webhook_id, name, avatar_id, endpoint, scopes, flags, updated_at)
-VALUES (:user_id, :webhook_id, :name, :avatar_id, :url, :scopes, :flags, :updated_at);
+VALUES (:owner_id, :webhook_id, :name, :avatar_id, :endpoint, :scopes, :flags, :updated_at);

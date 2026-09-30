@@ -23,10 +23,8 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -191,7 +189,7 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
         else if (!MiscUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
         else if (MiscUtil.isUnsafeURL(URI.create(url)))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe");
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
     }
     
     private void handleScopes(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -234,22 +232,21 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
                                   @Nonnull DataObject rawBody)
     {
         Map<String, String> params = request.getRoute().getMajorParameters();
-        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(data.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         UUID webhookId = UUID.fromString(params.get("webhook_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveWebhookById(webhookId))
                 .flatMap(entitlement -> modify(entitlement, rawBody))
-                .queue(success -> handleSuccess(context));
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> modify(@Nonnull Webhook webhook, @Nonnull DataObject rawBody)
+    public InteractionCallbackAction<Void> modify(@Nonnull Webhook webhook, @Nonnull DataObject rawBody)
     {
         Checks.notNull(webhook, "Webhook");
         Checks.notNull(rawBody, "Body");
-        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :url, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", fromData(webhook, rawBody))
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :endpoint, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", fromData(webhook, rawBody))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
@@ -259,7 +256,7 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
                 if (InteractionUtil.isDone(array))
                     interaction.onSuccess(null);
                 else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
+                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
             }
         };
     }
