@@ -147,10 +147,8 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1, 0);
         User user = withUser(USER_ID, "alice", null, 0);
         withEntitlement(user, APPLICATION_ID, completed(entitlement));
+        withAccessEntries(user, completed(new AccessEntryArray(Collections.singletonList(entryOf(THUMBPRINT)))));
         withRetrieval(USER_ID, completed(user));
-        User owner = withUser(OWNER_ID, "bob", null, 0);
-        withAccessEntries(owner, completed(new AccessEntryArray(Collections.singletonList(entryOf(THUMBPRINT)))));
-        withRetrieval(OWNER_ID, completed(owner));
     }
 
     private RestActionAssertions assertThatUpdating()
@@ -200,7 +198,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
                 arguments("no_confirmation", null, DataObject.empty().put("sub", ACTOR_ID.toString())),
                 arguments("no_thumbprint_claim", DataObject.empty(), DataObject.empty().put("sub", ACTOR_ID.toString())),
                 arguments("thumbprint_claim_not_string", DataObject.empty().put(JKT, 5), DataObject.empty().put("sub", ACTOR_ID.toString())),
-                arguments("other_owner_thumbprint", DataObject.empty().put(JKT, "another-thumbprint"), DataObject.empty().put("sub", ACTOR_ID.toString())),
+                arguments("other_user_thumbprint", DataObject.empty().put(JKT, "another-thumbprint"), DataObject.empty().put("sub", ACTOR_ID.toString())),
                 arguments("actor_without_subject", DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty()),
                 arguments("actor_subject_not_string", DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty().put("sub", 5)),
                 arguments("actor_subject_not_uuid", DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty().put("sub", "application")));
@@ -374,15 +372,15 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownOwner()
+    void testUnknownKeys()
     {
         withAccessProof("proof-thumbprint", hashOf(TOKEN));
         withManager(true);
         PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1, 0);
         User user = withUser(USER_ID, "alice", null, 0);
         withEntitlement(user, APPLICATION_ID, completed(entitlement));
+        withAccessEntries(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
         withRetrieval(USER_ID, completed(user));
-        withRetrieval(OWNER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
 
         whenHandled(assertThatUpdating()
                 .hasNoResponse()

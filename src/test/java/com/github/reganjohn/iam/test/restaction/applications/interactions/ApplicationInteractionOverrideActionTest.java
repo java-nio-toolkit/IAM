@@ -57,6 +57,7 @@ import static org.mockito.Mockito.withSettings;
 public class ApplicationInteractionOverrideActionTest extends RestActionTest
 {
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
+    private static final UUID OWNER_ID = UUID.fromString("02b1a26a-f033-7e2f-8ba7-543bd0ac755a");
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
     private static final UUID INTERACTION_ID = UUID.fromString("05e4d59d-2366-7152-9eda-876e03dfa88d");
     private static final String CALLBACK = "https://example.org/callback";
@@ -69,7 +70,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     private static ApplicationContextInteraction newInteraction()
     {
         ApplicationContextInteraction interaction = mock(ApplicationContextInteraction.class);
-        when(interaction.getOwnerId()).thenReturn(USER_ID);
+        when(interaction.getOwnerId()).thenReturn(OWNER_ID);
         when(interaction.getApplicationId()).thenReturn(APPLICATION_ID);
         when(interaction.getUniqueId()).thenReturn(INTERACTION_ID);
         when(interaction.getPermissionsRaw()).thenReturn(1L);
@@ -80,13 +81,13 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
 
     private void withStoredInteraction(ApplicationContextInteraction interaction)
     {
-        Application application = withApplication(APPLICATION_ID, USER_ID, "app", null, null, "https://example.org", 0, CALLBACK);
+        Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://example.org", 0, CALLBACK);
         InteractionCallbackAction<ApplicationContextInteraction> retrieval = completed(interaction);
         when(application.retrieveInteractionById(INTERACTION_ID)).thenReturn(retrieval);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, completed(application));
+        User owner = withUser(OWNER_ID, "bob", null, 0);
+        withApplication(owner, APPLICATION_ID, completed(application));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
+        withRetrieval(OWNER_ID, completed(owner));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -120,6 +121,16 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 arguments("both_invalid", "not-a-uuid", "not-a-uuid"));
     }
 
+    static Stream<Arguments> testInvalidOwnerId()
+    {
+        return Stream.of(
+                arguments("empty", ""),
+                arguments("not_uuid", "not-a-uuid"),
+                arguments("too_short", "02b1a26a-f033-7e2f-8ba7"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
+                arguments("without_dashes", "02b1a26af0337e2f8ba7543bd0ac755a"));
+    }
+
     static Stream<Arguments> testInvalidSubject()
     {
         return Stream.of(
@@ -136,7 +147,23 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
-                .withRouteParams(applicationId, interactionId)
+                .withRouteParams(OWNER_ID.toString(), applicationId, interactionId)
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailureMatchingSnapshot(name)
+                .hasNoResponse()
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @MethodSource
+    @ParameterizedTest
+    void testInvalidOwnerId(String name, String ownerId)
+    {
+        withAccess(USER_ID);
+
+        assertThatRequestTo(newAction())
+                .withRouteParams(ownerId, APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot(name)
                 .hasNoResponse()
@@ -156,7 +183,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         doReturn(completed(interaction)).when(action).createResponse(accepted.capture(), any());
 
         assertThatRequestTo(action)
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasStatus(StatusReason.SEE_OTHER.code)
                 .hasHeader("Location", CALLBACK + "?application_id=" + APPLICATION_ID + "&interaction_id=" + INTERACTION_ID)
                 .hasNoBody()
@@ -172,10 +199,10 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     void testUnknownUser()
     {
         withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
+        withRetrieval(OWNER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
 
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot()
@@ -185,13 +212,13 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     @Test
     void testUnknownApplication()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
+        User owner = withUser(OWNER_ID, "bob", null, 0);
+        withApplication(owner, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
+        withRetrieval(OWNER_ID, completed(owner));
 
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot()
@@ -201,16 +228,16 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     @Test
     void testUnknownInteraction()
     {
-        Application application = withApplication(APPLICATION_ID, USER_ID, "app", null, null, "https://example.org", 0, CALLBACK);
+        Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://example.org", 0, CALLBACK);
         InteractionCallbackAction<ApplicationContextInteraction> retrieval = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
         when(application.retrieveInteractionById(INTERACTION_ID)).thenReturn(retrieval);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, completed(application));
+        User owner = withUser(OWNER_ID, "bob", null, 0);
+        withApplication(owner, APPLICATION_ID, completed(application));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
+        withRetrieval(OWNER_ID, completed(owner));
 
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot()
@@ -225,7 +252,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         doReturn(failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS))).when(action).createResponse(any(), any());
 
         assertThatRequestTo(action)
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot()
@@ -236,7 +263,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     void testMissingAccess()
     {
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot()
@@ -252,7 +279,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         withAccess(subject);
 
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot(name)
@@ -266,8 +293,6 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     {
         withJCA();
         ApplicationContextInteraction interaction = newInteraction();
-        UUID owner = UUID.fromString("02b1a26a-f033-7e2f-8ba7-543bd0ac755a");
-        when(interaction.getOwnerId()).thenReturn(owner);
         List<Object[]> statements = new ArrayList<>();
         ApplicationContextInteraction[] result = new ApplicationContextInteraction[1];
 
@@ -282,11 +307,11 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         assertThat(result[0]).isSameAs(interaction);
         assertThat(statements).hasSize(3);
         assertThat(statements.get(0)[0].toString()).isEqualTo("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?");
-        assertThat(Arrays.copyOfRange(statements.get(0), 1, 4)).containsExactly(USER_ID, APPLICATION_ID, INTERACTION_ID);
+        assertThat(Arrays.copyOfRange(statements.get(0), 1, 4)).containsExactly(OWNER_ID, APPLICATION_ID, INTERACTION_ID);
         assertThat(statements.get(1)[0].toString()).contains("INSERT INTO integrations.responses");
-        assertThat(Arrays.copyOfRange(statements.get(1), 1, 6)).containsExactly(INTERACTION_ID, USER_ID, owner, APPLICATION_ID, 1L);
+        assertThat(Arrays.copyOfRange(statements.get(1), 1, 6)).containsExactly(INTERACTION_ID, USER_ID, OWNER_ID, APPLICATION_ID, 1L);
         assertThat(statements.get(2)[0].toString()).contains("INSERT INTO users.entitlements");
-        assertThat(Arrays.copyOfRange(statements.get(2), 1, 6)).containsExactly(USER_ID, APPLICATION_ID, owner, 0L, 1L);
+        assertThat(Arrays.copyOfRange(statements.get(2), 1, 6)).containsExactly(USER_ID, APPLICATION_ID, OWNER_ID, 0L, 1L);
         assertThat(statements.get(2)[6]).isInstanceOf(OffsetDateTime.class);
     }
 }

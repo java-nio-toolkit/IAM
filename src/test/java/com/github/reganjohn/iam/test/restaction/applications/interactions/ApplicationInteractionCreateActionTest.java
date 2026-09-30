@@ -53,6 +53,7 @@ import static org.mockito.Mockito.when;
 public class ApplicationInteractionCreateActionTest extends RestActionTest
 {
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
+    private static final UUID OWNER_ID = UUID.fromString("02b1a26a-f033-7e2f-8ba7-543bd0ac755a");
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
     private static final String CALLBACK = "https://example.org/callback";
     private static final String VALID = body("permissions", 1, "redirect_uri", CALLBACK);
@@ -71,11 +72,11 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
     private void withStoredApplication(String... redirectUris)
     {
-        Application application = withApplication(APPLICATION_ID, USER_ID, "app", null, null, "https://example.org", 0, redirectUris);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, completed(application));
+        Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://example.org", 0, redirectUris);
+        User owner = withUser(OWNER_ID, "bob", null, 0);
+        withApplication(owner, APPLICATION_ID, completed(application));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
+        withRetrieval(OWNER_ID, completed(owner));
     }
 
     @SuppressWarnings("unchecked")
@@ -107,20 +108,21 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c"));
     }
 
-    static Stream<Arguments> testInvalidSubject()
+    static Stream<Arguments> testInvalidOwnerId()
     {
         return Stream.of(
                 arguments("empty", ""),
                 arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "01a0f15f-ef22-7d1e-9a96"),
-                arguments("without_dashes", "01a0f15fef227d1e9a96432acf9b644f"));
+                arguments("too_short", "02b1a26a-f033-7e2f-8ba7"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
+                arguments("without_dashes", "02b1a26af0337e2f8ba7543bd0ac755a"));
     }
 
     @Test
     void testNonObject()
     {
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withBody(nonObjectBody())
                 .hasFailureMatchingSnapshot()
                 .hasNoResponse()
@@ -131,7 +133,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     void testForeignBody()
     {
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withBody(mock(RequestBody.class))
                 .hasFailureMatchingSnapshot()
                 .hasNoResponse()
@@ -145,7 +147,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot(name)
@@ -162,7 +164,24 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
-                .withRouteParams(applicationId)
+                .withRouteParams(OWNER_ID.toString(), applicationId)
+                .withJsonBody(VALID)
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailureMatchingSnapshot(name)
+                .hasNoResponse()
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @MethodSource
+    @ParameterizedTest
+    void testInvalidOwnerId(String name, String ownerId)
+    {
+        withAccess(USER_ID);
+
+        assertThatRequestTo(newAction())
+                .withRouteParams(ownerId, APPLICATION_ID.toString())
                 .withJsonBody(VALID)
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot(name)
@@ -184,7 +203,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
 
         assertThatRequestTo(newAction(created))
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withJsonBody(json)
                 .hasStatus(StatusReason.CREATED.code)
                 .hasNoBody()
@@ -202,15 +221,15 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         OffsetDateTime before = OffsetDateTime.now();
 
         assertThatRequestTo(newAction(created))
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withJsonBody(VALID)
                 .hasStatus(StatusReason.CREATED.code)
                 .checkAssertions(outcome -> assertThat(outcome.response.getHeaders().get("Location"))
-                        .containsExactly("applications/" + APPLICATION_ID + "/interactions/" + created.getValue().getUniqueId()))
+                        .containsExactly("users/" + OWNER_ID + "/applications/" + APPLICATION_ID + "/interactions/" + created.getValue().getUniqueId()))
                 .whenHandled();
 
         ApplicationContextInteraction interaction = created.getValue();
-        assertThat(interaction.getOwnerId()).isEqualTo(USER_ID);
+        assertThat(interaction.getOwnerId()).isEqualTo(OWNER_ID);
         assertThat(interaction.getApplicationId()).isEqualTo(APPLICATION_ID);
         assertThat(interaction.getUniqueId()).isNotNull();
         assertThat(interaction.getPermissionsRaw()).isEqualTo(1);
@@ -234,7 +253,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
 
         assertThatRequestTo(newAction(created))
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withJsonBody(body("permissions", 1, "redirect_uri", uri))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
@@ -248,10 +267,10 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     void testUnknownUser()
     {
         withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
+        withRetrieval(OWNER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
 
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
@@ -262,13 +281,13 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     @Test
     void testUnknownApplication()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
+        User owner = withUser(OWNER_ID, "bob", null, 0);
+        withApplication(owner, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
+        withRetrieval(OWNER_ID, completed(owner));
 
         assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
@@ -284,43 +303,12 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         doReturn(failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS))).when(action).createInteraction(any());
 
         assertThatRequestTo(action)
-                .withRouteParams(APPLICATION_ID.toString())
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailureMatchingSnapshot()
                 .whenHandled();
-    }
-
-    @Test
-    void testMissingAccess()
-    {
-        assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
-                .withJsonBody(VALID)
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
-                .whenHandled();
-
-        verify(api, never()).retrieveUserById(any());
-    }
-
-    @MethodSource
-    @ParameterizedTest
-    void testInvalidSubject(String name, String subject)
-    {
-        withAccess(subject);
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
-                .withJsonBody(VALID)
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
-                .whenHandled();
-
-        verify(api, never()).retrieveUserById(any());
     }
 
     @Test
@@ -334,7 +322,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     void testCreateStatement()
     {
         ApplicationContextInteraction interaction = mock(ApplicationContextInteraction.class);
-        when(interaction.getOwnerId()).thenReturn(USER_ID);
+        when(interaction.getOwnerId()).thenReturn(OWNER_ID);
         when(interaction.getApplicationId()).thenReturn(APPLICATION_ID);
         when(interaction.getUniqueId()).thenReturn(UUID.fromString("05e4d59d-2366-7152-9eda-876e03dfa88d"));
         when(interaction.getPermissionsRaw()).thenReturn(1L);
@@ -346,7 +334,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThat(creation.getContent()).contains("INSERT INTO integrations.interactions");
         assertThatStatementIsBound(creation);
         assertThat(creation.getParams())
-                .containsEntry("user_id", USER_ID)
+                .containsEntry("user_id", OWNER_ID)
                 .containsEntry("application_id", APPLICATION_ID)
                 .containsEntry("permissions", 1L)
                 .containsEntry("redirect_uri", CALLBACK)
