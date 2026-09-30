@@ -116,7 +116,7 @@ public class UserImpl implements User
                                       @Nonnull InteractionImpl<AccessEntryData> interaction,
                                       @Nonnull BufferArray array) throws Exception
             {
-                if (!array.isEmpty())
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
                     interaction.onSuccess(EntityBuilder.createAccessEntry(array.getObject(0)));
                 else
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ACCESS));
@@ -164,13 +164,13 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Integer> retrieveSessionCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT flags FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
-                request.onSuccess((int) InteractionUtil.count(array));
+                request.onSuccess(EntityBuilder.count(array));
             }
         };
     }
@@ -187,7 +187,7 @@ public class UserImpl implements User
                                       @Nonnull InteractionImpl<Webhook> interaction,
                                       @Nonnull BufferArray array)
             {
-                if (!array.isEmpty())
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
                     interaction.onSuccess(getIAM().getEntityBuilder().createWebhook(array.getObject(0)));
                 else
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
@@ -215,13 +215,13 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Integer> retrieveWebhookCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT flags FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
-                request.onSuccess((int) InteractionUtil.count(array));
+                request.onSuccess(EntityBuilder.count(array));
             }
         };
     }
@@ -266,13 +266,13 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Integer> retrieveApplicationCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT COUNT(*) FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
+        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT flags FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
-                request.onSuccess((int) InteractionUtil.count(array));
+                request.onSuccess(EntityBuilder.count(array));
             }
         };
     }

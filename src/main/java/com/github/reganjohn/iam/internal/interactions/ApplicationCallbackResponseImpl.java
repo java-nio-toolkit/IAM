@@ -45,14 +45,14 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     private final String reference;
     private final String continueHash;
     private final String clientThumbprint;
-    private final String userThumbprint;
+    private final String thumbprint;
     private final String label;
     private final boolean denied;
 
     public ApplicationCallbackResponseImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
                                            @Nonnull UUID applicationId, @Nonnull UUID interactionId, long permissions,
                                            @Nonnull String reference, @Nonnull String continueHash,
-                                           @Nonnull String clientThumbprint, @Nonnull String userThumbprint,
+                                           @Nonnull String clientThumbprint, @Nonnull String thumbprint,
                                            @Nullable String label, boolean denied)
     {
         this.api = api;
@@ -64,7 +64,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
         this.reference = reference;
         this.continueHash = continueHash;
         this.clientThumbprint = clientThumbprint;
-        this.userThumbprint = userThumbprint;
+        this.thumbprint = thumbprint;
         this.label = label;
         this.denied = denied;
     }
@@ -161,7 +161,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     @Override
     public String getThumbprint()
     {
-        return userThumbprint;
+        return thumbprint;
     }
 
     @Nullable

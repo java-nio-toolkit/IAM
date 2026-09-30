@@ -152,7 +152,7 @@ public class WebhookImpl implements Webhook
                 .put("url", getUrl())
                 .put("scopes", getScopesRaw())
                 .put("flags", getFlagsRaw())
-                .put("updated_at", getTimeUpdated())
+                .put("updated_at", getTimeUpdated().toInstant().toEpochMilli())
                 .toData();
     }
 }

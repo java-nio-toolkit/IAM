@@ -123,7 +123,8 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<Session> sessions = new ArrayList<>();
         for (BufferObject obj : data)
-            sessions.add(createSession(obj));
+            if (!isDelete(obj))
+                sessions.add(createSession(obj));
         return sessions;
     }
 
@@ -154,7 +155,8 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<AccessEntryData> set = new ArrayList<>();
         for (BufferObject obj : data)
-            set.add(createAccessEntry(obj));
+            if (!isDelete(obj))
+                set.add(createAccessEntry(obj));
         return new AccessEntryArray(set);
     }
 
@@ -188,7 +190,8 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<Application> applications = new ArrayList<>();
         for (BufferObject obj : data)
-            applications.add(createApplication(obj));
+            if (!isDelete(obj))
+                applications.add(createApplication(obj));
         return applications;
     }
 
@@ -211,7 +214,8 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<Webhook> webhooks = new ArrayList<>();
         for (BufferObject obj : data)
-            webhooks.add(createWebhook(obj));
+            if (!isDelete(obj))
+                webhooks.add(createWebhook(obj));
         return webhooks;
     }
 
@@ -222,8 +226,8 @@ public class EntityBuilder extends AbstractEntityBuilder
         String name = data.getString("name");
         UUID ownerId = data.getUUID("owner_id");
         String avatarId = data.getString("avatar_id", null);
-        String url = data.getString("url");
-        OffsetDateTime updatedAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
+        String url = data.getString("endpoint");
+        OffsetDateTime updatedAt = Helpers.toOffsetDateTime(data.getTimestamp("updated_at"));
         long flags = data.getLong("flags");
         long scopes = data.getLong("scopes");
         return new WebhookImpl(api, webhookId, name, ownerId, avatarId, url, updatedAt, flags, scopes);
@@ -257,14 +261,14 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
         long rawPermissions = data.getLong("permissions");
-        String interactionReference = data.getString("reference");
+        String reference = data.getString("reference");
         String continueHash = data.getString("hash");
         String clientThumbprint = data.getString("client_thumbprint");
-        String userThumbprint = data.getString("thumbprint");
+        String thumbprint = data.getString("thumbprint");
         String label = data.getString("label", null);
         boolean denied = data.getBoolean("denied", false);
         return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions,
-                interactionReference, continueHash, clientThumbprint, userThumbprint, label, denied);
+                reference, continueHash, clientThumbprint, thumbprint, label, denied);
     }
 
     @Nonnull
@@ -272,7 +276,8 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<PermissionOverride> overrides = new ArrayList<>();
         for (BufferObject obj : data)
-            overrides.add(createPermissionOverride(obj));
+            if (!isDelete(obj))
+                overrides.add(createPermissionOverride(obj));
         return overrides;
     }
 
@@ -294,12 +299,23 @@ public class EntityBuilder extends AbstractEntityBuilder
             return false;
         for (BufferObject obj : array)
         {
-            long flags = obj.getLong("flags", 0);
-            if ((flags & DELETED) != 0)
-            {
+            if (isDelete(obj))
                 return true;
-            }
         }
         return false;
+    }
+
+    public static boolean isDelete(@Nonnull BufferObject obj)
+    {
+        return (obj.getLong("flags", 0) & DELETED) != 0;
+    }
+
+    public static int count(@Nonnull BufferArray array)
+    {
+        int count = 0;
+        for (BufferObject obj : array)
+            if (!isDelete(obj))
+                count++;
+        return count;
     }
 }
