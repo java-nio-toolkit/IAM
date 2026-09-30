@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.sessions;
 
-import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
@@ -50,8 +49,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.INVALID_REQUEST;
 
 public class SessionLogoutActionImpl extends AbstractSessionActionImpl implements SessionLogoutAction
 {

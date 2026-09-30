@@ -27,7 +27,6 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionOverrideEvent;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -140,8 +139,8 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     private void handleSuccess(@Nonnull ChannelHandlerContext context,
                                @Nonnull ApplicationContextInteraction interaction)
     {
-        CaseInsensitiveMap<String, List<String>> headers = new CaseInsensitiveMap<>();
-        headers.put("Location", new ArrayList<>(List.of(withQueryParam(interaction))));
+        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        headers.put("Location", Collections.singletonList(withQueryParam(interaction)));
         context.writeAndFlush(new Response(context, StatusReason.SEE_OTHER, headers))
                 .addListener(successObj ->
                 {

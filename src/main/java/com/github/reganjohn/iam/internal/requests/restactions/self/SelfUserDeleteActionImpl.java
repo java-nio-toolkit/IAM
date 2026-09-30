@@ -19,8 +19,6 @@ package com.github.reganjohn.iam.internal.requests.restactions.self;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.self.SelfUserDeleteAction;
@@ -30,8 +28,6 @@ import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SelfUserDeleteActionImpl extends AbstractUserActionImpl implements SelfUserDeleteAction
 {
@@ -43,9 +39,7 @@ public class SelfUserDeleteActionImpl extends AbstractUserActionImpl implements 
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
-        AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(objectData.getSubject());
-        api.retrieveUserById(userId)
+        api.retrieveUserById(retrieveSelfUserId(context))
                 .flatMap(User::delete)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }

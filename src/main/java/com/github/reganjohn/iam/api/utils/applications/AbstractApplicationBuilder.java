@@ -21,11 +21,7 @@ import com.github.reganjohn.iam.api.entities.Application;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @SuppressWarnings("unchecked")
 public abstract class AbstractApplicationBuilder<T, R extends AbstractApplicationBuilder<T, R>> implements ApplicationRequest<R>

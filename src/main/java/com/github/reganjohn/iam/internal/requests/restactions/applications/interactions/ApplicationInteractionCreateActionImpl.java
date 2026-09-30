@@ -26,10 +26,10 @@ import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
-import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionCreateEvent;
@@ -221,8 +221,8 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                               @Nonnull ApplicationContextInteraction interaction)
     {
         String uri = getRouteCompile(interaction).getCompiledRoute();
-        CaseInsensitiveMap<String, List<String>> headers = new CaseInsensitiveMap<>();
-        headers.put("Location", new ArrayList<>(List.of(uri)));
+        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        headers.put("Location", Collections.singletonList(uri));
         context.writeAndFlush(new Response(context, StatusReason.CREATED, headers))
                 .addListener(successObj ->
                 {

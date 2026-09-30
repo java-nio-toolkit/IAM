@@ -19,7 +19,6 @@ package com.github.reganjohn.iam.internal.requests.restactions;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.SignType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -29,8 +28,10 @@ import com.github.reganjohn.iam.api.requests.restactions.AbstractOverrideAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.StringJoiner;
 
 public abstract class AbstractOverrideActionImpl extends RestActionImpl implements AbstractOverrideAction
 {

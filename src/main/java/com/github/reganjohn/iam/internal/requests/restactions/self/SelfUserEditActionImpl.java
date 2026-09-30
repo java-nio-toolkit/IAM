@@ -22,11 +22,9 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
+import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
-import com.github.adamorgan.jnt.internal.utils.requestbody.JacksonRequestBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -38,10 +36,10 @@ import com.github.reganjohn.iam.api.utils.users.UserEditBuilder;
 import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
@@ -52,7 +50,6 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SelfUserEditActionImpl extends AbstractUserActionImpl implements SelfUserEditAction
 {
@@ -141,7 +138,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         }
         finally
         {
-            handleInternally(context, rawData);
+            handleInternally(context, rawData, schemaErrors);
         }
     }
 
@@ -155,11 +152,13 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
             throw new DataObjectParsingException(NUMBER_TYPE_MIN, "Value \"flags\" should be greater than or equal to 0.");
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject json)
+    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject json,
+                                  @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
-        AccessObjectData objectData = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(objectData.getSubject());
-        api.retrieveUserById(userId)
+        if (Helpers.nonEmpty(errors))
+            throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
+
+        api.retrieveUserById(retrieveSelfUserId(context))
                 .map(user -> fromData(user, json))
                 .flatMap(this::modify)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
@@ -188,7 +187,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
     public InteractionCallbackAction<Void> modify(@Nonnull UserEditData user)
     {
         Checks.notNull(user, "User");
-        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.accounts SET username = :username, flags = :flags WHERE user_id = :user_id IF EXISTS", user)
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.accounts SET username = :username, avatar_id = :avatar_id, flags = :flags WHERE user_id = :user_id IF EXISTS", user)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,

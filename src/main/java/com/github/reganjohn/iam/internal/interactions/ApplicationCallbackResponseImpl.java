@@ -18,15 +18,14 @@ package com.github.reganjohn.iam.internal.interactions;
 
 
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 

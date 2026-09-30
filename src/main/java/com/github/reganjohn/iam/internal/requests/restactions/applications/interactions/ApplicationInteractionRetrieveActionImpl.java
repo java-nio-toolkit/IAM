@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.applications.interactions;
 
-import com.fasterxml.jackson.databind.util.ByteBufferBackedOutputStream;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.exceptions.MissingAccessException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
@@ -29,6 +28,9 @@ import com.github.adamorgan.jnt.api.utils.cookie.ReceivedCookie;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.*;
+import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
+import com.github.adamorgan.jnt.api.utils.responsebody.ResponseBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
@@ -36,11 +38,7 @@ import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
-import com.github.adamorgan.jnt.internal.utils.responsebody.BufferedResponseBody;
-import com.github.adamorgan.jnt.internal.utils.responsebody.JacksonResponseBody;
-import com.github.adamorgan.jnt.internal.utils.responsebody.ResponseBody;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
-import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -52,11 +50,10 @@ import com.github.reganjohn.iam.api.requests.restactions.applications.interactio
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
-import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
-import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -306,8 +303,8 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         {
             LOG.debug("Sending interaction request on route {}", route.getRoute());
             Route.CompiledRoute route = this.route.compile();
-            CaseInsensitiveMap<String, List<String>> headers = new CaseInsensitiveMap<>();
-            headers.put("Forwarded", new ArrayList<>(List.of("proto=http")));
+            CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+            headers.put("Forwarded", Collections.singletonList("proto=http"));
             List<ReceivedCookie> cookies = Collections.emptyList();
             context.writeAndFlush(new Request(context, this, route, headers, null, cookies));
         }
