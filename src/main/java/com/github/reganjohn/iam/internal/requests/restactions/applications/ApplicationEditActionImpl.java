@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.applications;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -25,10 +24,8 @@ import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -129,7 +126,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         else if (!body.isType("name", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"name\" value is not string.");
         else if (body.isEmpty("name"))
-            throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"name\" value may not be empty");
+            throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"name\" value may not be empty.");
         else if (body.getString("name").length() > Application.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"name\" may not be longer than %d characters.", Application.MAX_NAME_LENGTH));
@@ -245,27 +242,13 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         }
     }
 
-    private void checkRedirectUris(@Nonnull DataArray array)
-    {
-        if (array.isEmpty())
-            throw new DataObjectParsingException(BASE_TYPE_MIN_LENGTH, "The \"redirect_uris\" value may not be empty.");
-        else if (array.size() > Application.MAX_URL_COUNT)
-            throw new DataObjectParsingException(BASE_TYPE_MAX_LENGTH,
-                    Helpers.format("Must be %s or fewer in length.", Application.MAX_URL_COUNT));
-        else if (!Helpers.exists(array, JsonNode::isTextual))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"redirect_urls\" contains value which is not a string.");
-        else if (!Helpers.exists(array, node -> MiscUtil.isURL(node.textValue(), false)))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_urls\" contains value which is not a url.");
-    }
-
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                                   @Nonnull DataObject rawBody,
                                   @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        AccessObjectData json = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(json.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))

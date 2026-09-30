@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.applications;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -26,9 +25,7 @@ import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
-import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -88,7 +85,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         }
         finally
         {
-            handleDescription(context, request, rawBody, schemaErrors);
+            handleOrigin(context, request, rawBody, schemaErrors);
         }
     }
 
@@ -103,6 +100,36 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         else if (body.getString("name").length() > Application.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"name\" may not be longer than %d characters.", Application.MAX_NAME_LENGTH));
+    }
+
+    private void handleOrigin(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                              @Nonnull DataObject rawBody,
+                              @Nonnull List<InvalidResponseException.SchemaError> schemaErrors) throws Exception
+    {
+        try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
+        {
+            checkOrigin(rawBody);
+        }
+        catch (DataObjectParsingException ex)
+        {
+            handleErrorResponse("origin", ex, schemaErrors);
+        }
+        finally
+        {
+            handleDescription(context, request, rawBody, schemaErrors);
+        }
+    }
+
+    private void checkOrigin(@Nonnull DataObject body)
+    {
+        if (!body.hasKey("origin"))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!body.isType("origin", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"origin\" value is not string.");
+        else if (body.isEmpty("origin"))
+            throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"origin\" value may not be empty.");
+        else if (!MiscUtil.isURL(body.getString("origin"), false))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not url.");
     }
 
     private void handleDescription(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -215,19 +242,6 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         }
     }
 
-    private void checkRedirectUris(@Nonnull DataArray array)
-    {
-        if (array.isEmpty())
-            throw new DataObjectParsingException(BASE_TYPE_MIN_LENGTH, "The \"redirect_uris\" value may not be empty.");
-        else if (array.size() > Application.MAX_URL_COUNT)
-            throw new DataObjectParsingException(BASE_TYPE_MAX_LENGTH,
-                    Helpers.format("Must be %s or fewer in length.", Application.MAX_URL_COUNT));
-        else if (!Helpers.exists(array, JsonNode::isTextual))
-            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"redirect_urls\" contains value which is not a string.");
-        else if (!Helpers.exists(array, node -> MiscUtil.isURL(node.textValue(), false)))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_urls\" contains value which is not a url.");
-    }
-
     private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody, @Nonnull List<InvalidResponseException.SchemaError> errors) throws Exception
     {
         if (errors.isEmpty())
@@ -238,28 +252,26 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody)
     {
-        AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        UUID userId = UUID.fromString(data.getSubject());
+        UUID userId = retrieveSelfUserId(context);
         api.retrieveUserById(userId)
                 .flatMap(User::retrieveApplicationCount)
-                .map(count -> fromData(rawBody, data, count))
+                .map(count -> fromData(rawBody, userId, count))
                 .flatMap(this::create)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private ApplicationCreateData fromData(@Nonnull DataObject rawBody, @Nonnull AccessObjectData data, int count)
+    private ApplicationCreateData fromData(@Nonnull DataObject rawBody, @Nonnull UUID userId, int count)
     {
-        if (count > MAX_APPLICATION_COUNT)
+        if (count >= MAX_APPLICATION_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_APPLICATIONS);
-        UUID userId = UUID.fromString(data.getSubject());
         UUIDv7 applicationId = UUIDv7.randomUUID();
         String name = rawBody.getString("name");
         String description = rawBody.getString("description", null);
         String iconId = rawBody.getString("icon_id", null);
         String origin = rawBody.getString("origin");
-        long flags = rawBody.getInt("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
+        long flags = rawBody.getLong("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = rawBody.getArray("redirect_uris").stream(DataArray::getString).collect(Collectors.toList());
         return new ApplicationCreateBuilder()
                 .setOwnerId(userId)
@@ -275,7 +287,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> create(@Nonnull ApplicationCreateData application)
+    public InteractionCallbackAction<Void> create(@Nonnull ApplicationCreateData application)
     {
         Checks.notNull(application, "Application");
         return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_application.cql"), application)

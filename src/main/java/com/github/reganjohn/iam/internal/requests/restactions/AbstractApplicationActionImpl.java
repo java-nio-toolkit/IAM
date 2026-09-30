@@ -16,16 +16,45 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.github.adamorgan.jnt.api.requests.Route;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
+import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.entities.Application;
+import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
 import javax.annotation.Nonnull;
+import java.util.function.Predicate;
+import java.util.stream.StreamSupport;
 
 public abstract class AbstractApplicationActionImpl extends AbstractOverrideActionImpl implements ApplicationAction
 {
     public AbstractApplicationActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
     {
         super(api, route);
+    }
+
+    protected void checkRedirectUris(@Nonnull DataArray array)
+    {
+        if (array.isEmpty())
+            throw new DataObjectParsingException(BASE_TYPE_MIN_LENGTH, "The \"redirect_uris\" value may not be empty.");
+        else if (array.size() > Application.MAX_URL_COUNT)
+            throw new DataObjectParsingException(BASE_TYPE_MAX_LENGTH,
+                    Helpers.format("Must be %s or fewer in length.", Application.MAX_URL_COUNT));
+        else if (!matchesAll(array, JsonNode::isTextual))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"redirect_urls\" contains value which is not a string.");
+        else if (!matchesAll(array, node -> node.textValue().length() <= Application.MAX_URL_LENGTH))
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"redirect_uris\" value may not be longer than %d characters.", Application.MAX_URL_LENGTH));
+        else if (!matchesAll(array, node -> MiscUtil.isURL(node.textValue(), false)))
+            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_urls\" contains value which is not a url.");
+    }
+
+    private static boolean matchesAll(@Nonnull DataArray array, @Nonnull Predicate<JsonNode> predicate)
+    {
+        return StreamSupport.stream(array.spliterator(), false).allMatch(predicate);
     }
 }
