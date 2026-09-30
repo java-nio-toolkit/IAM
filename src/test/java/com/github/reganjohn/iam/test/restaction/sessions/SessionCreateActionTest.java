@@ -24,7 +24,6 @@ import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.User;
@@ -96,13 +95,6 @@ public class SessionCreateActionTest extends RestActionTest
 
             assertions.whenHandled();
         }
-    }
-
-    private static JacksonRequestBody nonObjectBody()
-    {
-        JacksonRequestBody body = mock(JacksonRequestBody.class);
-        when(body.isObject()).thenReturn(false);
-        return body;
     }
 
     static Stream<Arguments> testInvalidInputs()

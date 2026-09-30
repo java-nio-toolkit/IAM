@@ -25,28 +25,37 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
+import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
+import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.test.IntegrationTest;
 import com.reganjohn.c4j.api.requests.Consistency;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.internal.JCAImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
 
+import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -235,5 +244,62 @@ public class RestActionTest extends IntegrationTest
     protected void withAccessEntry(Session session, InteractionCallbackAction<AccessEntryData> result)
     {
         when(session.retrieveAccess()).thenReturn(result);
+    }
+
+    protected static Webhook withWebhook(UUID webhookId, UUID ownerId, String name, String avatarId, String url, long scopes, long flags)
+    {
+        InteractionCallbackAction<Void> deletion = completed(null);
+        OffsetDateTime updatedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+        Webhook webhook = mock(Webhook.class);
+        when(webhook.getUniqueId()).thenReturn(webhookId);
+        when(webhook.getOwnerId()).thenReturn(ownerId);
+        when(webhook.getName()).thenReturn(name);
+        when(webhook.getAvatarId()).thenReturn(avatarId);
+        when(webhook.getUrl()).thenReturn(url);
+        when(webhook.getScopesRaw()).thenReturn(scopes);
+        when(webhook.getFlagsRaw()).thenReturn(flags);
+        when(webhook.getTimeUpdated()).thenReturn(updatedAt);
+        when(webhook.toData()).thenReturn(DataObject.empty()
+                .put("owner_id", ownerId.toString())
+                .put("webhook_id", webhookId.toString())
+                .put("name", name)
+                .put("avatar_id", avatarId)
+                .put("url", url)
+                .put("scopes", scopes)
+                .put("flags", flags)
+                .put("updated_at", updatedAt.toString()));
+        when(webhook.delete()).thenReturn(deletion);
+        return webhook;
+    }
+
+    protected void withWebhook(User user, UUID webhookId, InteractionCallbackAction<Webhook> result)
+    {
+        when(user.retrieveWebhookById(webhookId)).thenReturn(result);
+    }
+
+    protected void withWebhooks(User user, InteractionCallbackAction<List<Webhook>> result)
+    {
+        when(user.retrieveWebhooks()).thenReturn(result);
+    }
+
+    protected void withWebhookCount(User user, InteractionCallbackAction<Integer> result)
+    {
+        when(user.retrieveWebhookCount()).thenReturn(result);
+    }
+
+    protected static void assertThatStatementIsBound(InteractionMappingActionImpl<?> action)
+    {
+        Matcher matcher = Pattern.compile("(?<![\\w:]):([a-z_]+)\\b").matcher(action.getContent());
+        Set<String> placeholders = new TreeSet<>();
+        while (matcher.find())
+            placeholders.add(matcher.group(1));
+        assertThat(action.getParams().keySet()).containsAll(placeholders);
+    }
+
+    protected static JacksonRequestBody nonObjectBody()
+    {
+        JacksonRequestBody body = mock(JacksonRequestBody.class);
+        when(body.isObject()).thenReturn(false);
+        return body;
     }
 }

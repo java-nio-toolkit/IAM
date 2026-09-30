@@ -22,7 +22,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
@@ -84,13 +83,6 @@ public class SessionEditActionTest extends RestActionTest
         withSession(user, SESSION_ID, completed(session));
         withAccess(USER_ID);
         withRetrieval(USER_ID, completed(user));
-    }
-
-    private static JacksonRequestBody nonObjectBody()
-    {
-        JacksonRequestBody body = mock(JacksonRequestBody.class);
-        when(body.isObject()).thenReturn(false);
-        return body;
     }
 
     static Stream<Arguments> testInvalidInputs()

@@ -20,7 +20,6 @@ import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -71,13 +70,6 @@ public class SelfUserEditActionTest extends RestActionTest
         SelfUserEditActionImpl action = spy(newAction());
         doReturn(completed(null)).when(action).modify(edited.capture());
         return action;
-    }
-
-    private static JacksonRequestBody nonObjectBody()
-    {
-        JacksonRequestBody body = mock(JacksonRequestBody.class);
-        when(body.isObject()).thenReturn(false);
-        return body;
     }
 
     static Stream<Arguments> testInvalidInputs()

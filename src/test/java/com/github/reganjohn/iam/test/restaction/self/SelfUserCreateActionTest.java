@@ -24,7 +24,6 @@ import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
@@ -115,13 +114,6 @@ public class SelfUserCreateActionTest extends RestActionTest
                         .put("thumbprint", user.getSession().getThumbprint())
                         .put("user_agent", user.getSession().getUserAgent())
                         .put("belongs_to_user", user.getSession().getUserId().equals(user.getUserId())));
-    }
-
-    private static JacksonRequestBody nonObjectBody()
-    {
-        JacksonRequestBody body = mock(JacksonRequestBody.class);
-        when(body.isObject()).thenReturn(false);
-        return body;
     }
 
     static Stream<Arguments> testInvalidInputs()
