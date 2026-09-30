@@ -21,6 +21,7 @@ import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
@@ -28,6 +29,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.test.IntegrationTest;
 import com.reganjohn.c4j.api.requests.Consistency;
@@ -39,6 +41,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -107,8 +110,14 @@ public class RestActionTest extends IntegrationTest
 
     protected static void withIssuedObject(MockedStatic<EntityBuilder> builder)
     {
+        withIssuedObject(builder, null);
+    }
+
+    protected static void withIssuedObject(MockedStatic<EntityBuilder> builder, String subject)
+    {
         AccessObjectData issued = mock(AccessObjectData.class);
         when(issued.getRaw()).thenReturn(ISSUED_OBJECT);
+        when(issued.getSubject()).thenReturn(subject);
         builder.when(() -> EntityBuilder.createObjectData(anyString(), anyString(), anyString(),
                         any(AccessEntryManager.class), any(AccessContextData.class), anyString(),
                         any(AccessEntryManagerImpl.AccessEntrySnapshot.class)))
@@ -174,6 +183,7 @@ public class RestActionTest extends IntegrationTest
     {
         when(api.retrieveUserById(any())).thenReturn(retrieval);
     }
+
     protected static String body(Object... fields)
     {
         DataObject body = DataObject.empty();
@@ -188,5 +198,42 @@ public class RestActionTest extends IntegrationTest
         for (int i = 0; i < fields.length; i += 2)
             session.put((String) fields[i], fields[i + 1]);
         return session;
+    }
+    protected static Session withSession(UUID sessionId, UUID userId, String userAgent, long flags, String thumbprint)
+    {
+        InteractionCallbackAction<Void> deletion = completed(null);
+        Session session = mock(Session.class);
+        when(session.getUniqueId()).thenReturn(sessionId);
+        when(session.getUserId()).thenReturn(userId);
+        when(session.getUserAgent()).thenReturn(userAgent);
+        when(session.getFlagsRaw()).thenReturn(flags);
+        when(session.getThumbprint()).thenReturn(thumbprint);
+        when(session.delete()).thenReturn(deletion);
+        return session;
+    }
+
+    protected void withSession(User user, UUID sessionId, InteractionCallbackAction<Session> result)
+    {
+        when(user.retrieveSessionById(sessionId)).thenReturn(result);
+    }
+
+    protected void withSessions(User user, InteractionCallbackAction<List<Session>> result)
+    {
+        when(user.retrieveSessions()).thenReturn(result);
+    }
+
+    protected void withSessionCount(User user, InteractionCallbackAction<Integer> result)
+    {
+        when(user.retrieveSessionCount()).thenReturn(result);
+    }
+
+    protected void withAccessEntries(User user, InteractionCallbackAction<AccessEntryArray> result)
+    {
+        when(user.retrieveAccess()).thenReturn(result);
+    }
+
+    protected void withAccessEntry(Session session, InteractionCallbackAction<AccessEntryData> result)
+    {
+        when(session.retrieveAccess()).thenReturn(result);
     }
 }

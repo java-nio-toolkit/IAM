@@ -1,0 +1,18 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "x" : {
+      "_errors" : [ {
+        "code" : "BASE_TYPE_REQUIRED",
+        "message" : "This field is required."
+      } ]
+    },
+    "y" : {
+      "_errors" : [ {
+        "code" : "BASE_TYPE_REQUIRED",
+        "message" : "This field is required."
+      } ]
+    }
+  }
+}

@@ -1,0 +1,1 @@
+[{"session_id":"02b1a26a-f033-7e2f-8ba7-543bd0ac755a","user":{"user_id":"01a0f15f-ef22-7d1e-9a96-432acf9b644f","user_agent":"Mozilla/5.0"},"jwk":{"kty":"OKP","kid":"first-key"},"flags":2},{"session_id":"03c2b37b-0144-7f30-9cb8-654ce1bd866b","user":{"user_id":"01a0f15f-ef22-7d1e-9a96-432acf9b644f","user_agent":"curl/8.0"},"jwk":{"kty":"OKP","kid":"second-key"},"flags":0}]

@@ -1,0 +1,12 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "user_agent" : {
+      "_errors" : [ {
+        "code" : "STRING_TYPE_MAX",
+        "message" : "The \"user_agent\" value may not be longer than 32 characters."
+      } ]
+    }
+  }
+}

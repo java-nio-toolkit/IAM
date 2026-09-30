@@ -1,0 +1,18 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "user_agent" : {
+      "_errors" : [ {
+        "code" : "STRING_TYPE_COERCE",
+        "message" : "The \"user_agent\" value is not string."
+      } ]
+    },
+    "flags" : {
+      "_errors" : [ {
+        "code" : "NUMBER_TYPE_MIN",
+        "message" : "Value \"flags\" should be greater than or equal to 0."
+      } ]
+    }
+  }
+}

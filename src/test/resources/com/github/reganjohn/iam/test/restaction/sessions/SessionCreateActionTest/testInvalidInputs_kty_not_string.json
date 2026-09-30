@@ -1,0 +1,12 @@
+{
+  "code" : 50035,
+  "message" : "Invalid Form Body",
+  "errors" : {
+    "kty" : {
+      "_errors" : [ {
+        "code" : "STRING_TYPE_COERCE",
+        "message" : "Value \"kty\" is not string."
+      } ]
+    }
+  }
+}
