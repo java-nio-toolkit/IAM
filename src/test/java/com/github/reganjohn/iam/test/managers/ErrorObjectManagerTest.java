@@ -25,11 +25,15 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
 import com.github.reganjohn.iam.test.IntegrationTest;
 import io.netty.util.CharsetUtil;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 public class ErrorObjectManagerTest extends IntegrationTest
 {
@@ -61,13 +65,39 @@ public class ErrorObjectManagerTest extends IntegrationTest
         }
     }
 
+    static Stream<Arguments> testStatus()
+    {
+        return Stream.of(
+                arguments(InteractionResponse.INVALID_REQUEST, 400),
+                arguments(InteractionResponse.INVALID_FLAG, 400),
+                arguments(InteractionResponse.INVALID_CLIENT, 401),
+                arguments(InteractionResponse.INVALID_CONTINUATION, 401),
+                arguments(InteractionResponse.UNKNOWN_INTERACTION, 404),
+                arguments(InteractionResponse.TOO_MANY_ATTEMPTS, 429),
+                arguments(InteractionResponse.INVALID_INTERACTION, 403),
+                arguments(InteractionResponse.USER_DENIED, 403),
+                arguments(InteractionResponse.REQUEST_DENIED, 403));
+    }
+
+    @MethodSource
+    @ParameterizedTest
+    void testStatus(InteractionResponse error, int status)
+    {
+        assertThat(handle(new InteractionResponseException(error)).code).isEqualTo(status);
+    }
+
+    @Test
+    void testStatusOfEveryResponse()
+    {
+        assertThat(testStatus().map(arguments -> arguments.get()[0])).containsExactlyInAnyOrder((Object[]) InteractionResponse.values());
+    }
+
     @EnumSource(InteractionResponse.class)
     @ParameterizedTest
     void testInteractionResponse(InteractionResponse error)
     {
         Response response = handle(new InteractionResponseException(error));
 
-        assertThat(response.code).isEqualTo(error.getStatus().code);
         assertThat(response.getBody().contentType()).isEqualTo(MediaType.parse("application/json; charset=utf-8"));
         DataObject json = DataObject.fromJson(read(response));
         assertThat(json.toMap().keySet()).containsExactly("error");
