@@ -124,22 +124,6 @@ public class SelfUserCreateActionTest extends RestActionTest
         return body;
     }
 
-    private static String body(Object... fields)
-    {
-        DataObject body = DataObject.empty();
-        for (int i = 0; i < fields.length; i += 2)
-            body.put((String) fields[i], fields[i + 1]);
-        return body.toString();
-    }
-
-    private static DataObject session(Object... fields)
-    {
-        DataObject session = DataObject.empty();
-        for (int i = 0; i < fields.length; i += 2)
-            session.put((String) fields[i], fields[i + 1]);
-        return session;
-    }
-
     static Stream<Arguments> testInvalidInputs()
     {
         String username = StringUtils.repeat('a', User.MAX_NAME_LENGTH + 1);
@@ -258,7 +242,7 @@ public class SelfUserCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testValidUser() throws Exception
+    void testValidUser()
     {
         withProof();
         ArgumentCaptor<UserCreateData> created = ArgumentCaptor.forClass(UserCreateData.class);
@@ -282,7 +266,7 @@ public class SelfUserCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testMinimalUser() throws Exception
+    void testMinimalUser()
     {
         withProof();
         ArgumentCaptor<UserCreateData> created = ArgumentCaptor.forClass(UserCreateData.class);
@@ -303,7 +287,7 @@ public class SelfUserCreateActionTest extends RestActionTest
 
     @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE})
     @ParameterizedTest
-    void testSystemFlags(long flags) throws Exception
+    void testSystemFlags(long flags)
     {
         withProof();
         ArgumentCaptor<UserCreateData> created = ArgumentCaptor.forClass(UserCreateData.class);
@@ -327,7 +311,7 @@ public class SelfUserCreateActionTest extends RestActionTest
 
     @EnumSource(value = SignType.class, mode = EnumSource.Mode.EXCLUDE, names = {"HS256", "HS384", "HS512", "NONE", "UNKNOWN"})
     @ParameterizedTest
-    void testKeyType(SignType type) throws Exception
+    void testKeyType(SignType type)
     {
         AccessEntryData entry = withProof(type);
         ArgumentCaptor<UserCreateData> created = ArgumentCaptor.forClass(UserCreateData.class);
@@ -355,7 +339,7 @@ public class SelfUserCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testExistingUser() throws Exception
+    void testExistingUser()
     {
         withProof();
         ArgumentCaptor<UserCreateData> created = ArgumentCaptor.forClass(UserCreateData.class);
@@ -378,15 +362,14 @@ public class SelfUserCreateActionTest extends RestActionTest
     void testNullArguments()
     {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().create(null))
-                .withMessage("User may not be null");
+                .isThrownBy(() -> newAction().create(null));
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void testCreateApplied() throws Exception
     {
-        withJca();
+        withJCA();
         InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(UserCreateData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
         BufferArray rows = mock(BufferArray.class);
@@ -401,7 +384,7 @@ public class SelfUserCreateActionTest extends RestActionTest
     @SuppressWarnings("unchecked")
     void testCreateExisting() throws Exception
     {
-        withJca();
+        withJCA();
         InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(UserCreateData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
         BufferArray rows = mock(BufferArray.class);

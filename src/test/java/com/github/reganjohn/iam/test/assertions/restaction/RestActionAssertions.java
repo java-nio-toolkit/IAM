@@ -51,19 +51,8 @@ import static org.mockito.Mockito.when;
 
 public class RestActionAssertions implements ThrowingConsumer<RestActionAssertions.Outcome>
 {
-    public static class Outcome
-    {
-        public final Response response;
-        public final Throwable failure;
-
-        Outcome(@Nullable Response response, @Nullable Throwable failure)
-        {
-            this.response = response;
-            this.failure = failure;
-        }
-    }
-
     private final SnapshotHandler snapshotHandler;
+
     private final AbstractOverrideActionImpl action;
     private final EmbeddedChannel channel;
     private final ChannelHandlerContext context;
@@ -71,6 +60,7 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     private final List<ThrowingConsumer<Outcome>> assertions = new ArrayList<>();
     private final CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
     private RequestBody body;
+    private String[] routeParams = new String[0];
 
     public RestActionAssertions(SnapshotHandler snapshotHandler, AbstractOverrideActionImpl action,
                                 EmbeddedChannel channel, ChannelHandlerContext context, Runnable onHandled)
@@ -83,8 +73,10 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     }
 
     @CheckReturnValue
-    public static RestActionAssertions assertThatAction(SnapshotHandler snapshotHandler, AbstractOverrideActionImpl action,
-                                                        EmbeddedChannel channel, ChannelHandlerContext context, Runnable onHandled)
+    public static RestActionAssertions assertThatAction(SnapshotHandler snapshotHandler,
+                                                        AbstractOverrideActionImpl action,
+                                                        EmbeddedChannel channel, ChannelHandlerContext context,
+                                                        Runnable onHandled)
     {
         return new RestActionAssertions(snapshotHandler, action, channel, context, onHandled);
     }
@@ -118,6 +110,14 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
 
     @CheckReturnValue
     @Contract("_->this")
+    public RestActionAssertions withRouteParams(@Nonnull String... params)
+    {
+        this.routeParams = params;
+        return this;
+    }
+
+    @CheckReturnValue
+    @Contract("_->this")
     public RestActionAssertions checkAssertions(@Nonnull ThrowingConsumer<Outcome> assertion)
     {
         assertions.add(assertion);
@@ -128,7 +128,8 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     @Contract("_->this")
     public RestActionAssertions hasStatus(int code)
     {
-        return checkAssertions(outcome -> {
+        return checkAssertions(outcome ->
+        {
             assertThat(outcome.response)
                     .as("RestAction should answer with a response, but failed with %s", outcome.failure)
                     .isNotNull();
@@ -142,7 +143,8 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     @Contract("_->this")
     public RestActionAssertions hasContentType(@Nonnull MediaType mediaType)
     {
-        return checkAssertions(outcome -> {
+        return checkAssertions(outcome ->
+        {
             assertThat(outcome.response).isNotNull();
             assertThat(outcome.response.getBody()).isNotNull();
             assertThat(outcome.response.getBody().contentType())
@@ -172,6 +174,21 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     public RestActionAssertions hasBodyMatchingSnapshot(String suffix)
     {
         return checkAssertions(outcome -> snapshotHandler.compareWithSnapshot(readBody(outcome), suffix));
+    }
+
+    @CheckReturnValue
+    @Contract("->this")
+    public RestActionAssertions hasNoBody()
+    {
+        return checkAssertions(outcome ->
+        {
+            assertThat(outcome.response)
+                    .as("RestAction should answer with a response, but failed with %s", outcome.failure)
+                    .isNotNull();
+            assertThat(outcome.response.getBody())
+                    .as("RestAction should answer without a response body")
+                    .isNull();
+        });
     }
 
     @CheckReturnValue
@@ -212,7 +229,8 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     @Contract("_->this")
     public RestActionAssertions hasFailureMatchingSnapshot(String suffix)
     {
-        return checkAssertions(outcome -> {
+        return checkAssertions(outcome ->
+        {
             assertThat(outcome.failure).isInstanceOf(InvalidResponseException.class);
             snapshotHandler.compareWithSnapshot(((InvalidResponseException) outcome.failure).getObject(), suffix);
         });
@@ -220,7 +238,7 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
 
     public void whenHandled()
     {
-        Request request = new Request(context, action.getBaseRoute().get(0).compile(), headers, body);
+        Request request = new Request(context, action.getBaseRoute().get(0).compile(routeParams), headers, body);
         Throwable thrown = catchThrowable(() -> action.handleRequest(context, request));
         Throwable piped = catchThrowable(channel::checkException);
         Object outbound = channel.readOutbound();
@@ -233,7 +251,7 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
         }
         catch (Throwable error)
         {
-            throw RestActionAssertions.<RuntimeException>sneakyThrow(error);
+            throw RestActionAssertions.sneakyThrow(error);
         }
         finally
         {
@@ -277,5 +295,17 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     private static <T extends Throwable> T sneakyThrow(Throwable error) throws T
     {
         throw (T) error;
+    }
+
+    public static class Outcome
+    {
+        public final Response response;
+        public final Throwable failure;
+
+        Outcome(@Nullable Response response, @Nullable Throwable failure)
+        {
+            this.response = response;
+            this.failure = failure;
+        }
     }
 }

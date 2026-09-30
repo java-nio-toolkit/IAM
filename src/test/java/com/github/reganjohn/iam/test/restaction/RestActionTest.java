@@ -18,28 +18,35 @@ package com.github.reganjohn.iam.test.restaction;
 
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.test.IntegrationTest;
 import com.reganjohn.c4j.api.requests.Consistency;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.internal.JCAImpl;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
 
-import java.security.GeneralSecurityException;
 import java.util.Collections;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -50,7 +57,7 @@ public class RestActionTest extends IntegrationTest
 
     private HashedWheelTimer timer;
 
-    protected void withProof() throws GeneralSecurityException
+    protected void withProof()
     {
         AccessContextData contextData = mock(AccessContextData.class);
         when(contextData.digest()).thenReturn(THUMBPRINT);
@@ -91,7 +98,7 @@ public class RestActionTest extends IntegrationTest
         timer = null;
     }
 
-    protected void withJca()
+    protected void withJCA()
     {
         JCAImpl jca = mock(JCAImpl.class);
         when(jca.getConsistency()).thenReturn(Consistency.QUORUM);
@@ -106,5 +113,80 @@ public class RestActionTest extends IntegrationTest
                         any(AccessEntryManager.class), any(AccessContextData.class), anyString(),
                         any(AccessEntryManagerImpl.AccessEntrySnapshot.class)))
                 .thenReturn(issued);
+    }
+    protected void withAccess(UUID subject)
+    {
+        withAccess(subject.toString());
+    }
+
+    protected void withAccess(String subject)
+    {
+        AccessObjectData access = mock(AccessObjectData.class);
+        when(access.getSubject()).thenReturn(subject);
+        channel.attr(AccessOverrideManagerImpl.CONTEXT).set(access);
+    }
+
+    protected static User withUser(UUID id, String name, String avatarId, long flags)
+    {
+        InteractionCallbackAction<Void> deletion = completed(null);
+        User user = mock(User.class);
+        when(user.getUniqueId()).thenReturn(id);
+        when(user.getName()).thenReturn(name);
+        when(user.getAvatarId()).thenReturn(avatarId);
+        when(user.getFlagsRaw()).thenReturn(flags);
+        when(user.delete()).thenReturn(deletion);
+        return user;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected static <T> InteractionCallbackAction<T> completed(T value)
+    {
+        InteractionCallbackAction<T> action = mock(InteractionCallbackAction.class);
+        doAnswer(invocation ->
+        {
+            ((Consumer<T>) invocation.getArgument(0)).accept(value);
+            return null;
+        }).when(action).queue(any(), any());
+        when(action.map(any())).thenAnswer(invocation -> completed(((Function<T, Object>) invocation.getArgument(0)).apply(value)));
+        when(action.flatMap(any(Function.class))).thenAnswer(invocation -> ((Function<T, InteractionCallbackAction<Object>>) invocation.getArgument(0)).apply(value));
+        return action;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected static <T> InteractionCallbackAction<T> failed(Throwable failure)
+    {
+        InteractionCallbackAction<T> action = mock(InteractionCallbackAction.class);
+        doAnswer(invocation ->
+        {
+            ((Consumer<Throwable>) invocation.getArgument(1)).accept(failure);
+            return null;
+        }).when(action).queue(any(), any());
+        when(action.map(any())).thenAnswer(invocation -> failed(failure));
+        when(action.flatMap(any(Function.class))).thenAnswer(invocation -> failed(failure));
+        return action;
+    }
+    protected void withRetrieval(UUID id, InteractionCallbackAction<User> retrieval)
+    {
+        when(api.retrieveUserById(id)).thenReturn(retrieval);
+    }
+
+    protected void withRetrieval(InteractionCallbackAction<User> retrieval)
+    {
+        when(api.retrieveUserById(any())).thenReturn(retrieval);
+    }
+    protected static String body(Object... fields)
+    {
+        DataObject body = DataObject.empty();
+        for (int i = 0; i < fields.length; i += 2)
+            body.put((String) fields[i], fields[i + 1]);
+        return body.toString();
+    }
+
+    protected static DataObject session(Object... fields)
+    {
+        DataObject session = DataObject.empty();
+        for (int i = 0; i < fields.length; i += 2)
+            session.put((String) fields[i], fields[i + 1]);
+        return session;
     }
 }

@@ -26,9 +26,9 @@ public class AbstractSnapshotTest
     protected SnapshotHandler snapshotHandler;
 
     @BeforeEach
-    void initializeSnapshotHandler(TestInfo testInfo)
+    void initializeSnapshotHandler(TestInfo info)
     {
-        this.snapshotHandler = new SnapshotHandler(testInfo);
+        this.snapshotHandler = new SnapshotHandler(info);
     }
 
     protected void assertWithSnapshot(String actual, String suffix)
