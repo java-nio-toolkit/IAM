@@ -41,9 +41,15 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     private final UUID applicationId;
     private final UUID interactionId;
     private final long rawPermissions;
+    private final String interactionReference;
+    private final String continueHash;
+    private final String clientThumbprint;
+    private final String userThumbprint;
 
     public ApplicationCallbackResponseImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
-                                           @Nonnull UUID applicationId, @Nonnull UUID interactionId, long permissions)
+                                           @Nonnull UUID applicationId, @Nonnull UUID interactionId, long permissions,
+                                           @Nonnull String interactionReference, @Nonnull String continueHash,
+                                           @Nonnull String clientThumbprint, @Nonnull String userThumbprint)
     {
         this.api = api;
         this.userId = userId;
@@ -51,6 +57,10 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
         this.applicationId = applicationId;
         this.interactionId = interactionId;
         this.rawPermissions = permissions;
+        this.interactionReference = interactionReference;
+        this.continueHash = continueHash;
+        this.clientThumbprint = clientThumbprint;
+        this.userThumbprint = userThumbprint;
     }
 
     @Nonnull
@@ -118,5 +128,32 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
                     interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
             }
         };
+    }
+    @Nonnull
+    @Override
+    public String getInteractionReference()
+    {
+        return interactionReference;
+    }
+
+    @Nonnull
+    @Override
+    public String getContinueHash()
+    {
+        return continueHash;
+    }
+
+    @Nonnull
+    @Override
+    public String getClientThumbprint()
+    {
+        return clientThumbprint;
+    }
+
+    @Nonnull
+    @Override
+    public String getThumbprint()
+    {
+        return userThumbprint;
     }
 }

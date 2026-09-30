@@ -22,6 +22,9 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.Query;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
+import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
+import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -145,18 +148,33 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
         UUID userId = retrieveSelfUserId(context);
+        String thumbprint = retrieveThumbprint(retrieveSelfProof(context));
+        String token = randomToken();
         api.retrieveUserById(ownerId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveInteractionById(interactionId))
-                .flatMap(interaction -> createResponse(userId, interaction))
-                .queue(interaction -> handleSuccess(context, interaction), context::fireExceptionCaught);
+                .flatMap(interaction -> createResponse(userId, thumbprint, token, interaction))
+                .queue(interaction -> handleSuccess(context, interaction, token), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    private String retrieveThumbprint(@Nonnull ProofObjectData proof)
+    {
+        try (AccessContextData contextData = proof.getContext(AccessContextType.SHA_256))
+        {
+            return contextData.digest();
+        }
+        catch (Exception ex)
+        {
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+        }
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context,
-                               @Nonnull ApplicationContextInteraction interaction)
+                               @Nonnull ApplicationContextInteraction interaction, @Nonnull String interactRef)
     {
         CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
-        headers.put("Location", Collections.singletonList(withQueryParam(interaction)));
+        headers.put("Location", Collections.singletonList(withQueryParam(interaction, interactRef)));
         context.writeAndFlush(new Response(context, StatusReason.SEE_OTHER, headers))
                 .addListener(successObj ->
                 {
@@ -173,18 +191,24 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     }
 
     @Nonnull
-    private String withQueryParam(@Nonnull ApplicationContextInteraction interaction)
+    private String withQueryParam(@Nonnull ApplicationContextInteraction interaction, @Nonnull String interact)
     {
         Checks.notNull(interaction, "Interaction");
+        String method = interaction.getMethodHash();
+        String clientNonce = interaction.getClientNonce();
+        String finishNonce = interaction.getFinishNonce();
+        String uri = interaction.getUri();
+        String hash = hash(method, clientNonce, finishNonce, interact, uri);
         return new Query(interaction.getRedirectUri())
-                .withQueryParam("application_id", interaction.getApplicationId())
-                .withQueryParam("interaction_id", interaction.getUniqueId())
+                .withQueryParam("hash", hash)
+                .withQueryParam("interact_ref", interact)
                 .toString();
     }
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId,
+    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId, @Nonnull String userThumbprint,
+                                                                                   @Nonnull String interactRef,
                                                                                    @Nonnull ApplicationContextInteraction interaction)
     {
         UUID ownerId = interaction.getOwnerId();
@@ -193,7 +217,8 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         long permissions = interaction.getPermissionsRaw();
         return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
                 .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", ownerId, applicationId, interactionId)
-                .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions)
+                .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions,
+                        interactRef, interaction.hash(), interaction.getThumbprint(), userThumbprint)
                 .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, applicationId, ownerId, 0L, permissions, OffsetDateTime.now())
                 .map(unused -> interaction);
     }

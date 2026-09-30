@@ -134,6 +134,12 @@ CREATE TABLE IF NOT EXISTS integrations.interactions
     permissions    BIGINT,
     redirect_uri   TEXT,
     expiry         TIMESTAMP,
+    nonce          TEXT,
+    finish         TEXT,
+    hash_method    TEXT,
+    grant_uri      TEXT,
+    continue_hash  TEXT,
+    client_jkt     TEXT,
     PRIMARY KEY ((user_id, application_id), interaction_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 300;
 
@@ -144,6 +150,10 @@ CREATE TABLE IF NOT EXISTS integrations.responses
     user_id        UUID,
     owner_id       UUID,
     permissions    BIGINT,
+    interact_ref   TEXT,
+    continue_hash  TEXT,
+    client_jkt     TEXT,
+    user_jkt       TEXT,
     PRIMARY KEY ((application_id), interaction_id)
 ) WITH transactional_mode = 'full' AND DEFAULT_TIME_TO_LIVE = 60;
 

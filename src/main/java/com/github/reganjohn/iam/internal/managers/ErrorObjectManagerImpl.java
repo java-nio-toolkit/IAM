@@ -31,6 +31,7 @@ import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
@@ -68,6 +69,8 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, (MissingAccessException) error);
         else if (error instanceof DetachedEntityException)
             handleFailure(context, 0, error.getMessage(), StatusReason.NOT_FOUND);
+        else if (error instanceof InteractionResponseException)
+            handleFailure(context, (InteractionResponseException) error);
         else if (error instanceof ErrorResponseException)
             handleFailure(context, (ErrorResponseException) error);
         else if (error instanceof PermissionException)
@@ -102,6 +105,13 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, errorResponse, StatusReason.CONFLICT);
         else
             handleFailure(context, errorResponse, StatusReason.BAD_REQUEST);
+    }
+
+    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull InteractionResponseException error)
+    {
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, error.getObject().toBinary(), true);
+        Response response = new Response(context, error.getError().getStatus(), new CaseInsensitiveMap<>(), body);
+        context.writeAndFlush(response);
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

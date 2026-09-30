@@ -58,4 +58,15 @@ public interface ApplicationCallbackResponse
     @Nonnull
     @CheckReturnValue
     InteractionCallbackAction<ApplicationCallbackResponse> delete();
+    @Nonnull
+    String getInteractionReference();
+
+    @Nonnull
+    String getContinueHash();
+
+    @Nonnull
+    String getClientThumbprint();
+
+    @Nonnull
+    String getThumbprint();
 }

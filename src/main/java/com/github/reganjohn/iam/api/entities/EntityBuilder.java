@@ -236,7 +236,14 @@ public class EntityBuilder extends AbstractEntityBuilder
         long rawPermissions = data.getLong("permissions");
         OffsetDateTime expiresAt = Helpers.toOffsetDateTime(data.getTimestamp("expiry"));
         String uri = data.getString("redirect_uri");
-        return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri);
+        String clientNonce = data.getString("nonce");
+        String finishNonce = data.getString("finish");
+        String hashMethod = data.getString("hash_method");
+        String grantUri = data.getString("grant_uri");
+        String continueHash = data.getString("continue_hash");
+        String clientThumbprint = data.getString("client_jkt");
+        return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri,
+                clientNonce, finishNonce, hashMethod, grantUri, continueHash, clientThumbprint);
     }
 
     @Nonnull
@@ -247,7 +254,12 @@ public class EntityBuilder extends AbstractEntityBuilder
         UUID applicationId = data.getUUID("application_id");
         UUID interactionId = data.getUUID("interaction_id");
         long rawPermissions = data.getLong("permissions");
-        return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions);
+        String interactionReference = data.getString("interact_ref");
+        String continueHash = data.getString("continue_hash");
+        String clientThumbprint = data.getString("client_jkt");
+        String userThumbprint = data.getString("user_jkt");
+        return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions,
+                interactionReference, continueHash, clientThumbprint, userThumbprint);
     }
 
     @Nonnull

@@ -33,10 +33,19 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
     private final OffsetDateTime expiresAt;
     private final long rawPermissions;
     private final String redirectUri;
+    private final String clientNonce;
+    private final String finishNonce;
+    private final String hashMethod;
+    private final String grantUri;
+    private final String continueHash;
+    private final String clientThumbprint;
 
     public ApplicationContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull UUID ownerId, @Nonnull UUID applicationId,
                                              @Nonnull UUID interactionId, @Nonnull OffsetDateTime expiresAt,
-                                             long permissions, @Nonnull String uri)
+                                             long permissions, @Nonnull String uri, @Nonnull String clientNonce,
+                                             @Nonnull String finishNonce, @Nonnull String hashMethod,
+                                             @Nonnull String grantUri, @Nonnull String continueHash,
+                                             @Nonnull String clientThumbprint)
     {
         this.api = api;
         this.ownerId = ownerId;
@@ -45,6 +54,12 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
         this.expiresAt = expiresAt;
         this.rawPermissions = permissions;
         this.redirectUri = uri;
+        this.clientNonce = clientNonce;
+        this.finishNonce = finishNonce;
+        this.hashMethod = hashMethod;
+        this.grantUri = grantUri;
+        this.continueHash = continueHash;
+        this.clientThumbprint = clientThumbprint;
     }
 
     @Nonnull
@@ -93,5 +108,46 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
     public String getRedirectUri()
     {
         return redirectUri;
+    }
+    @Nonnull
+    @Override
+    public String getClientNonce()
+    {
+        return clientNonce;
+    }
+
+    @Nonnull
+    @Override
+    public String getFinishNonce()
+    {
+        return finishNonce;
+    }
+
+    @Nonnull
+    @Override
+    public String getMethodHash()
+    {
+        return hashMethod;
+    }
+
+    @Nonnull
+    @Override
+    public String getUri()
+    {
+        return grantUri;
+    }
+
+    @Nonnull
+    @Override
+    public String hash()
+    {
+        return continueHash;
+    }
+
+    @Nonnull
+    @Override
+    public String getThumbprint()
+    {
+        return clientThumbprint;
     }
 }

@@ -49,4 +49,22 @@ public interface ApplicationContextInteraction extends IUnique
 
     @Nonnull
     String getRedirectUri();
+
+    @Nonnull
+    String getClientNonce();
+
+    @Nonnull
+    String getFinishNonce();
+
+    @Nonnull
+    String getMethodHash();
+
+    @Nonnull
+    String getUri();
+
+    @Nonnull
+    String hash();
+
+    @Nonnull
+    String getThumbprint();
 }

@@ -16,13 +16,17 @@
 
 package com.github.reganjohn.iam.internal.utils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
+import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.reganjohn.iam.api.Permission;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PermissionUtil
@@ -50,5 +54,61 @@ public class PermissionUtil
         }
 
         return array;
+    }
+    public static boolean isValid(@Nonnull DataArray array)
+    {
+        for (int i = 0; i < array.length(); i++)
+        {
+            if (!array.isType(i, DataType.OBJECT))
+                return false;
+            DataObject entry = array.getObject(i);
+            if (!entry.isType("type", DataType.STRING) || !entry.isType("actions", DataType.ARRAY))
+                return false;
+            DataArray actions = entry.getArray("actions");
+            for (int j = 0; j < actions.length(); j++)
+            {
+                if (!actions.isType(j, DataType.STRING) || !getNames().contains(entry.getString("type") + "." + actions.getString(j)))
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    public static long toRaw(@Nonnull DataArray array)
+    {
+        if (!isValid(array))
+            throw new IllegalArgumentException("Unknown access");
+        long raw = 0;
+        for (int i = 0; i < array.length(); i++)
+        {
+            DataObject entry = array.getObject(i);
+            DataArray actions = entry.getArray("actions");
+            for (int j = 0; j < actions.length(); j++)
+                raw |= find(entry.getString("type") + "." + actions.getString(j)).getRawValue();
+        }
+        return raw;
+    }
+
+    @Nonnull
+    private static Permission find(@Nonnull String name)
+    {
+        for (Permission permission : Permission.values())
+        {
+            if (permission != Permission.UNKNOWN && permission.getName().equals(name))
+                return permission;
+        }
+        throw new IllegalArgumentException("Unknown access");
+    }
+
+    @Nonnull
+    public static List<String> getNames()
+    {
+        List<String> names = new ArrayList<>();
+        for (Permission permission : Permission.values())
+        {
+            if (permission != Permission.UNKNOWN)
+                names.add(permission.getName());
+        }
+        return names;
     }
 }
