@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.self;
+package com.github.reganjohn.iam.internal.requests.restactions.entitlements;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
-import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
@@ -31,7 +28,7 @@ import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.self.PermissionOverrideRetrieveAction;
+import com.github.reganjohn.iam.api.requests.restactions.entitlements.PermissionOverrideDeleteAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import io.netty.channel.ChannelHandlerContext;
@@ -43,13 +40,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class PermissionOverrideRetrieveActionImpl extends AbstractApplicationActionImpl implements PermissionOverrideRetrieveAction
+public class PermissionOverrideDeleteActionImpl extends AbstractApplicationActionImpl implements PermissionOverrideDeleteAction
 {
-    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
-
-    public PermissionOverrideRetrieveActionImpl(@Nonnull IAMImpl api)
+    public PermissionOverrideDeleteActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.GET_ENTITLEMENT);
+        super(api, Routes.Entitlements.DELETE_ENTITLEMENT);
     }
 
     @Override
@@ -100,24 +95,12 @@ public class PermissionOverrideRetrieveActionImpl extends AbstractApplicationAct
         UUID applicationId = UUID.fromString(params.get("application_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveEntitlementById(applicationId))
-                .map(this::mapFromData)
-                .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
+                .flatMap(PermissionOverride::delete)
+                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
-    @Nonnull
-    private DataObject mapFromData(@Nonnull PermissionOverride entitlement)
+    private void handleSuccess(@Nonnull ChannelHandlerContext context)
     {
-        return DataObject.empty()
-                .put("user_id", entitlement.getUserId())
-                .put("application_id", entitlement.getApplicationId())
-                .put("permissions", entitlement.getPermissionsRaw())
-                .put("updated_at", entitlement.getTimeUpdated().toInstant().toEpochMilli())
-                .toData();
-    }
-
-    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataObject successObj)
-    {
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, successObj.toBinary(), true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        context.writeAndFlush(new Response(context, StatusReason.NO_CONTENT, new CaseInsensitiveMap<>()));
     }
 }

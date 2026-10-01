@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.self;
+package com.github.reganjohn.iam.internal.requests.restactions.entitlements;
 
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -27,7 +27,7 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.self.PermissionOverridePaginationAction;
+import com.github.reganjohn.iam.api.requests.restactions.entitlements.PermissionOverridePaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import io.netty.channel.ChannelHandlerContext;
@@ -43,7 +43,7 @@ public class PermissionOverridePaginationActionImpl extends AbstractApplicationA
 
     public PermissionOverridePaginationActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.GET_ENTITLEMENTS);
+        super(api, Routes.Entitlements.GET_ENTITLEMENTS);
     }
 
     @Override

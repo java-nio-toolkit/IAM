@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.managers;
+package com.github.reganjohn.iam.api.requests.restactions.interactions;
 
-import com.github.adamorgan.jnt.api.managers.ClassicObjectManager;
+import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 
-public interface PresenceOverrideManager extends ClassicObjectManager
+public interface ApplicationInteractionCreateAction extends ApplicationAction
 {
+    int EXPIRES_IN = 300;
+    int RETRIEVE_ACCESS_TIMEOUT = 10;
+    int MAX_ACCESS_LENGTH = 1 << 16;
+    int MIN_NONCE_LENGTH = 16;
+    int MAX_NONCE_LENGTH = 256;
 }

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.requests.restactions.applications.interactions;
+package com.github.reganjohn.iam.api.requests.restactions.entitlements;
 
-import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
+import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
 
-public interface ApplicationInteractionRetrieveAction extends ApplicationAction
+public interface PermissionOverrideAction extends RestAction
 {
 }

@@ -18,6 +18,8 @@ package com.github.reganjohn.iam.internal;
 
 import com.github.adamorgan.jnt.api.JNT;
 import com.github.adamorgan.jnt.api.JNTBuilder;
+import com.github.adamorgan.jnt.api.managers.OriginAccessManager;
+import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.socket.DefaultSocketManagerBuilder;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
@@ -28,6 +30,7 @@ import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHa
 import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.github.adamorgan.jnt.internal.utils.config.OriginAccessConfig;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.User;
@@ -37,11 +40,12 @@ import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.github.reganjohn.iam.internal.managers.*;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.*;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionCreateActionImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionDeleteActionImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionOverrideActionImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionRetrieveActionImpl;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.self.*;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCreateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionDeleteActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionOverrideActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionRetrieveActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCallbackActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.entitlements.*;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserCreateActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserDeleteActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserEditActionImpl;
@@ -92,9 +96,20 @@ public class IAMImpl implements IAM
     }
 
     @Nonnull
+    private OriginAccessConfig cors()
+    {
+        return new OriginAccessManager.Builder()
+                .allowMethods(Method.GET, Method.POST, Method.PUT, Method.PATCH, Method.DELETE, Method.OPTIONS)
+                .allowHeaders()
+                .allowExposeHeaders()
+                .allowCredentials(false)
+                .allowMaxAge(3600)
+                .build();
+    }
+
+    @Nonnull
     private JCA buildInstance()
     {
-
         return JCABuilder.create("localhost", 9042)
                 .setApplicationName("Test Client")
                 .setProtocolVersion(5)
@@ -133,7 +148,7 @@ public class IAMImpl implements IAM
         this.api = JNTBuilder.create(port)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
                 .addEventListeners(new ClockObjectManagerImpl())
-                .addEventListeners(new OriginAccessManagerImpl())
+                .addEventListeners(new OriginAccessManagerImpl(cors()))
                 .addEventListeners(new CacheObjectManagerImpl())
                 .addEventListeners(new CookieObjectManagerImpl())
 
@@ -182,8 +197,9 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new ApplicationInteractionCreateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionOverrideActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionDeleteActionImpl(this))
-                .addEventListenerProvider(() -> new PermissionOverrideUpdateActionImpl(this))
                 .addEventListenerProvider(() -> new ApplicationInteractionRetrieveActionImpl(this))
+                .addEventListenerProvider(() -> new PermissionOverrideUpdateActionImpl(this))
+                .addEventListenerProvider(() -> new ApplicationInteractionCallbackActionImpl(this))
 
                 .addEventListenerProvider(() -> new PermissionOverridePaginationActionImpl(this))
                 .addEventListenerProvider(() -> new PermissionOverrideRetrieveActionImpl(this))

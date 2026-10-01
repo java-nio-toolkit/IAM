@@ -18,7 +18,6 @@ package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
-import com.github.adamorgan.jnt.api.utils.TimeUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.*;
@@ -123,7 +122,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<Session> sessions = new ArrayList<>();
         for (BufferObject obj : data)
-            if (!isDelete(obj))
+            if (nonDelete(obj))
                 sessions.add(createSession(obj));
         return sessions;
     }
@@ -140,22 +139,11 @@ public class EntityBuilder extends AbstractEntityBuilder
     }
 
     @Nonnull
-    public Map<UUID, AccessEntryData> createInteractionAccessEntry(@Nonnull BufferArray data) throws Exception
-    {
-        Map<UUID, AccessEntryData> map = new HashMap<>();
-        for (BufferObject obj : data)
-        {
-            map.put(obj.getUUID("access_id"), createAccessEntry(obj));
-        }
-        return map;
-    }
-
-    @Nonnull
     public AccessEntryArray createAccessEntries(@Nonnull BufferArray data) throws Exception
     {
         List<AccessEntryData> set = new ArrayList<>();
         for (BufferObject obj : data)
-            if (!isDelete(obj))
+            if (nonDelete(obj))
                 set.add(createAccessEntry(obj));
         return new AccessEntryArray(set);
     }
@@ -190,7 +178,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<Application> applications = new ArrayList<>();
         for (BufferObject obj : data)
-            if (!isDelete(obj))
+            if (nonDelete(obj))
                 applications.add(createApplication(obj));
         return applications;
     }
@@ -214,7 +202,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<Webhook> webhooks = new ArrayList<>();
         for (BufferObject obj : data)
-            if (!isDelete(obj))
+            if (nonDelete(obj))
                 webhooks.add(createWebhook(obj));
         return webhooks;
     }
@@ -276,7 +264,7 @@ public class EntityBuilder extends AbstractEntityBuilder
     {
         List<PermissionOverride> overrides = new ArrayList<>();
         for (BufferObject obj : data)
-            if (!isDelete(obj))
+            if (nonDelete(obj))
                 overrides.add(createPermissionOverride(obj));
         return overrides;
     }
@@ -310,12 +298,13 @@ public class EntityBuilder extends AbstractEntityBuilder
         return (obj.getLong("flags", 0) & DELETED) != 0;
     }
 
-    public static int count(@Nonnull BufferArray array)
+    public static boolean nonDelete(@Nonnull BufferObject obj)
     {
-        int count = 0;
-        for (BufferObject obj : array)
-            if (!isDelete(obj))
-                count++;
-        return count;
+        return !isDelete(obj);
+    }
+
+    public static long count(@Nonnull BufferArray array)
+    {
+        return array.stream().filter(EntityBuilder::nonDelete).count();
     }
 }

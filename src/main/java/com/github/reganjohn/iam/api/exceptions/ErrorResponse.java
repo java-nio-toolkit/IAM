@@ -28,6 +28,7 @@ public enum ErrorResponse
     UNKNOWN_INTERACTION(10015, "Unknown Interaction"),
     UNKNOWN_ENTITLEMENT(10016, "Unknown Entitlement"),
     UNKNOWN_WEBHOOK(10017, "Unknown Webhook"),
+    UNKNOWN_TOKEN(10018, "Unknown Token"),
 
     APPLICATION_NOT_ALLOWED(20001, "Application cannot use this endpoint"),
     ONLY_APPLICATION_ALLOWED(20002, "Only application can use this endpoint"),

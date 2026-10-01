@@ -170,7 +170,7 @@ public class UserImpl implements User
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
-                request.onSuccess(EntityBuilder.count(array));
+                request.onSuccess((int) EntityBuilder.count(array));
             }
         };
     }
@@ -221,7 +221,7 @@ public class UserImpl implements User
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
-                request.onSuccess(EntityBuilder.count(array));
+                request.onSuccess((int) EntityBuilder.count(array));
             }
         };
     }
@@ -272,7 +272,7 @@ public class UserImpl implements User
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
-                request.onSuccess(EntityBuilder.count(array));
+                request.onSuccess((int) EntityBuilder.count(array));
             }
         };
     }

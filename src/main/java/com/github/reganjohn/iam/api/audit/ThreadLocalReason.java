@@ -48,14 +48,6 @@ public final class ThreadLocalReason
         }
     }
 
-    /**
-     * Resets the currently set thread-local reason, if present.
-     */
-    public static void resetCurrent(@Nonnull ChannelHandlerContext context)
-    {
-        context.channel().attr(REASON).set(null);
-    }
-
     @Nullable
     public static String getCurrent(@Nonnull ChannelHandlerContext context)
     {

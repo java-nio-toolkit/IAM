@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.interactions;
+package com.github.reganjohn.iam.internal.requests.restactions.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
@@ -49,7 +49,7 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionRetrieveAction;
+import com.github.reganjohn.iam.api.requests.restactions.interactions.ApplicationInteractionCallbackAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
@@ -70,20 +70,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionRetrieveAction
+public class ApplicationInteractionCallbackActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionCallbackAction
 {
     public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
-    public ApplicationInteractionRetrieveActionImpl(@Nonnull IAMImpl api)
+    public ApplicationInteractionCallbackActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.EXECUTE_APPLICATION_INTERACTION);
+        super(api, Routes.Interactions.EXECUTE_APPLICATION_INTERACTION);
     }
 
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
         if (!(request.getBody() instanceof JacksonRequestBody && ((JacksonRequestBody) request.getBody()).isObject()))
-            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST);
+            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY);
         else
             handleApplicationId(context, request, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
     }
@@ -177,7 +177,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         if (errors.isEmpty())
             handleInternally(context, request, raw);
         else
-            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST);
+            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY);
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -199,7 +199,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         String authorization = Helpers.get(request.getHeaders(), "Authorization");
         String[] parts = Helpers.nonEmpty(authorization) ? authorization.split(" ") : new String[0];
         if (parts.length != 2 || !parts[0].equalsIgnoreCase("GNAP") || parts[1].isEmpty())
-            throw new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION);
+            throw new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN);
         else
             return parts[1];
     }
@@ -208,7 +208,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
     private Throwable toClientError(@Nonnull Throwable failure)
     {
         if (failure instanceof ErrorResponseException && ((ErrorResponseException) failure).getErrorCode() == ErrorResponse.UNKNOWN_INTERACTION.getCode())
-            return new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION);
+            return new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN);
         else
             return failure;
     }
@@ -218,13 +218,13 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
                                 @Nonnull ApplicationCallbackResponse response)
     {
         if (!hasModified(thumbprint, response.getClientThumbprint()))
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT));
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN));
         else if (!hasModified(digest(token), response.getContinueHash()))
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION));
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN));
         else if (!hasModified(reference, response.getInteractionReference()))
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_INTERACTION));
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION));
         else if (response.isDenied())
-            response.delete().queue(deleted -> context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.USER_DENIED)), context::fireExceptionCaught);
+            response.delete().queue(deleted -> context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.USER_DENIED, ErrorResponse.MISSING_ACCESS)), context::fireExceptionCaught);
         else
             retrieveAccessData(context, response)
                     .flatMap(data -> response.delete().map(deleted -> toData(response, data)))
@@ -254,7 +254,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
         }
         catch (Exception ex)
         {
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT);
+            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
         }
     }
 
@@ -300,7 +300,7 @@ public class ApplicationInteractionRetrieveActionImpl extends AbstractApplicatio
             if (hasThumbprint(entry, response.getThumbprint()))
                 return createAccessObject(manager, entry, response);
         }
-        throw new InteractionResponseException(InteractionResponse.INVALID_INTERACTION);
+        throw new InteractionResponseException(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION);
     }
 
     private boolean hasThumbprint(@Nonnull AccessEntryData entry, @Nonnull String thumbprint)

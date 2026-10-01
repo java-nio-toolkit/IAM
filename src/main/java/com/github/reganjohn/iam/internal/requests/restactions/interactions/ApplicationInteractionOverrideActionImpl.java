@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.interactions;
+package com.github.reganjohn.iam.internal.requests.restactions.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.Query;
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
@@ -35,7 +38,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionOverrideAction;
+import com.github.reganjohn.iam.api.requests.restactions.interactions.ApplicationInteractionOverrideAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
@@ -53,9 +56,11 @@ import java.util.*;
 
 public class ApplicationInteractionOverrideActionImpl extends AbstractApplicationActionImpl implements ApplicationInteractionOverrideAction
 {
+    public static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
+
     public ApplicationInteractionOverrideActionImpl(@Nonnull IAMImpl api)
     {
-        this(api, Routes.Applications.ACCEPT_APPLICATION_INTERACTION);
+        this(api, Routes.Interactions.ACCEPT_APPLICATION_INTERACTION);
     }
 
     protected ApplicationInteractionOverrideActionImpl(@Nonnull IAMImpl api, @Nonnull Route route)
@@ -147,7 +152,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
     }
 
-    private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
+    protected void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
     {
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID ownerId = UUID.fromString(params.get("user_id"));
@@ -160,7 +165,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveInteractionById(interactionId))
                 .flatMap(interaction -> createResponse(userId, thumbprint, token, interaction))
-                .queue(interaction -> handleSuccess(context, interaction, token), context::fireExceptionCaught);
+                .queue(interaction -> handleSuccess(context, interaction, token, isJson(request)), context::fireExceptionCaught);
     }
 
     @Nonnull
@@ -176,12 +181,17 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         }
     }
 
-    private void handleSuccess(@Nonnull ChannelHandlerContext context,
-                               @Nonnull ApplicationContextInteraction interaction, @Nonnull String reference)
+    private static boolean isJson(@Nonnull Request request)
     {
-        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
-        headers.put("Location", Collections.singletonList(withQueryParam(interaction, reference)));
-        context.writeAndFlush(new Response(context, StatusReason.SEE_OTHER, headers))
+        String accept = Helpers.get(request.getHeaders(), "Accept");
+        return accept != null && accept.contains("application/json");
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context,
+                               @Nonnull ApplicationContextInteraction interaction, @Nonnull String reference, boolean json)
+    {
+        String location = withQueryParam(interaction, reference);
+        context.writeAndFlush(json ? createJsonResponse(context, location) : createRedirectResponse(context, location))
                 .addListener(successObj ->
                 {
                     if (successObj.isSuccess())
@@ -189,6 +199,21 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
                     else
                         context.fireExceptionCaught(successObj.cause());
                 });
+    }
+
+    @Nonnull
+    private Response createRedirectResponse(@Nonnull ChannelHandlerContext context, @Nonnull String location)
+    {
+        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        headers.put("Location", Collections.singletonList(location));
+        return new Response(context, StatusReason.SEE_OTHER, headers);
+    }
+
+    @Nonnull
+    private Response createJsonResponse(@Nonnull ChannelHandlerContext context, @Nonnull String location)
+    {
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, DataObject.empty().put("redirect_uri", location).toBinary(), true);
+        return new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body);
     }
 
     protected void onEvent(@Nonnull ChannelHandlerContext context, @Nonnull ApplicationContextInteraction interaction)
@@ -213,18 +238,18 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId, @Nonnull String userThumbprint,
+    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId, @Nonnull String thumbprint,
                                                                                    @Nonnull String reference,
                                                                                    @Nonnull ApplicationContextInteraction interaction)
     {
-        return createResponse(userId, userThumbprint, reference, interaction, false)
+        return createResponse(userId, thumbprint, reference, interaction, false)
                 .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, interaction.getApplicationId(), interaction.getOwnerId(), 0L, interaction.getPermissionsRaw(), OffsetDateTime.now())
                 .map(unused -> interaction);
     }
 
     @Nonnull
     @CheckReturnValue
-    protected InteractionListContextActionImpl<Object> createResponse(@Nonnull UUID userId, @Nonnull String userThumbprint,
+    protected InteractionListContextActionImpl<Object> createResponse(@Nonnull UUID userId, @Nonnull String thumbprint,
                                                                       @Nonnull String reference,
                                                                       @Nonnull ApplicationContextInteraction interaction,
                                                                       boolean denied)
@@ -236,6 +261,6 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
                 .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", ownerId, applicationId, interactionId)
                 .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions,
-                        reference, interaction.hash(), interaction.getThumbprint(), userThumbprint, interaction.getLabel(), denied);
+                        reference, interaction.hash(), interaction.getThumbprint(), thumbprint, interaction.getLabel(), denied);
     }
 }

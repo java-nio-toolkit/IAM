@@ -15,13 +15,12 @@
  */
 
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.interactions;
+package com.github.reganjohn.iam.internal.requests.restactions.interactions;
 
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionDeleteEvent;
-import com.github.reganjohn.iam.api.events.applications.interactions.InteractionOverrideEvent;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionDeleteAction;
+import com.github.reganjohn.iam.api.requests.restactions.interactions.ApplicationInteractionDeleteAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.channel.ChannelHandlerContext;
@@ -34,7 +33,7 @@ public class ApplicationInteractionDeleteActionImpl extends ApplicationInteracti
 {
     public ApplicationInteractionDeleteActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.DENY_APPLICATION_INTERACTION);
+        super(api, Routes.Interactions.DENY_APPLICATION_INTERACTION);
     }
 
     @Nonnull

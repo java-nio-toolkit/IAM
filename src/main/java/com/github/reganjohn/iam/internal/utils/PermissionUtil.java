@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.utils;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;

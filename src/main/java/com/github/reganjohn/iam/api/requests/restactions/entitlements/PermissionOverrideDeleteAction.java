@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
+package com.github.reganjohn.iam.api.requests.restactions.entitlements;
 
-package com.github.reganjohn.iam.api.requests.restactions.applications.interactions;
-
-public interface ApplicationInteractionDeleteAction extends ApplicationInteractionOverrideAction
+public interface PermissionOverrideDeleteAction extends PermissionOverrideAction
 {
 }

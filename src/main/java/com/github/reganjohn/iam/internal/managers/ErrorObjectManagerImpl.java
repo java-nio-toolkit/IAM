@@ -111,9 +111,16 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 
     private ChannelFuture handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull InteractionResponseException ex)
     {
-        DataObject raw = DataObject.empty()
-                .put("error", Helpers.singletonData("code", ex.getError().getCode()))
+        DataObject error = DataObject.empty()
+                .put("code", ex.getError().getCode())
+                .put("meaning", ex.getMeaning())
                 .toData();
+
+        DataObject meaning = DataObject.empty()
+                .put("code", ex.getErrorCode())
+                .put("error", error)
+                .toData();
+        DataObject raw = Helpers.singletonData("error", meaning);
         
         switch (ex.getError())
         {

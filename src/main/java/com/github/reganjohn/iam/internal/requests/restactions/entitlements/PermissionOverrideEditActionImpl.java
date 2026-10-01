@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.self;
+package com.github.reganjohn.iam.internal.requests.restactions.entitlements;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -33,7 +33,7 @@ import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.self.PermissionOverrideEditAction;
+import com.github.reganjohn.iam.api.requests.restactions.entitlements.PermissionOverrideEditAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
@@ -57,7 +57,7 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
 {
     public PermissionOverrideEditActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.EDIT_ENTITLEMENT);
+        super(api, Routes.Entitlements.EDIT_ENTITLEMENT);
     }
 
     @Override

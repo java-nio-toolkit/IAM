@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.requests.restactions.applications.self;
+package com.github.reganjohn.iam.api.requests.restactions.entitlements;
 
 public interface PermissionOverridePaginationAction extends PermissionOverrideAction
 {

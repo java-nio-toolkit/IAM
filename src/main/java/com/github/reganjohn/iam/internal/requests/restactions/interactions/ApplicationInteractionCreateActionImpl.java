@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions.applications.interactions;
+package com.github.reganjohn.iam.internal.requests.restactions.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
@@ -53,7 +53,7 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.api.requests.restactions.applications.interactions.ApplicationInteractionCreateAction;
+import com.github.reganjohn.iam.api.requests.restactions.interactions.ApplicationInteractionCreateAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
@@ -92,14 +92,14 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
 
     public ApplicationInteractionCreateActionImpl(@Nonnull IAMImpl api)
     {
-        super(api, Routes.Applications.CREATE_APPLICATION_INTERACTION);
+        super(api, Routes.Interactions.CREATE_APPLICATION_INTERACTION);
     }
 
     @Override
     public void handleRequest(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception
     {
         if (!(request.getBody() instanceof JacksonRequestBody && ((JacksonRequestBody) request.getBody()).isObject()))
-            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST);
+            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY);
         else
             handleOwnerId(context, request, ((JacksonRequestBody) request.getBody()).getObject(), new ArrayList<>());
     }
@@ -358,9 +358,9 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         if (errors.isEmpty())
             handleInternally(context, request, raw);
         else if (errors.stream().allMatch(this::containsLocation))
-            throw new InteractionResponseException(InteractionResponse.INVALID_FLAG);
+            throw new InteractionResponseException(InteractionResponse.INVALID_FLAG, ErrorResponse.INVALID_FORM_BODY);
         else
-            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST);
+            throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY);
     }
 
     private boolean containsLocation(@Nonnull InvalidResponseException.SchemaError error)
@@ -390,11 +390,11 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         if (!client.hasKey("key"))
             return;
         else if (!client.isType("key", DataType.OBJECT))
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT);
+            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
         DataObject key = client.getObject("key");
         if (!"dpop".equals(key.getString("proof", null)) || !key.isType("jwk", DataType.OBJECT)
                 || !hasModified(thumbprint, retrieveThumbprint(data, key.getObject("jwk"))))
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT);
+            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
     }
 
     private void handleInteractionException(@Nonnull ChannelHandlerContext context, @Nonnull Throwable failure)
@@ -409,7 +409,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     {
         int code = failure.getErrorCode();
         if (code == ErrorResponse.UNKNOWN_USER.getCode() || code == ErrorResponse.UNKNOWN_APPLICATION.getCode())
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT));
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, code == ErrorResponse.UNKNOWN_USER.getCode() ? ErrorResponse.UNKNOWN_USER : ErrorResponse.UNKNOWN_APPLICATION));
         else
             context.fireExceptionCaught(failure);
     }
@@ -420,7 +420,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                                    long permissions, @Nullable String label, @Nonnull DataObject finish)
     {
         if (!Helpers.contains(application.getRedirectUris(), finish.getString("uri"), false))
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_REQUEST));
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY));
         else
             checkClient(context, data, application,
                     () -> handleClient(context, thumbprint, application, ownerId, permissions, label, finish));
@@ -433,7 +433,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         int port = uri.getPort() == -1 ? 443 : uri.getPort();
         InetAddress address = resolveAddress(uri.getHost());
         if (address == null)
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT));
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS));
         else
             connect(context, data, address, port, handler);
     }
@@ -446,7 +446,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             if (connect.isSuccess())
                 handleConnect(connect.channel().pipeline(), context, data, handler);
             else
-                context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT));
+                context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS));
         });
     }
 
@@ -502,7 +502,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     @Nonnull
     private String retrieveUri(@Nonnull UUID ownerId, @Nonnull UUID applicationId)
     {
-        return api.getBaseUri() + Routes.Applications.CREATE_APPLICATION_INTERACTION.compile(ownerId.toString(), applicationId.toString()).getCompiledRoute();
+        return api.getBaseUri() + Routes.Interactions.CREATE_APPLICATION_INTERACTION.compile(ownerId.toString(), applicationId.toString()).getCompiledRoute();
     }
 
     @Nonnull
@@ -514,7 +514,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         }
         catch (Exception ex)
         {
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT);
+            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
         }
     }
 
@@ -532,7 +532,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         }
         catch (Exception ex)
         {
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT);
+            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
         }
     }
 
@@ -601,7 +601,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         String owner = interaction.getOwnerId().toString();
         String application = interaction.getApplicationId().toString();
         String id = interaction.getUniqueId().toString();
-        Route.CompiledRoute compile = Routes.Applications.ACCEPT_APPLICATION_INTERACTION.compile(owner, application, id);
+        Route.CompiledRoute compile = Routes.Interactions.ACCEPT_APPLICATION_INTERACTION.compile(owner, application, id);
         return DataObject.empty()
                 .put("redirect", api.getBaseUri() + compile.getCompiledRoute())
                 .put("finish", interaction.getFinishNonce())
@@ -616,7 +616,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         String application = interaction.getApplicationId().toString();
         String id = interaction.getUniqueId().toString();
         return DataObject.empty()
-                .put("uri", api.getBaseUri() + Routes.Applications.EXECUTE_APPLICATION_INTERACTION.compile(application, id).getCompiledRoute())
+                .put("uri", api.getBaseUri() + Routes.Interactions.EXECUTE_APPLICATION_INTERACTION.compile(application, id).getCompiledRoute())
                 .put("access_token", DataObject.empty().put("value", continueToken))
                 .toData();
     }
@@ -731,7 +731,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             finished = true;
             try (CallbackContext<ChannelHandlerContext> resource = new CallbackContext<>(context, ChannelOutboundInvoker::close))
             {
-                this.context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT));
+                this.context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS));
             }
         }
     }

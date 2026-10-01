@@ -19,7 +19,6 @@ package com.github.reganjohn.iam.internal.requests.restactions;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.requests.Route;
-import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
@@ -40,6 +39,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.UUID;
+
+import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.INVALID_REQUEST;
 
 public abstract class AbstractOverrideActionImpl extends RestActionImpl implements AbstractOverrideAction
 {
@@ -64,15 +65,6 @@ public abstract class AbstractOverrideActionImpl extends RestActionImpl implemen
         InvalidResponseException.ErrorCode errorCode = new InvalidResponseException.ErrorCode(exception.getErrorCode(), exception.getMeaning());
         InvalidResponseException.SchemaError schemaError = new InvalidResponseException.SchemaError(name, Collections.singletonList(errorCode));
         errors.add(schemaError);
-    }
-
-    @Nonnull
-    protected ErrorResponseException createErrorResponse(@Nonnull String location, @Nonnull String code,
-                                                         @Nonnull String meaning)
-    {
-        InvalidResponseException.ErrorCode errorCode = new InvalidResponseException.ErrorCode(code, meaning);
-        InvalidResponseException.SchemaError schemaError = new InvalidResponseException.SchemaError(location, Collections.singletonList(errorCode));
-        return new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, schemaError);
     }
 
     @Nonnull
@@ -109,7 +101,7 @@ public abstract class AbstractOverrideActionImpl extends RestActionImpl implemen
     {
         ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         if (data == null)
-            throw new ProofAccessException(api.getIdentifierString(), "invalid_request", "This action requires a DPoP proof.");
+            throw new ProofAccessException(api.getIdentifierString(), INVALID_REQUEST, "This action requires a DPoP proof.");
         else
             return data;
     }

@@ -14,15 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.requests.restactions.applications.interactions;
+package com.github.reganjohn.iam.api.requests.restactions.interactions;
 
 import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 
-public interface ApplicationInteractionCreateAction extends ApplicationAction
+public interface ApplicationInteractionOverrideAction extends ApplicationAction
 {
-    int EXPIRES_IN = 300;
-    int RETRIEVE_ACCESS_TIMEOUT = 10;
-    int MAX_ACCESS_LENGTH = 1 << 16;
-    int MIN_NONCE_LENGTH = 16;
-    int MAX_NONCE_LENGTH = 256;
 }

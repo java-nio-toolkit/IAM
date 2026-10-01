@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.api.exceptions;
 
-import com.github.adamorgan.jnt.api.utils.data.DataObject;
+package com.github.reganjohn.iam.api.exceptions;
 
 import javax.annotation.Nonnull;
 
-public class InteractionResponseException extends RuntimeException
+public class InteractionResponseException extends ErrorResponseException
 {
     private final InteractionResponse error;
 
-    public InteractionResponseException(@Nonnull InteractionResponse error)
+    public InteractionResponseException(@Nonnull InteractionResponse error, @Nonnull ErrorResponse reason)
     {
-        super(error.getCode());
+        super(reason);
         this.error = error;
     }
 
