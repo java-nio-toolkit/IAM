@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.self;
+package com.github.reganjohn.iam.test.restaction.entitlements;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
@@ -24,7 +24,7 @@ import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.self.PermissionOverrideEditActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.entitlements.PermissionOverrideEditActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.utils.data.BufferArray;

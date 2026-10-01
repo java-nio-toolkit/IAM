@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.self;
+package com.github.reganjohn.iam.test.restaction.entitlements;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
@@ -40,7 +40,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.self.PermissionOverrideUpdateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.entitlements.PermissionOverrideUpdateActionImpl;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;

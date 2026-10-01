@@ -24,6 +24,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractOverrideActionImpl;
@@ -170,12 +171,14 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
 
     @CheckReturnValue
     @Contract("_->this")
-    public RestActionAssertions hasInteractionResponse(@Nonnull InteractionResponse error)
+    public RestActionAssertions hasInteractionResponse(@Nonnull InteractionResponse error, @Nonnull ErrorResponse reason)
     {
         return checkAssertions(outcome ->
         {
             assertThat(outcome.failure).isInstanceOf(InteractionResponseException.class);
             assertThat(((InteractionResponseException) outcome.failure).getError()).isEqualTo(error);
+            assertThat(((InteractionResponseException) outcome.failure).getErrorCode()).isEqualTo(reason.getCode());
+            assertThat(((InteractionResponseException) outcome.failure).getMeaning()).isEqualTo(reason.getMeaning());
         });
     }
 

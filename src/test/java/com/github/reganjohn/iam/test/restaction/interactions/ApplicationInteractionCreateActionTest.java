@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.interactions;
+package com.github.reganjohn.iam.test.restaction.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -39,7 +39,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionCreateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCreateActionImpl;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
@@ -230,7 +230,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withBody(nonObjectBody())
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -243,7 +243,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString())
                 .withBody(mock(RequestBody.class))
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -257,7 +257,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(ownerId, applicationId)
                 .withJsonBody(grant().toString())
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
 
@@ -271,7 +271,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         withProofOfClient();
 
         assertThatGranting(newAction(), json)
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
 
@@ -285,7 +285,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         withProofOfClient();
 
         assertThatGranting(newAction(), grant(token(token -> token.put("flags", DataArray.empty().add(flag)))))
-                .hasInteractionResponse(InteractionResponse.INVALID_FLAG)
+                .hasInteractionResponse(InteractionResponse.INVALID_FLAG, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
 
@@ -298,7 +298,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         withProofOfClient();
 
         assertThatGranting(newAction(), grant(token(token -> token.put("flags", "bearer"))))
-                .hasInteractionResponse(InteractionResponse.INVALID_FLAG)
+                .hasInteractionResponse(InteractionResponse.INVALID_FLAG, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -322,7 +322,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(), grant().toString())
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -336,7 +336,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(), grant().toString())
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -350,7 +350,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(), grant().toString())
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_APPLICATION)
                 .whenHandled();
     }
 
@@ -381,7 +381,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(created, true), grant(finish(finish -> finish.put("uri", uri))))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .whenHandled();
 
         assertThat(created.getAllValues()).isEmpty();
@@ -549,7 +549,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(created, true), grant(clientKey(proof, proofEntry.toData())))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         assertThat(created.getAllValues()).isEmpty();
@@ -565,7 +565,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(created, true), grant(clientKey("dpop", other.toData())))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         assertThat(created.getAllValues()).isEmpty();
@@ -579,7 +579,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(), grant(clientKey("dpop", DataObject.empty().put("kty", "OKP"))))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -592,7 +592,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(), grant(grant -> grant.getObject("client").put("key", DataObject.empty().put("proof", "dpop"))))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -605,7 +605,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(), grant(grant -> grant.getObject("client").put("key", "dpop")))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

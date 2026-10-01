@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.self;
+package com.github.reganjohn.iam.test.restaction.entitlements;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.self.PermissionOverrideRetrieveActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.entitlements.PermissionOverrideRetrieveActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

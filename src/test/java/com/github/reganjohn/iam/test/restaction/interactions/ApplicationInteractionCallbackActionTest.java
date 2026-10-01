@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.interactions;
+package com.github.reganjohn.iam.test.restaction.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
@@ -37,7 +37,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionRetrieveActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCallbackActionImpl;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
@@ -72,7 +72,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class ApplicationInteractionRetrieveActionTest extends RestActionTest
+public class ApplicationInteractionCallbackActionTest extends RestActionTest
 {
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
@@ -88,9 +88,9 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
     private UUID issuedActor;
     private DataArray issuedPermissions;
 
-    private ApplicationInteractionRetrieveActionImpl newAction()
+    private ApplicationInteractionCallbackActionImpl newAction()
     {
-        return new ApplicationInteractionRetrieveActionImpl(api);
+        return new ApplicationInteractionCallbackActionImpl(api);
     }
 
     private void withProofOfClient()
@@ -128,9 +128,9 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         return newResponse(clientKey, digestOf(TOKEN), REFERENCE);
     }
 
-    private ApplicationInteractionRetrieveActionImpl newAction(ApplicationCallbackResponse response)
+    private ApplicationInteractionCallbackActionImpl newAction(ApplicationCallbackResponse response)
     {
-        ApplicationInteractionRetrieveActionImpl action = spy(newAction());
+        ApplicationInteractionCallbackActionImpl action = spy(newAction());
         InteractionCallbackAction<ApplicationCallbackResponse> retrieval = completed(response);
         doReturn(retrieval).when(action).retrieveCallbackResponse(APPLICATION_ID, INTERACTION_ID);
         return action;
@@ -159,7 +159,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         return selected[0];
     }
 
-    private RestActionAssertions assertThatContinuing(ApplicationInteractionRetrieveActionImpl action, String authorization, String json)
+    private RestActionAssertions assertThatContinuing(ApplicationInteractionCallbackActionImpl action, String authorization, String json)
     {
         RestActionAssertions assertions = assertThatRequestTo(action)
                 .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
@@ -167,7 +167,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         return authorization == null ? assertions : assertions.withHeader("Authorization", authorization);
     }
 
-    private RestActionAssertions assertThatContinuing(ApplicationInteractionRetrieveActionImpl action)
+    private RestActionAssertions assertThatContinuing(ApplicationInteractionCallbackActionImpl action)
     {
         return assertThatContinuing(action, "GNAP " + TOKEN, body("interact_ref", REFERENCE));
     }
@@ -229,7 +229,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
                 .withRouteParams(applicationId, interactionId)
                 .withHeader("Authorization", "GNAP " + TOKEN)
                 .withJsonBody(body("interact_ref", REFERENCE))
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -241,7 +241,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         withProofOfClient();
 
         assertThatContinuing(newAction(), "GNAP " + TOKEN, json)
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -255,7 +255,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
                 .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .withHeader("Authorization", "GNAP " + TOKEN)
                 .withBody(nonObjectBody())
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -269,7 +269,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
                 .withRouteParams(APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .withHeader("Authorization", "GNAP " + TOKEN)
                 .withBody(mock(RequestBody.class))
-                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST)
+                .hasInteractionResponse(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -291,7 +291,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         ApplicationCallbackResponse response = newResponse();
 
         assertThatContinuing(newAction(response), authorization, body("interact_ref", REFERENCE))
-                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN)
                 .hasNoResponse()
                 .whenHandled();
 
@@ -305,7 +305,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         ApplicationCallbackResponse response = newResponse();
 
         assertThatContinuing(newAction(response), null, body("interact_ref", REFERENCE))
-                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN)
                 .hasNoResponse()
                 .whenHandled();
 
@@ -321,7 +321,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         whenHandled(assertThatContinuing(newAction(response))
                 .hasStatus(StatusReason.OK.code)
-                .hasContentType(ApplicationInteractionRetrieveActionImpl.MEDIA_TYPE_JSON)
+                .hasContentType(ApplicationInteractionCallbackActionImpl.MEDIA_TYPE_JSON)
                 .hasJsonBody(json ->
                 {
                     assertThat(json.toMap().keySet()).containsExactly("access_token");
@@ -373,13 +373,13 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
     void testUnknownInteraction()
     {
         withProofOfClient();
-        ApplicationInteractionRetrieveActionImpl action = spy(newAction());
+        ApplicationInteractionCallbackActionImpl action = spy(newAction());
         InteractionCallbackAction<ApplicationCallbackResponse> retrieval = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
         doReturn(retrieval).when(action).retrieveCallbackResponse(APPLICATION_ID, INTERACTION_ID);
 
         assertThatContinuing(action)
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN)
                 .whenHandled();
     }
 
@@ -387,7 +387,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
     void testOtherRetrievalFailure()
     {
         withProofOfClient();
-        ApplicationInteractionRetrieveActionImpl action = spy(newAction());
+        ApplicationInteractionCallbackActionImpl action = spy(newAction());
         InteractionCallbackAction<ApplicationCallbackResponse> retrieval = failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS));
         doReturn(retrieval).when(action).retrieveCallbackResponse(APPLICATION_ID, INTERACTION_ID);
 
@@ -405,7 +405,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(response, never()).delete();
@@ -419,7 +419,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION)
+                .hasInteractionResponse(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN)
                 .whenHandled();
 
         verify(response, never()).delete();
@@ -434,7 +434,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         assertThatContinuing(newAction(response), "GNAP " + TOKEN, body("interact_ref", reference))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION)
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION)
                 .whenHandled();
 
         verify(response, never()).delete();
@@ -448,7 +448,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
     }
 
@@ -461,7 +461,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         whenHandled(assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION));
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION));
 
         verify(response, never()).delete();
     }
@@ -505,7 +505,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         whenHandled(assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.USER_DENIED));
+                .hasInteractionResponse(InteractionResponse.USER_DENIED, ErrorResponse.MISSING_ACCESS));
 
         verify(response).delete();
     }
@@ -519,7 +519,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         whenHandled(assertThatContinuing(newAction(response))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.USER_DENIED));
+                .hasInteractionResponse(InteractionResponse.USER_DENIED, ErrorResponse.MISSING_ACCESS));
 
         verify(api, never()).retrieveUserById(any());
     }
@@ -533,7 +533,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
 
         assertThatContinuing(newAction(response), "GNAP " + TOKEN, body("interact_ref", "another-reference"))
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION)
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION)
                 .whenHandled();
 
         verify(response, never()).delete();

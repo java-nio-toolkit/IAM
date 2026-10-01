@@ -108,6 +108,7 @@ public class UserImplTest extends RestActionTest
         when(rows.isEmpty()).thenReturn(false);
         when(rows.getObject(0)).thenReturn(objects.get(0));
         when(rows.iterator()).thenAnswer(invocation -> objects.iterator());
+        when(rows.stream()).thenAnswer(invocation -> objects.stream());
         return rows;
     }
 

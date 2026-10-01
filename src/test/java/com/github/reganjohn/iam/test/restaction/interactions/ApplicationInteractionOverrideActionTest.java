@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.interactions;
+package com.github.reganjohn.iam.test.restaction.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
+import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
@@ -28,7 +29,7 @@ import com.github.reganjohn.iam.api.events.applications.interactions.Interaction
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionOverrideActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionOverrideActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 
@@ -212,6 +214,53 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         assertThat(events).hasSize(1);
         assertThat(events.get(0)).isInstanceOf(InteractionOverrideEvent.class);
         assertThat(((InteractionOverrideEvent) events.get(0)).getInteraction()).isSameAs(interaction);
+    }
+
+    @ValueSource(strings = {"application/json", "application/json, text/plain", "text/html, application/json;q=0.9"})
+    @ParameterizedTest
+    void testJsonRedirect(String accept)
+    {
+        withProofOfUser();
+        ApplicationContextInteraction interaction = newInteraction();
+        withStoredInteraction(interaction);
+        List<Object> events = withEventRecorder();
+        ArgumentCaptor<String> reference = ArgumentCaptor.forClass(String.class);
+        ApplicationInteractionOverrideActionImpl action = spy(newAction());
+        doReturn(completed(interaction)).when(action).createResponse(any(), any(), reference.capture(), any());
+
+        assertThatRequestTo(action)
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withHeader("Accept", accept)
+                .hasStatus(StatusReason.OK.code)
+                .hasContentType(MediaType.parse("application/json; charset=utf-8"))
+                .hasJsonBody(json ->
+                {
+                    String hash = interactionHashOf("client-nonce", "finish-nonce", reference.getValue(), GRANT_URI);
+                    assertThat(json.toMap().keySet()).containsExactly("redirect_uri");
+                    assertThat(json.getString("redirect_uri")).isEqualTo(CALLBACK + "?hash=" + hash + "&interact_ref=" + reference.getValue());
+                })
+                .whenHandled();
+
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0)).isInstanceOf(InteractionOverrideEvent.class);
+    }
+
+    @ValueSource(strings = {"text/html", "*/*", "application/xml"})
+    @ParameterizedTest
+    void testOtherAcceptStaysRedirect(String accept)
+    {
+        withProofOfUser();
+        ApplicationContextInteraction interaction = newInteraction();
+        withStoredInteraction(interaction);
+        ApplicationInteractionOverrideActionImpl action = spy(newAction());
+        doReturn(completed(interaction)).when(action).createResponse(any(), any(), any(), any());
+
+        assertThatRequestTo(action)
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withHeader("Accept", accept)
+                .hasStatus(StatusReason.SEE_OTHER.code)
+                .hasNoBody()
+                .whenHandled();
     }
 
     @Test

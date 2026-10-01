@@ -240,6 +240,7 @@ public class EntityBuilderTest
         BufferArray array = mock(BufferArray.class);
         when(array.isEmpty()).thenReturn(rows.length == 0);
         when(array.iterator()).thenAnswer(invocation -> Arrays.asList(rows).iterator());
+        when(array.stream()).thenAnswer(invocation -> Arrays.stream(rows));
         return array;
     }
 

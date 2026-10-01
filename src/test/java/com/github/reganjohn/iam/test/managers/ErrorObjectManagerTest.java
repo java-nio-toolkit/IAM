@@ -20,6 +20,8 @@ import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
@@ -83,7 +85,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     @ParameterizedTest
     void testStatus(InteractionResponse error, int status)
     {
-        assertThat(handle(new InteractionResponseException(error)).code).isEqualTo(status);
+        assertThat(handle(new InteractionResponseException(error, ErrorResponse.MISSING_ACCESS)).code).isEqualTo(status);
     }
 
     @Test
@@ -96,13 +98,16 @@ public class ErrorObjectManagerTest extends IntegrationTest
     @ParameterizedTest
     void testInteractionResponse(InteractionResponse error)
     {
-        Response response = handle(new InteractionResponseException(error));
+        Response response = handle(new InteractionResponseException(error, ErrorResponse.UNKNOWN_TOKEN));
 
         assertThat(response.getBody().contentType()).isEqualTo(MediaType.parse("application/json; charset=utf-8"));
         DataObject json = DataObject.fromJson(read(response));
         assertThat(json.toMap().keySet()).containsExactly("error");
-        assertThat(json.getObject("error").toMap().keySet()).containsExactly("code");
-        assertThat(json.getObject("error").getString("code")).isEqualTo(error.getCode());
+        assertThat(json.getObject("error").toMap().keySet()).containsExactly("code", "error");
+        assertThat(json.getObject("error").getInt("code")).isEqualTo(ErrorResponse.UNKNOWN_TOKEN.getCode());
+        assertThat(json.getObject("error").getObject("error").toMap().keySet()).containsExactly("code", "meaning");
+        assertThat(json.getObject("error").getObject("error").getString("code")).isEqualTo(error.getCode());
+        assertThat(json.getObject("error").getObject("error").getString("meaning")).isEqualTo("Unknown Token");
     }
 
     @Test
@@ -114,8 +119,13 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testInteractionResponseMessage()
+    void testInteractionResponseReason()
     {
-        assertThat(new InteractionResponseException(InteractionResponse.INVALID_CLIENT)).hasMessage("invalid_client");
+        InteractionResponseException exception = new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS);
+
+        assertThat(exception).isInstanceOf(ErrorResponseException.class);
+        assertThat(exception.getError()).isEqualTo(InteractionResponse.INVALID_CLIENT);
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorResponse.UNKNOWN_ACCESS.getCode());
+        assertThat(exception.getMeaning()).isEqualTo("Unknown Access");
     }
 }

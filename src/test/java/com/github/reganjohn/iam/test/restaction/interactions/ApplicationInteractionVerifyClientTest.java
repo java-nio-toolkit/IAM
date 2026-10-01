@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.interactions;
+package com.github.reganjohn.iam.test.restaction.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.BufferLimitedException;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
@@ -36,7 +36,7 @@ import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionCreateActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCreateActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.test.restaction.applications.interactions;
+package com.github.reganjohn.iam.test.restaction.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
@@ -28,7 +28,7 @@ import com.github.reganjohn.iam.api.events.applications.interactions.Interaction
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
-import com.github.reganjohn.iam.internal.requests.restactions.applications.interactions.ApplicationInteractionDeleteActionImpl;
+import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionDeleteActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
@@ -167,6 +167,32 @@ public class ApplicationInteractionDeleteActionTest extends RestActionTest
         assertThat(events).hasSize(1);
         assertThat(events.get(0)).isInstanceOf(InteractionDeleteEvent.class);
         assertThat(((InteractionDeleteEvent) events.get(0)).getInteraction()).isSameAs(interaction);
+    }
+
+    @Test
+    void testJsonRedirect()
+    {
+        withProofOfUser();
+        ApplicationContextInteraction interaction = newInteraction();
+        withStoredInteraction(interaction);
+        List<Object> events = withEventRecorder();
+        ArgumentCaptor<String> reference = ArgumentCaptor.forClass(String.class);
+        ApplicationInteractionDeleteActionImpl action = spy(newAction());
+        doReturn(completed(interaction)).when(action).createResponse(any(), any(), reference.capture(), any());
+
+        assertThatRequestTo(action)
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .withHeader("Accept", "application/json")
+                .hasStatus(StatusReason.OK.code)
+                .hasJsonBody(json ->
+                {
+                    String hash = interactionHashOf("client-nonce", "finish-nonce", reference.getValue(), GRANT_URI);
+                    assertThat(json.getString("redirect_uri")).isEqualTo(CALLBACK + "?hash=" + hash + "&interact_ref=" + reference.getValue());
+                })
+                .whenHandled();
+
+        assertThat(events).hasSize(1);
+        assertThat(events.get(0)).isInstanceOf(InteractionDeleteEvent.class);
     }
 
     @Test
