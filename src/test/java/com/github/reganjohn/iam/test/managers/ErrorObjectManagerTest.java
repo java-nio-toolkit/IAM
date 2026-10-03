@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.test.managers;
 
+import com.fasterxml.jackson.core.JsonParseException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
@@ -27,6 +28,9 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
 import com.github.reganjohn.iam.test.IntegrationTest;
 import io.netty.util.CharsetUtil;
+import java.io.IOException;
+import java.security.DigestException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -86,6 +90,77 @@ public class ErrorObjectManagerTest extends IntegrationTest
     void testStatus(InteractionResponse error, int status)
     {
         assertThat(handle(new InteractionResponseException(error, ErrorResponse.MISSING_ACCESS)).code).isEqualTo(status);
+    }
+
+    @Test
+    void testUnknownFailure()
+    {
+        Response response = handle(new NullPointerException("secret detail"));
+
+        assertThat(response.code).isEqualTo(500);
+        assertThat(read(response)).contains(ErrorResponse.SERVER_ERROR.getMeaning()).doesNotContain("secret detail");
+    }
+
+    @Test
+    void testInputOutputFailure()
+    {
+        Response response = handle(new IOException("secret detail"));
+
+        assertThat(response.code).isEqualTo(500);
+        assertThat(read(response)).contains(ErrorResponse.SERVER_ERROR.getMeaning()).doesNotContain("secret detail");
+    }
+
+    @Test
+    void testWrappedJsonFailure()
+    {
+        Response response = handle(new IllegalStateException(new JsonParseException(null, "Unrecognized token")));
+
+        assertThat(response.code).isEqualTo(400);
+        assertThat(read(response)).contains(ErrorResponse.INVALID_REQUEST_BODY.getMeaning());
+    }
+
+    @Test
+    void testJsonFailure()
+    {
+        Response response = handle(new JsonParseException(null, "Unrecognized token"));
+
+        assertThat(response.code).isEqualTo(400);
+        assertThat(read(response)).contains(ErrorResponse.INVALID_REQUEST_BODY.getMeaning());
+    }
+
+    @Test
+    void testStackTraceFlag() throws Exception
+    {
+        new ErrorObjectManagerImpl(true).exceptionCaught(context, new IllegalStateException("x"));
+
+        assertThat((Object) channel.readOutbound()).isNotNull();
+    }
+
+    @Test
+    void testUnsupportedDigestMode()
+    {
+        Response response = handle(new UnsupportedOperationException("The used digest mode is not supported."));
+
+        assertThat(response.code).isEqualTo(400);
+        assertThat(read(response)).contains("The used digest mode is not supported.");
+    }
+
+    @Test
+    void testDigestMismatch()
+    {
+        Response response = handle(new DigestException("Content-Digest did not match the expected."));
+
+        assertThat(response.code).isEqualTo(400);
+        assertThat(read(response)).contains("Content-Digest did not match the expected.");
+    }
+
+    @Test
+    void testKeySpecFailure()
+    {
+        Response response = handle(new InvalidKeySpecException("Unsupported access type: ES256"));
+
+        assertThat(response.code).isEqualTo(400);
+        assertThat(read(response)).contains("Unsupported access type: ES256");
     }
 
     @Test

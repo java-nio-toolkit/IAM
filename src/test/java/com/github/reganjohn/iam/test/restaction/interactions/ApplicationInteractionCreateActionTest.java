@@ -23,13 +23,10 @@ import com.github.adamorgan.jnt.api.socket.SocketManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.JNTImpl;
-import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.User;
@@ -39,6 +36,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
+import com.github.reganjohn.iam.internal.managers.AccessSignatureManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCreateActionImpl;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
@@ -51,9 +49,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.stubbing.Answer;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -65,8 +67,10 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -81,7 +85,10 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     private static final String BASE_URI = "https://iam.example/";
     private static final String CLIENT_NONCE = "client-nonce-0123";
 
+    private static final DataObject CLIENT_RAW = newClientRaw();
+
     private AccessEntryData proofEntry;
+    private AccessSignatureManagerImpl signatures;
 
     @BeforeEach
     void withBaseUri()
@@ -94,22 +101,52 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         return new ApplicationInteractionCreateActionImpl(api);
     }
 
+    private static Answer<Void> continued(ApplicationInteractionCreateActionImpl action, boolean verified)
+    {
+        return invocation ->
+        {
+            if (verified)
+                action.handleClient(invocation.getArgument(0), invocation.getArgument(2), invocation.getArgument(3), invocation.getArgument(4), invocation.<Long>getArgument(5), invocation.getArgument(6), invocation.getArgument(7));
+            return null;
+        };
+    }
+
     private ApplicationInteractionCreateActionImpl newAction(ArgumentCaptor<ApplicationContextInteraction> created, boolean verified)
     {
         ApplicationInteractionCreateActionImpl action = spy(newAction());
-        doAnswer(invocation ->
-        {
-            if (verified)
-                ((Runnable) invocation.getArgument(3)).run();
-            return null;
-        }).when(action).checkClient(any(), any(), any(), any());
+        doAnswer(continued(action, verified)).when(action).checkClient(any(), any(), any(), any(), any(), anyLong(), any(), any());
         doReturn(completed(null)).when(action).createInteraction(created.capture());
         return action;
+    }
+
+    private static DataObject newClientRaw()
+    {
+        try
+        {
+            if (Security.getProvider("BC") == null)
+                Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            KeyPair pair = KeyPairGenerator.getInstance("Ed25519", "BC").generateKeyPair();
+            return AbstractEntityBuilder.createAccessSecretData(SignType.ED25519.getType(), pair, true)
+                    .put("kty", SignType.ED25519.getTypeRaw())
+                    .put("alg", SignType.ED25519.getName());
+        }
+        catch (Exception exception)
+        {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private static DataObject clientRaw()
+    {
+        return DataObject.fromJson(CLIENT_RAW.toString());
     }
 
     private void withProofOfClient()
     {
         proofEntry = withProof(SignType.ED25519);
+        signatures = mock(AccessSignatureManagerImpl.class);
+        when(signatures.verify(any(), any(), any(DataObject.class))).thenReturn(proofEntry);
+        when(api.getAccessSignatureManager()).thenReturn(signatures);
     }
 
     private void withStoredApplication()
@@ -125,7 +162,9 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         DataObject read = DataObject.empty().put("type", "account").put("actions", DataArray.empty().add("read"));
         return DataObject.empty()
                 .put("access_token", DataObject.empty().put("access", DataArray.empty().add(read)))
-                .put("client", DataObject.empty().put("display", DataObject.empty().put("name", "app")))
+                .put("client", DataObject.empty()
+                        .put("display", DataObject.empty().put("name", "app"))
+                        .put("key", DataObject.empty().put("proof", "httpsig").put("jwk", clientRaw())))
                 .put("interact", DataObject.empty()
                         .put("start", DataArray.empty().add("redirect"))
                         .put("finish", DataObject.empty()
@@ -151,9 +190,14 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         return grant -> change.accept(grant.getObject("access_token"));
     }
 
-    private static Consumer<DataObject> clientKey(String proof, DataObject jwk)
+    private static Consumer<DataObject> accessRaw(String proof, DataObject raw)
     {
-        return grant -> grant.getObject("client").put("key", DataObject.empty().put("proof", proof).put("jwk", jwk));
+        return grant -> grant.getObject("client").put("key", DataObject.empty().put("proof", proof).put("jwk", raw));
+    }
+
+    private static Consumer<DataObject> key(Consumer<DataObject> change)
+    {
+        return grant -> change.accept(grant.getObject("client").getObject("key"));
     }
 
     private static Consumer<DataObject> interact(Consumer<DataObject> change)
@@ -186,6 +230,13 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("label_not_string", grant(token(token -> token.put("label", 5)))),
                 arguments("missing_client", grant(grant -> grant.remove("client"))),
                 arguments("client_string", grant(grant -> grant.put("client", "instance"))),
+                arguments("client_without_key", grant(grant -> grant.getObject("client").remove("key"))),
+                arguments("key_not_object", grant(grant -> grant.getObject("client").put("key", "httpsig"))),
+                arguments("proof_missing", grant(key(key -> key.remove("proof")))),
+                arguments("proof_not_string", grant(key(key -> key.put("proof", 5)))),
+                arguments("proof_not_httpsig", grant(key(key -> key.put("proof", "dpop")))),
+                arguments("jwk_missing", grant(key(key -> key.remove("jwk")))),
+                arguments("jwk_not_object", grant(key(key -> key.put("jwk", "jwk")))),
                 arguments("missing_interact", grant(grant -> grant.remove("interact"))),
                 arguments("interact_not_object", grant(grant -> grant.put("interact", "redirect"))),
                 arguments("start_missing", grant(interact(interact -> interact.remove("start")))),
@@ -304,25 +355,28 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testMissingProof()
+    void testRejectedSignature() throws Exception
     {
+        withProofOfClient();
+        doThrow(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)).when(signatures).verify(any(), any(), any(DataObject.class));
+
         assertThatGranting(newAction(), grant().toString())
                 .hasNoResponse()
-                .hasFailureOfType(ProofAccessException.class)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
     }
 
     @Test
-    void testProofWithoutThumbprint()
+    void testSignatureNonceChallenge() throws Exception
     {
         withProofOfClient();
-        channel.attr(ProofObjectManagerImpl.CONTEXT).set(mock(ProofObjectData.class));
+        doThrow(new ProofAccessException("iam", "use_dpop_nonce", "A DPoP nonce is required for this request.", "nonce")).when(signatures).verify(any(), any(), any(DataObject.class));
 
         assertThatGranting(newAction(), grant().toString())
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
+                .hasFailureOfType(ProofAccessException.class)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -439,7 +493,6 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         assertThat(interaction.getMethodHash()).isEqualTo("sha-256");
         assertThat(interaction.getUri()).isEqualTo("https://iam.example/users/" + OWNER_ID + "/applications/" + APPLICATION_ID + "/interactions");
         assertThat(interaction.getTimeExpiresAt()).isBetween(before.plusSeconds(299), OffsetDateTime.now().plusSeconds(301));
-        assertThat(interaction.getThumbprint()).isEqualTo(thumbprintOf(proofEntry));
         assertThat(interaction.getLabel()).isNull();
         assertThat(interaction.getLabel()).isNull();
         assertThat(events).hasSize(1);
@@ -527,88 +580,18 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testClientKeyOfProof()
+    void testAccessRawIsStored() throws Exception
     {
         withProofOfClient();
         withStoredApplication();
         ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
 
-        assertThatGranting(newAction(created, true), grant(clientKey("dpop", proofEntry.toData())))
+        assertThatGranting(newAction(created, true), grant().toString())
                 .hasStatus(StatusReason.OK.code)
                 .whenHandled();
 
-        assertThat(created.getAllValues()).hasSize(1);
-    }
-
-    @ValueSource(strings = {"httpsig", "mtls", "jwsd", "jws", "DPoP", ""})
-    @ParameterizedTest
-    void testClientKeyWithOtherProof(String proof)
-    {
-        withProofOfClient();
-        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
-
-        assertThatGranting(newAction(created, true), grant(clientKey(proof, proofEntry.toData())))
-                .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
-                .whenHandled();
-
-        assertThat(created.getAllValues()).isEmpty();
-        verify(api, never()).retrieveUserById(any());
-    }
-
-    @Test
-    void testClientKeyOfAnotherKey()
-    {
-        AccessEntryData other = withProof(SignType.ED25519);
-        withProofOfClient();
-        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
-
-        assertThatGranting(newAction(created, true), grant(clientKey("dpop", other.toData())))
-                .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
-                .whenHandled();
-
-        assertThat(created.getAllValues()).isEmpty();
-        verify(api, never()).retrieveUserById(any());
-    }
-
-    @Test
-    void testClientKeyWithoutKeyMaterial()
-    {
-        withProofOfClient();
-
-        assertThatGranting(newAction(), grant(clientKey("dpop", DataObject.empty().put("kty", "OKP"))))
-                .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
-                .whenHandled();
-
-        verify(api, never()).retrieveUserById(any());
-    }
-
-    @Test
-    void testClientKeyWithoutJwk()
-    {
-        withProofOfClient();
-
-        assertThatGranting(newAction(), grant(grant -> grant.getObject("client").put("key", DataObject.empty().put("proof", "dpop"))))
-                .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
-                .whenHandled();
-
-        verify(api, never()).retrieveUserById(any());
-    }
-
-    @Test
-    void testClientKeyNotObject()
-    {
-        withProofOfClient();
-
-        assertThatGranting(newAction(), grant(grant -> grant.getObject("client").put("key", "dpop")))
-                .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)
-                .whenHandled();
-
-        verify(api, never()).retrieveUserById(any());
+        assertThat(created.getValue().getAccessRaw().toMap()).isEqualTo(proofEntry.toData().toMap());
+        verify(signatures).verify(any(), any(), any(DataObject.class));
     }
 
     @Test
@@ -631,11 +614,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         withProofOfClient();
         withStoredApplication();
         ApplicationInteractionCreateActionImpl action = spy(newAction());
-        doAnswer(invocation ->
-        {
-            ((Runnable) invocation.getArgument(3)).run();
-            return null;
-        }).when(action).checkClient(any(), any(), any(), any());
+        doAnswer(continued(action, true)).when(action).checkClient(any(), any(), any(), any(), any(), anyLong(), any(), any());
         doReturn(failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS))).when(action).createInteraction(any());
 
         assertThatGranting(action, grant().toString())
@@ -654,9 +633,8 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         SocketManager manager = mock(SocketManager.class);
         when(manager.connect(any(SocketAddress.class))).thenReturn(connection.newSucceededFuture());
         when(api.getSocketManager()).thenReturn(manager);
-        Runnable verified = mock(Runnable.class);
 
-        newAction().checkClient(context, channel.attr(ProofObjectManagerImpl.CONTEXT).get(), application, verified);
+        newAction().checkClient(context, proofEntry, DataObject.empty(), application, OWNER_ID, 1L, null, DataObject.empty());
 
         ArgumentCaptor<SocketAddress> address = ArgumentCaptor.forClass(SocketAddress.class);
         verify(manager).connect(address.capture());
@@ -664,7 +642,6 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         Object outbound = connection.readOutbound();
         assertThat(outbound).isInstanceOf(Request.class);
         assertThat(((Request) outbound).getRoute().getCompiledRoute()).isEqualTo(".well-known/jwks.json");
-        verify(verified, never()).run();
         connection.finishAndReleaseAll();
         assertThatThrownBy(channel::checkException).isInstanceOf(InteractionResponseException.class);
     }
@@ -693,7 +670,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
         when(interaction.getMethodHash()).thenReturn("sha-256");
         when(interaction.getUri()).thenReturn("https://iam.example/grant");
         when(interaction.hash()).thenReturn("continue-hash");
-        when(interaction.getThumbprint()).thenReturn("client-thumbprint");
+        when(interaction.getAccessRaw()).thenReturn(DataObject.empty().put("kid", "client-key"));
         when(interaction.getLabel()).thenReturn("my-token");
         when(interaction.getLabel()).thenReturn("my-token");
 
@@ -711,20 +688,8 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 .containsEntry("method_hash", "sha-256")
                 .containsEntry("uri", "https://iam.example/grant")
                 .containsEntry("hash", "continue-hash")
-                .containsEntry("client_thumbprint", "client-thumbprint")
+                .containsEntry("access_raw", DataObject.empty().put("kid", "client-key").toString())
                 .containsEntry("label", "my-token")
                 .containsKeys("interaction_id", "expiry");
-    }
-
-    private static String thumbprintOf(AccessEntryData entry)
-    {
-        try (AccessContextData contextData = entry.getContext(AccessContextType.SHA_256))
-        {
-            return contextData.digest();
-        }
-        catch (Exception exception)
-        {
-            throw new IllegalStateException(exception);
-        }
     }
 }

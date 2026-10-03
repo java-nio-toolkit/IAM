@@ -229,6 +229,23 @@ public class SessionCreateActionTest extends RestActionTest
         assertThat(session.getThumbprint()).isEqualTo(entry.getContext(AccessContextType.SHA_256).digest());
     }
 
+    @EnumSource(value = SignType.class, names = {"MLDSA44", "MLDSA65", "MLDSA87"})
+    @ParameterizedTest
+    void testAkpKeyWithoutCurve(SignType type)
+    {
+        AccessEntryData entry = withProof(type);
+        ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
+        withStoredUser(1);
+        DataObject raw = entry.toData();
+        raw.remove("crv");
+
+        whenHandled(assertThatRequestTo(newAction(created))
+                .withJsonBody(raw.toString())
+                .hasStatus(StatusReason.CREATED.code));
+
+        assertThat(created.getValue().getAccessEntry().getPublic().getEncoded()).isEqualTo(entry.getPublic().getEncoded());
+    }
+
     @Test
     void testMinimalSession()
     {

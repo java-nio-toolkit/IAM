@@ -25,7 +25,6 @@ import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.ResponseBody;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
@@ -62,6 +61,9 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -97,9 +99,9 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         return withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, origin, 0, origin + "/callback");
     }
 
-    private ProofObjectData proof()
+    private AccessEntryData proof()
     {
-        return channel.attr(ProofObjectManagerImpl.CONTEXT).get();
+        return channel.attr(ProofObjectManagerImpl.CONTEXT).get().getEntryData();
     }
 
     private SocketManager withSocketManager(Supplier<ChannelFuture> connect)
@@ -119,7 +121,13 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
 
     private void verifyKeys(String origin)
     {
-        new ApplicationInteractionCreateActionImpl(api).checkClient(context, proof(), newApplication(origin), verified::incrementAndGet);
+        ApplicationInteractionCreateActionImpl action = spy(new ApplicationInteractionCreateActionImpl(api));
+        doAnswer(invocation ->
+        {
+            verified.incrementAndGet();
+            return null;
+        }).when(action).handleClient(any(), any(), any(), any(), anyLong(), any(), any());
+        action.checkClient(context, proof(), DataObject.empty(), newApplication(origin), OWNER_ID, 1L, null, DataObject.empty());
     }
 
     private RestActionImpl handler()

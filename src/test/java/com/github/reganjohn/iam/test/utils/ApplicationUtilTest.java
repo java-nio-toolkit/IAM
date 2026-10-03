@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package com.github.reganjohn.iam.internal.requests.restactions;
+package com.github.reganjohn.iam.test.utils;
 
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
+import com.github.reganjohn.iam.internal.utils.ApplicationUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -27,7 +28,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
-public class AbstractApplicationActionImplTest
+public class ApplicationUtilTest
 {
     private static final String CLIENT_NONCE = "VJLO6A4CATR0KRO";
     private static final String FINISH_NONCE = "MBDOFXG4Y5CVJCX821LH";
@@ -37,53 +38,53 @@ public class AbstractApplicationActionImplTest
     @Test
     void testHashVectorSha256()
     {
-        assertThat(AbstractApplicationActionImpl.hash("sha-256", CLIENT_NONCE, FINISH_NONCE, INTERACT_REF, GRANT_URI))
+        assertThat(ApplicationUtil.hash("sha-256", CLIENT_NONCE, FINISH_NONCE, INTERACT_REF, GRANT_URI))
                 .isEqualTo("x-gguKWTj8rQf7d7i3w3UhzvuJ5bpOlKyAlVpLxBffY");
     }
 
     @Test
     void testHashVectorSha3512()
     {
-        assertThat(AbstractApplicationActionImpl.hash("sha3-512", CLIENT_NONCE, FINISH_NONCE, INTERACT_REF, GRANT_URI))
+        assertThat(ApplicationUtil.hash("sha3-512", CLIENT_NONCE, FINISH_NONCE, INTERACT_REF, GRANT_URI))
                 .isEqualTo("pyUkVJSmpqSJMaDYsk5G8WCvgY91l-agUPe1wgn-cc5rUtN69gPI2-S_s-Eswed8iB4PJ_a5Hg6DNi7qGgKwSQ");
     }
 
     @Test
     void testHashBaseStringUsesNewlines()
     {
-        assertThat(AbstractApplicationActionImpl.hash("sha-256", "a", "b", "c", "d"))
-                .isEqualTo(AbstractApplicationActionImpl.digest("sha-256", "a\nb\nc\nd"))
-                .isNotEqualTo(AbstractApplicationActionImpl.digest("sha-256", "a\nb\nc\nd\n"))
-                .isNotEqualTo(AbstractApplicationActionImpl.digest("sha-256", "abcd"));
+        assertThat(ApplicationUtil.hash("sha-256", "a", "b", "c", "d"))
+                .isEqualTo(ApplicationUtil.digest("sha-256", "a\nb\nc\nd"))
+                .isNotEqualTo(ApplicationUtil.digest("sha-256", "a\nb\nc\nd\n"))
+                .isNotEqualTo(ApplicationUtil.digest("sha-256", "abcd"));
     }
 
-    @ValueSource(strings = {"sha-256", "sha-384", "sha-512", "sha3-256", "sha3-384", "sha3-512"})
+    @ValueSource(strings = {"sha-256", "sha-384", "sha-512", "sha3-256", "sha3-384", "sha3-512", "SHA-256", "Sha3-512"})
     @ParameterizedTest
     void testSupportedHashMethods(String method)
     {
-        assertThat(AbstractApplicationActionImpl.hasMode(method)).isTrue();
-        assertThat(AbstractApplicationActionImpl.digest(method, "value")).matches("[A-Za-z0-9_-]+");
+        assertThat(ApplicationUtil.MODES.containsKey(method)).isTrue();
+        assertThat(ApplicationUtil.digest(method, "value")).matches("[A-Za-z0-9_-]+");
     }
 
-    @ValueSource(strings = {"", "md5", "sha-1", "SHA-256", "sha256", "unknown"})
+    @ValueSource(strings = {"", "md5", "sha-1", "sha256", "unknown"})
     @ParameterizedTest
     void testUnsupportedHashMethods(String method)
     {
-        assertThat(AbstractApplicationActionImpl.hasMode(method)).isFalse();
-        assertThatIllegalArgumentException().isThrownBy(() -> AbstractApplicationActionImpl.digest(method, "value"));
+        assertThat(ApplicationUtil.MODES.containsKey(method)).isFalse();
+        assertThatIllegalArgumentException().isThrownBy(() -> ApplicationUtil.digest(method, "value"));
     }
 
     @Test
     void testNullHashMethod()
     {
-        assertThat(AbstractApplicationActionImpl.hasMode(null)).isFalse();
+        assertThat(ApplicationUtil.MODES.containsKey(null)).isFalse();
     }
 
     @Test
     void testDefaultDigest()
     {
-        assertThat(AbstractApplicationActionImpl.digest("value")).isEqualTo(AbstractApplicationActionImpl.digest("sha-256", "value"));
-        assertThat(AbstractApplicationActionImpl.DEFAULT_HASH_METHOD).isEqualTo("sha-256");
+        assertThat(ApplicationUtil.digest("value")).isEqualTo(ApplicationUtil.digest("sha-256", "value"));
+        assertThat(ApplicationUtil.DEFAULT_HASH_METHOD).isEqualTo("sha-256");
     }
 
     @Test
@@ -91,7 +92,7 @@ public class AbstractApplicationActionImplTest
     {
         Set<String> values = new HashSet<>();
         for (int i = 0; i < 100; i++)
-            values.add(AbstractApplicationActionImpl.randomToken());
+            values.add(ApplicationUtil.randomToken());
 
         assertThat(values).hasSize(100);
         assertThat(values).allSatisfy(value ->

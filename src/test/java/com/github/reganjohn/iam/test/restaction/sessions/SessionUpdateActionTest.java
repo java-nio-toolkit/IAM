@@ -38,6 +38,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.sessions.SessionUp
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -45,9 +46,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -75,14 +73,7 @@ public class SessionUpdateActionTest extends RestActionTest
 
     private static String hashOf(String token)
     {
-        try
-        {
-            return IOUtil.encodeURL(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.UTF_8)));
-        }
-        catch (NoSuchAlgorithmException exception)
-        {
-            throw new IllegalStateException(exception);
-        }
+        return IOUtil.encodeURL(DigestUtils.sha256(token));
     }
 
     private void withAccessProof(String thumbprint, String tokenHash)

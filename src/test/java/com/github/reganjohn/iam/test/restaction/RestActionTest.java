@@ -29,6 +29,7 @@ import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
@@ -44,16 +45,14 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImp
 import io.netty.channel.ChannelInboundHandler;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -176,6 +175,18 @@ public class RestActionTest extends IntegrationTest
             return null;
         }).when(action).queue(any(), any());
         when(action.map(any())).thenAnswer(invocation -> completed(((Function<T, Object>) invocation.getArgument(0)).apply(value)));
+        when(action.onSuccess(any())).thenAnswer(invocation ->
+        {
+            try
+            {
+                ((Consumer<T>) invocation.getArgument(0)).accept(value);
+                return completed(value);
+            }
+            catch (Throwable failure)
+            {
+                return failed(failure);
+            }
+        });
         when(action.flatMap(any(Function.class))).thenAnswer(invocation -> ((Function<T, InteractionCallbackAction<Object>>) invocation.getArgument(0)).apply(value));
         return action;
     }
@@ -190,6 +201,7 @@ public class RestActionTest extends IntegrationTest
             return null;
         }).when(action).queue(any(), any());
         when(action.map(any())).thenAnswer(invocation -> failed(failure));
+        when(action.onSuccess(any())).thenAnswer(invocation -> failed(failure));
         when(action.flatMap(any(Function.class))).thenAnswer(invocation -> failed(failure));
         return action;
     }
@@ -395,15 +407,8 @@ public class RestActionTest extends IntegrationTest
 
     protected static String digestOf(String algorithm, String value)
     {
-        try
-        {
-            byte[] digest = MessageDigest.getInstance(algorithm).digest(value.getBytes(StandardCharsets.US_ASCII));
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
-        }
-        catch (NoSuchAlgorithmException exception)
-        {
-            throw new IllegalStateException(exception);
-        }
+        byte[] digest = new DigestUtils(algorithm).digest(value.getBytes(StandardCharsets.US_ASCII));
+        return IOUtil.encodeURL(digest);
     }
 
     protected static String interactionHashOf(String clientNonce, String finishNonce, String reference, String grantUri)

@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.test.restaction.interactions;
 
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.reganjohn.iam.api.Permission;
@@ -74,7 +75,7 @@ public class ApplicationInteractionRetrieveActionTest extends RestActionTest
         when(interaction.getMethodHash()).thenReturn("sha-256");
         when(interaction.getUri()).thenReturn("https://iam.example/grant");
         when(interaction.hash()).thenReturn("continue-secret-hash");
-        when(interaction.getThumbprint()).thenReturn("client-secret-jkt");
+        when(interaction.getAccessRaw()).thenReturn(DataObject.empty().put("kid", "client-secret-jkt"));
         when(interaction.getLabel()).thenReturn(label);
         return interaction;
     }

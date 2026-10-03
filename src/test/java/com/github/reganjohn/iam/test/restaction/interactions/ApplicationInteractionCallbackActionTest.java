@@ -28,6 +28,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.reganjohn.iam.api.Permission;
@@ -36,7 +37,9 @@ import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
+import com.github.reganjohn.iam.internal.managers.AccessSignatureManagerImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCallbackActionImpl;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
@@ -53,6 +56,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.Security;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.UUID;
@@ -65,6 +71,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -82,7 +89,10 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
     private static final String USER_KEY = "user-jkt";
     private static final long ISSUED_LIFETIME = 900;
 
-    private String clientKey;
+    private static final String CLIENT_RAW = newClientRaw();
+
+    private String accessRaw;
+    private AccessSignatureManagerImpl signatures;
     private AccessContextData selectedContext;
     private String issuedSubject;
     private UUID issuedActor;
@@ -93,12 +103,17 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
         return new ApplicationInteractionCallbackActionImpl(api);
     }
 
-    private void withProofOfClient()
+    private static String newClientRaw()
     {
-        AccessEntryData entry = withProof(SignType.ED25519);
-        try (AccessContextData contextData = entry.getContext(AccessContextType.SHA_256))
+        try
         {
-            clientKey = contextData.digest();
+            if (Security.getProvider("BC") == null)
+                Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            KeyPair pair = KeyPairGenerator.getInstance("Ed25519", "BC").generateKeyPair();
+            return AbstractEntityBuilder.createAccessSecretData(SignType.ED25519.getType(), pair, true)
+                    .put("kty", SignType.ED25519.getTypeRaw())
+                    .put("alg", SignType.ED25519.getName())
+                    .toString();
         }
         catch (Exception exception)
         {
@@ -106,7 +121,15 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
         }
     }
 
-    private ApplicationCallbackResponse newResponse(String clientThumbprint, String continueHash, String reference)
+    private void withProofOfClient()
+    {
+        withProof(SignType.ED25519);
+        accessRaw = CLIENT_RAW;
+        signatures = mock(AccessSignatureManagerImpl.class);
+        when(api.getAccessSignatureManager()).thenReturn(signatures);
+    }
+
+    private ApplicationCallbackResponse newResponse(String accessRaw, String continueHash, String reference)
     {
         ApplicationCallbackResponse response = mock(ApplicationCallbackResponse.class);
         InteractionCallbackAction<ApplicationCallbackResponse> deletion = completed(response);
@@ -115,7 +138,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
         when(response.getInteractionId()).thenReturn(INTERACTION_ID);
         when(response.getPermissionsRaw()).thenReturn(Permission.VIEW_ACCOUNT.getRawValue());
         when(response.getPermissions()).thenReturn(Permission.getPermissions(Permission.VIEW_ACCOUNT.getRawValue()));
-        when(response.getClientThumbprint()).thenReturn(clientThumbprint);
+        when(response.getAccessRaw()).thenReturn(DataObject.fromJson(accessRaw));
         when(response.getContinueHash()).thenReturn(continueHash);
         when(response.getInteractionReference()).thenReturn(reference);
         when(response.getThumbprint()).thenReturn(USER_KEY);
@@ -125,7 +148,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
 
     private ApplicationCallbackResponse newResponse()
     {
-        return newResponse(clientKey, digestOf(TOKEN), REFERENCE);
+        return newResponse(accessRaw, digestOf(TOKEN), REFERENCE);
     }
 
     private ApplicationInteractionCallbackActionImpl newAction(ApplicationCallbackResponse response)
@@ -275,12 +298,18 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
     }
 
     @Test
-    void testMissingProof()
+    void testSignatureNonceChallenge() throws Exception
     {
-        assertThatContinuing(newAction())
+        withProofOfClient();
+        doThrow(new ProofAccessException("iam", "use_dpop_nonce", "A DPoP nonce is required for this request.", "nonce")).when(signatures).verify(any(), any(), any(DataObject.class));
+        ApplicationCallbackResponse response = newResponse();
+
+        assertThatContinuing(newAction(response))
                 .hasNoResponse()
                 .hasFailureOfType(ProofAccessException.class)
                 .whenHandled();
+
+        verify(response, never()).delete();
     }
 
     @ValueSource(strings = {"", "GNAP", "GNAP ", "Bearer continue-token", "DPoP continue-token", "GNAP first second", "continue-token"})
@@ -398,10 +427,11 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
     }
 
     @Test
-    void testAnotherClientKey()
+    void testRejectedSignature() throws Exception
     {
         withProofOfClient();
-        ApplicationCallbackResponse response = newResponse("another-client-jkt", digestOf(TOKEN), REFERENCE);
+        doThrow(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)).when(signatures).verify(any(), any(), any(DataObject.class));
+        ApplicationCallbackResponse response = newResponse();
 
         assertThatContinuing(newAction(response))
                 .hasNoResponse()
@@ -415,7 +445,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
     void testAnotherToken()
     {
         withProofOfClient();
-        ApplicationCallbackResponse response = newResponse(clientKey, digestOf("another-token"), REFERENCE);
+        ApplicationCallbackResponse response = newResponse(accessRaw, digestOf("another-token"), REFERENCE);
 
         assertThatContinuing(newAction(response))
                 .hasNoResponse()
@@ -441,10 +471,11 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
     }
 
     @Test
-    void testClientIsCheckedFirst()
+    void testClientIsCheckedFirst() throws Exception
     {
         withProofOfClient();
-        ApplicationCallbackResponse response = newResponse("another-client-jkt", digestOf("another-token"), "another-reference");
+        doThrow(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN)).when(signatures).verify(any(), any(), any(DataObject.class));
+        ApplicationCallbackResponse response = newResponse(accessRaw, digestOf("another-token"), "another-reference");
 
         assertThatContinuing(newAction(response))
                 .hasNoResponse()

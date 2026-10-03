@@ -36,12 +36,15 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.bouncycastle.jcajce.spec.MLDSAParameterSpec;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.spec.ECGenParameterSpec;
 import java.security.Security;
 import java.time.Clock;
 import java.time.Duration;
@@ -217,6 +220,42 @@ public class EntityBuilderTest
         AccessEntryData entry = EntityBuilder.createAccessEntry(newRow("key-id", pair.getPublic().getEncoded()));
 
         assertThat(entry.getUniqueId()).isEqualTo("key-id");
+        assertThat(entry.getPublic().getEncoded()).isEqualTo(pair.getPublic().getEncoded());
+    }
+
+    private static KeyPair newPair(SignType type) throws Exception
+    {
+        switch (type.getType())
+        {
+            case AKP:
+                KeyPairGenerator akp = KeyPairGenerator.getInstance(type.getCipher(), "BC");
+                akp.initialize(type == SignType.MLDSA44 ? MLDSAParameterSpec.ml_dsa_44 : type == SignType.MLDSA65 ? MLDSAParameterSpec.ml_dsa_65 : MLDSAParameterSpec.ml_dsa_87);
+                return akp.generateKeyPair();
+            case OKP:
+                return KeyPairGenerator.getInstance(type.getCipher(), "BC").generateKeyPair();
+            case EC:
+                KeyPairGenerator ec = KeyPairGenerator.getInstance("EC", "BC");
+                ec.initialize(new ECGenParameterSpec(type == SignType.ES256 ? "secp256r1" : type == SignType.ES384 ? "secp384r1" : "secp521r1"));
+                return ec.generateKeyPair();
+            default:
+                KeyPairGenerator rsa = KeyPairGenerator.getInstance("RSA", "BC");
+                rsa.initialize(type.getRequiredLength());
+                return rsa.generateKeyPair();
+        }
+    }
+
+    @EnumSource(value = SignType.class, mode = EnumSource.Mode.EXCLUDE, names = {"HS256", "HS384", "HS512", "NONE", "UNKNOWN"})
+    @ParameterizedTest
+    void testAccessEntryOfEveryKeyType(SignType type) throws Exception
+    {
+        KeyPair pair = newPair(type);
+        BufferObject row = newRow("key-id", pair.getPublic().getEncoded());
+        when(row.getString("kty")).thenReturn(type.getType().name());
+        when(row.getString("alg")).thenReturn(type.getName());
+
+        AccessEntryData entry = EntityBuilder.createAccessEntry(row);
+
+        assertThat(entry.getMode()).isEqualTo(type);
         assertThat(entry.getPublic().getEncoded()).isEqualTo(pair.getPublic().getEncoded());
     }
 
