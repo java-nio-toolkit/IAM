@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.internal.interactions;
 
 
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -44,7 +45,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     private final long rawPermissions;
     private final String reference;
     private final String continueHash;
-    private final String clientThumbprint;
+    private final DataObject accessRaw;
     private final String thumbprint;
     private final String label;
     private final boolean denied;
@@ -52,7 +53,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
     public ApplicationCallbackResponseImpl(@Nonnull IAMImpl api, @Nonnull UUID userId, @Nonnull UUID ownerId,
                                            @Nonnull UUID applicationId, @Nonnull UUID interactionId, long permissions,
                                            @Nonnull String reference, @Nonnull String continueHash,
-                                           @Nonnull String clientThumbprint, @Nonnull String thumbprint,
+                                           @Nonnull DataObject accessRaw, @Nonnull String thumbprint,
                                            @Nullable String label, boolean denied)
     {
         this.api = api;
@@ -63,7 +64,7 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
         this.rawPermissions = permissions;
         this.reference = reference;
         this.continueHash = continueHash;
-        this.clientThumbprint = clientThumbprint;
+        this.accessRaw = accessRaw;
         this.thumbprint = thumbprint;
         this.label = label;
         this.denied = denied;
@@ -152,9 +153,9 @@ public class ApplicationCallbackResponseImpl implements ApplicationCallbackRespo
 
     @Nonnull
     @Override
-    public String getClientThumbprint()
+    public DataObject getAccessRaw()
     {
-        return clientThumbprint;
+        return accessRaw;
     }
 
     @Nonnull

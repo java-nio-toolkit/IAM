@@ -364,12 +364,11 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         SignType signType = SignType.from(rawData.getString(ProofObjectManager.ALG));
         String rawType = rawData.getString(ProofObjectManager.KTY);
         AccessEntryType type = AccessEntryType.valueOf(rawType);
-        if (type == AccessEntryType.RSA)
+        if (type == AccessEntryType.RSA || type == AccessEntryType.AKP)
             return;
-        String crv = rawData.getString(ProofObjectManager.CRV);
-        if (signType == SignType.NONE || signType == SignType.UNKNOWN)
+        else if (signType == SignType.NONE || signType == SignType.UNKNOWN)
             throw createParsingException(EntityBuilder.SIGN_TYPE_NAMES.get(rawType));
-        else if (signType.hasExtension() && !Helpers.equals(crv, signType.getNameRaw(), true))
+        else if (signType.hasExtension() && !Helpers.equals(rawData.getString(ProofObjectManager.CRV), signType.getNameRaw(), true))
             throw createParsingException(Collections.singletonList(signType.getNameRaw()));
     }
 

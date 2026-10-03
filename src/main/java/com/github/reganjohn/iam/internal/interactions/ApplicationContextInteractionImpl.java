@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.internal.interactions;
 
 
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 
@@ -39,7 +40,7 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
     private final String hashMethod;
     private final String grantUri;
     private final String continueHash;
-    private final String clientThumbprint;
+    private final DataObject accessRaw;
     private final String label;
 
     public ApplicationContextInteractionImpl(@Nonnull IAMImpl api, @Nonnull UUID ownerId, @Nonnull UUID applicationId,
@@ -47,7 +48,7 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
                                              long permissions, @Nonnull String uri, @Nonnull String clientNonce,
                                              @Nonnull String finishNonce, @Nonnull String hashMethod,
                                              @Nonnull String grantUri, @Nonnull String continueHash,
-                                             @Nonnull String clientThumbprint, @Nullable String label)
+                                             @Nonnull DataObject accessRaw, @Nullable String label)
     {
         this.api = api;
         this.ownerId = ownerId;
@@ -61,7 +62,7 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
         this.hashMethod = hashMethod;
         this.grantUri = grantUri;
         this.continueHash = continueHash;
-        this.clientThumbprint = clientThumbprint;
+        this.accessRaw = accessRaw;
         this.label = label;
     }
 
@@ -149,9 +150,9 @@ public class ApplicationContextInteractionImpl implements ApplicationContextInte
 
     @Nonnull
     @Override
-    public String getThumbprint()
+    public DataObject getAccessRaw()
     {
-        return clientThumbprint;
+        return accessRaw;
     }
 
     @Nullable

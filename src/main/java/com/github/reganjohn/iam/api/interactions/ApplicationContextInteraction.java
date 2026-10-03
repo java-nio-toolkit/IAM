@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.api.interactions;
 
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.entities.IUnique;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -67,7 +68,7 @@ public interface ApplicationContextInteraction extends IUnique
     String hash();
 
     @Nonnull
-    String getThumbprint();
+    DataObject getAccessRaw();
 
     @Nullable
     String getLabel();

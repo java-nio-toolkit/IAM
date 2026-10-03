@@ -32,7 +32,6 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
-import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
@@ -52,6 +51,7 @@ import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.interactions.ApplicationInteractionCallbackAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
+import com.github.reganjohn.iam.internal.utils.ApplicationUtil;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
@@ -59,6 +59,7 @@ import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.internal.ConstantTimeUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
@@ -184,17 +185,16 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
                                   @Nonnull DataObject raw)
     {
         Map<String, String> params = request.getRoute().getMajorParameters();
-        String thumbprint = retrieveThumbprint(retrieveSelfProof(context));
-        String token = retrieveContinuationToken(request);
+        String token = retrieveAccessToken(request);
         UUID applicationId = UUID.fromString(params.get("application_id"));
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
         retrieveCallbackResponse(applicationId, interactionId)
-                .queue(response -> handleResponse(context, thumbprint, token, raw.getString("interact_ref"), response),
-                        failure -> context.fireExceptionCaught(toClientError(failure)));
+                .onSuccess(response -> verify(context, request, response))
+                .queue(response -> handleResponse(context, token, raw.getString("interact_ref"), response), failure -> handleException(context, failure));
     }
 
     @Nonnull
-    private String retrieveContinuationToken(@Nonnull Request request)
+    private String retrieveAccessToken(@Nonnull Request request)
     {
         String authorization = Helpers.get(request.getHeaders(), "Authorization");
         String[] parts = Helpers.nonEmpty(authorization) ? authorization.split(" ") : new String[0];
@@ -204,35 +204,60 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
             return parts[1];
     }
 
-    @Nonnull
-    private Throwable toClientError(@Nonnull Throwable failure)
+    private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull Throwable failure)
     {
-        if (failure instanceof ErrorResponseException && ((ErrorResponseException) failure).getErrorCode() == ErrorResponse.UNKNOWN_INTERACTION.getCode())
-            return new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN);
+        if (failure instanceof ErrorResponseException)
+            handleErrorResponse(context, (ErrorResponseException) failure);
         else
-            return failure;
+            context.fireExceptionCaught(failure);
     }
 
-    private void handleResponse(@Nonnull ChannelHandlerContext context, @Nonnull String thumbprint,
-                                @Nonnull String token, @Nonnull String reference,
+    private void handleErrorResponse(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException ex)
+    {
+        if (ex.getErrorCode() == ErrorResponse.UNKNOWN_INTERACTION.getCode())
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN));
+        else
+            context.fireExceptionCaught(ex);
+    }
+
+    private void verify(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                        @Nonnull ApplicationCallbackResponse response)
+    {
+        api.getAccessSignatureManager().verify(context, request, response.getAccessRaw());
+    }
+
+    private void handleResponse(@Nonnull ChannelHandlerContext context, @Nonnull String token,
+                                @Nonnull String reference,
                                 @Nonnull ApplicationCallbackResponse response)
     {
-        if (!hasModified(thumbprint, response.getClientThumbprint()))
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN));
-        else if (!hasModified(digest(token), response.getContinueHash()))
+        if (ConstantTimeUtils.equalsConstantTime(ApplicationUtil.digest(token), response.getContinueHash()) == 0)
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN));
-        else if (!hasModified(reference, response.getInteractionReference()))
+        else if (ConstantTimeUtils.equalsConstantTime(reference, response.getInteractionReference()) == 0)
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION));
         else if (response.isDenied())
-            response.delete().queue(deleted -> context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.USER_DENIED, ErrorResponse.MISSING_ACCESS)), context::fireExceptionCaught);
+            response.delete().map(this::deny).queue(context::fireExceptionCaught, context::fireExceptionCaught);
         else
-            retrieveAccessData(context, response)
-                    .flatMap(data -> response.delete().map(deleted -> toData(response, data)))
-                    .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
+            retrieveAccess(context, response).queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }
 
     @Nonnull
-    private DataObject toData(@Nonnull ApplicationCallbackResponse response, @Nonnull AccessObjectData data)
+    @CheckReturnValue
+    private InteractionCallbackAction<DataObject> retrieveAccess(@Nonnull ChannelHandlerContext context,
+                                                                 @Nonnull ApplicationCallbackResponse response)
+    {
+        return retrieveAccessData(context, response).flatMap(data -> deleteAccessData(data, response));
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<DataObject> deleteAccessData(@Nonnull AccessObjectData data,
+                                                                   @Nonnull ApplicationCallbackResponse response)
+    {
+        return response.delete().map(deleted -> fromData(deleted, data));
+    }
+
+    @Nonnull
+    private DataObject fromData(@Nonnull ApplicationCallbackResponse response, @Nonnull AccessObjectData data)
     {
         DataObject raw = DataObject.empty()
                 .put("value", data.getRaw())
@@ -243,19 +268,6 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
         if (response.getLabel() != null)
             raw.put("label", response.getLabel());
         return Helpers.singletonData("access_token", raw);
-    }
-
-    @Nonnull
-    private String retrieveThumbprint(@Nonnull ProofObjectData proof)
-    {
-        try (AccessContextData contextData = proof.getContext(AccessContextType.SHA_256))
-        {
-            return contextData.digest();
-        }
-        catch (Exception ex)
-        {
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
-        }
     }
 
     @Nonnull
@@ -271,7 +283,7 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
     @Nonnull
     @CheckReturnValue
     public InteractionCallbackAction<ApplicationCallbackResponse> retrieveCallbackResponse(@Nonnull UUID applicationId,
-                                                                                            @Nonnull UUID interactionId)
+                                                                                           @Nonnull UUID interactionId)
     {
         Checks.notNull(interactionId, "Interaction ID");
         Checks.notNull(applicationId, "Application ID");
@@ -291,7 +303,8 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
     }
 
     @Nonnull
-    private AccessObjectData createAccessObject(@Nonnull ChannelHandlerContext context, @Nonnull AccessEntryArray entries,
+    private AccessObjectData createAccessObject(@Nonnull ChannelHandlerContext context,
+                                                @Nonnull AccessEntryArray entries,
                                                 @Nonnull ApplicationCallbackResponse response)
     {
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
@@ -303,11 +316,17 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
         throw new InteractionResponseException(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION);
     }
 
+    @Nonnull
+    private Exception deny(@Nonnull ApplicationCallbackResponse response)
+    {
+        return new InteractionResponseException(InteractionResponse.USER_DENIED, ErrorResponse.MISSING_ACCESS);
+    }
+
     private boolean hasThumbprint(@Nonnull AccessEntryData entry, @Nonnull String thumbprint)
     {
         try (AccessContextData contextData = entry.getContext(AccessContextType.SHA_256))
         {
-            return hasModified(contextData.digest(), thumbprint);
+            return ConstantTimeUtils.equalsConstantTime(contextData.digest(), thumbprint) != 0;
         }
         catch (Exception ex)
         {
@@ -330,7 +349,8 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
     }
 
     @Nonnull
-    private AccessObjectData createAccessObject(@Nonnull AccessEntryManager manager, @Nonnull AccessContextData contextData,
+    private AccessObjectData createAccessObject(@Nonnull AccessEntryManager manager,
+                                                @Nonnull AccessContextData contextData,
                                                 @Nonnull ApplicationCallbackResponse response)
     {
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();

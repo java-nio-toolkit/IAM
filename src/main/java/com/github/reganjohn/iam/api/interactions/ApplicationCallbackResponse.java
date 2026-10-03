@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.api.interactions;
 
+import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -66,8 +67,9 @@ public interface ApplicationCallbackResponse
     @Nonnull
     String getContinueHash();
 
+    //todo:rename
     @Nonnull
-    String getClientThumbprint();
+    DataObject getAccessRaw();
 
     @Nonnull
     String getThumbprint();

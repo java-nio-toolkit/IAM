@@ -44,6 +44,12 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     private final IAMImpl api;
 
     public GlobalAccessManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout,
+                                   @Nonnull TimeUnit unit, @Nonnull String audience)
+    {
+        this(api, type, limit, timeout, unit, Collections.singletonList(audience));
+    }
+
+    public GlobalAccessManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout,
                                    @Nonnull TimeUnit unit, @Nonnull List<String> audiences)
     {
         super(new HashedWheelTimer(1L, unit), type, limit, timeout, unit, audiences);

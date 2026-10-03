@@ -36,6 +36,7 @@ import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.managers.AccessSignatureManager;
 import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.github.reganjohn.iam.internal.managers.*;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
@@ -61,7 +62,6 @@ import com.reganjohn.c4j.api.utils.Compression;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
-import com.reganjohn.c4j.internal.requests.objaction.InteractionCreateActionImpl;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -87,6 +87,7 @@ public class IAMImpl implements IAM
     private final GlobalAccessManager manager;
     private final SocketManager socketManager;
     private final String baseUri;
+    private final AccessSignatureManagerImpl accessSignatureManager = new AccessSignatureManagerImpl();
 
     private final EntityBuilder entityBuilder = new EntityBuilder(this);
 
@@ -140,10 +141,8 @@ public class IAMImpl implements IAM
     {
         Checks.notEmpty(baseUri, "Base URI");
         this.baseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
-        List<String> audiences = Collections.singletonList("https://localhost.com");
         this.jca = buildInstance().awaitReady();
-        cleanup();
-        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, audiences);
+        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, "https://localhost.com");
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
@@ -157,7 +156,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
-                .addEventListeners(new ProofSignatureManagerImpl())
+                .addEventListeners(accessSignatureManager)
                 .addEventListeners(manager)
 
                 .addEventListeners(new DigestAccessManagerImpl())
@@ -216,30 +215,6 @@ public class IAMImpl implements IAM
                 .build();
     }
 
-    public void cleanup()
-    {
-        String[] statements =
-                {
-                        "TRUNCATE global.public_keys",
-
-                        "TRUNCATE users.public_keys",
-                        "TRUNCATE users.accounts",
-                        "TRUNCATE users.sessions",
-                        "TRUNCATE users.webhooks",
-                        "TRUNCATE users.entitlements",
-
-                        "TRUNCATE integrations.applications",
-                        "TRUNCATE integrations.interactions",
-                        "TRUNCATE integrations.responses",
-                        "TRUNCATE integrations.invites",
-                };
-
-        for (String statement : statements)
-        {
-            new InteractionCreateActionImpl<Void>(jca, statement).queue();
-        }
-    }
-
     @Nonnull
     public JNTImpl getJNT()
     {
@@ -265,6 +240,12 @@ public class IAMImpl implements IAM
     public EntityBuilder getEntityBuilder()
     {
         return entityBuilder;
+    }
+
+    @Nonnull
+    public AccessSignatureManager getAccessSignatureManager()
+    {
+        return accessSignatureManager;
     }
 
     @Nonnull

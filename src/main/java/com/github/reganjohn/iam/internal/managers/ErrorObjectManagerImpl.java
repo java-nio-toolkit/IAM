@@ -39,7 +39,7 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
-import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.SignatureException;
 
 public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
@@ -52,16 +52,14 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 
     public ErrorObjectManagerImpl(boolean printStackTrace)
     {
-        this.printStackTrace = true;
+        this.printStackTrace = printStackTrace;
     }
 
     @Override
     public void exceptionCaught(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error) throws Exception
     {
         Request request = context.channel().attr(Request.IDENTIFIER).get();
-        if (printStackTrace && !(error instanceof MissingAccessException))
-            LOG.error("Oops! We've encountered an server error! Not good!", error);
-        if (error instanceof JsonParseException)
+        if (error instanceof JsonParseException || error.getCause() instanceof JsonParseException)
             handleFailure(context, ErrorResponse.INVALID_REQUEST_BODY, StatusReason.BAD_REQUEST);
         else if (error instanceof RateLimitedException)
             handleFailure(context, request, (RateLimitedException) error);
@@ -79,14 +77,23 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, ErrorResponse.MISSING_ACCESS, StatusReason.FORBIDDEN);
         else if (error instanceof SignatureException)
             handleFailure(context, (SignatureException) error);
+        else if (error instanceof GeneralSecurityException)
+            handleFailure(context, 0, error.getMessage(), StatusReason.BAD_REQUEST);
         else if (error instanceof IllegalStateException)
             handleFailure(context, 0, error.getMessage(), StatusReason.CONFLICT);
         else if (error instanceof IllegalArgumentException)
             handleFailure(context, 0, error.getMessage(), StatusReason.BAD_REQUEST);
-        else if (error instanceof IOException)
-            handleFailure(context, 0, error.getMessage(), StatusReason.INTERNAL_SERVER_ERROR);
+        else if (error instanceof UnsupportedOperationException)
+            handleFailure(context, 0, error.getMessage(), StatusReason.BAD_REQUEST);
         else
-            super.exceptionCaught(context, error);
+            handleServerFailure(context, error);
+    }
+
+    private void handleServerFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error)
+    {
+        if (printStackTrace)
+            LOG.error("Oops! We've encountered an server error! Not good!", error);
+        handleFailure(context, ErrorResponse.SERVER_ERROR, StatusReason.INTERNAL_SERVER_ERROR);
     }
 
     protected void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse)

@@ -48,14 +48,12 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionAct
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+import org.apache.commons.codec.digest.DigestUtils;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.concurrent.FastThreadLocal;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -66,15 +64,6 @@ import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.JKT;
 public class SessionUpdateActionImpl extends AbstractSessionActionImpl implements SessionUpdateAction
 {
     public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
-
-    public final FastThreadLocal<MessageDigest> SHA256 = new FastThreadLocal<>()
-    {
-        @Override
-        protected MessageDigest initialValue() throws Exception
-        {
-            return MessageDigest.getInstance("SHA-256");
-        }
-    };
 
     public SessionUpdateActionImpl(@Nonnull IAMImpl api)
     {
@@ -125,20 +114,14 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
         String accessToken = parts[1];
         ProofObjectData data = retrieveSelfProof(context);
         AccessObjectData json = EntityBuilder.createAccessObject(accessToken);
-        MessageDigest messageDigest = SHA256.get();
         try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
         {
-            byte[] hash = messageDigest.digest(accessToken.getBytes(StandardCharsets.UTF_8));
             if (!Helpers.equals(json.getThumbprint(), contextData.digest(), false))
                 throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
-            else if (!Helpers.equals(IOUtil.encodeURL(hash), data.getAccessTokenHash(), false))
+            else if (!Helpers.equals(IOUtil.encodeURL(DigestUtils.sha256(accessToken)), data.getAccessTokenHash(), false))
                 throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
             else
                 handleInternally(context, request, json, contextData);
-        }
-        finally
-        {
-            messageDigest.reset();
         }
     }
 

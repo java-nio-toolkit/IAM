@@ -18,27 +18,23 @@ package com.github.reganjohn.iam.internal.requests.restactions.interactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
-import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.api.utils.data.DataPath;
 import com.github.adamorgan.jnt.api.utils.cookie.ReceivedCookie;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHandlerImpl;
-import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
+import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -58,6 +54,7 @@ import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
+import com.github.reganjohn.iam.internal.utils.ApplicationUtil;
 import com.github.reganjohn.iam.internal.utils.PermissionUtil;
 import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
@@ -66,7 +63,6 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundInvoker;
 import io.netty.channel.ChannelPipeline;
-import io.netty.util.internal.SocketUtils;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
@@ -75,7 +71,6 @@ import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.UnknownHostException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -247,6 +242,32 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!raw.isType("client", DataType.OBJECT))
             throw new DataObjectParsingException(MODEL_TYPE_CONVERT, "Expected an object/dictionary.");
+        else
+            checkKey(raw.getObject("client"));
+    }
+
+    private void checkKey(@Nonnull DataObject client)
+    {
+        if (!client.hasKey("key"))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!client.isType("key", DataType.OBJECT))
+            throw new DataObjectParsingException(MODEL_TYPE_CONVERT, "Expected an object/dictionary.");
+        else
+            checkProof(client.getObject("key"));
+    }
+
+    private void checkProof(@Nonnull DataObject key)
+    {
+        if (!key.hasKey("proof"))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!key.isType("proof", DataType.STRING))
+            throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"proof\" value is not string.");
+        else if (!key.getString("proof").equals("httpsig"))
+            throw createParsingException(Collections.singletonList("httpsig"));
+        else if (!key.hasKey("jwk"))
+            throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
+        else if (!key.isType("jwk", DataType.OBJECT))
+            throw new DataObjectParsingException(MODEL_TYPE_CONVERT, "Expected an object/dictionary.");
     }
 
     private void handleStart(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -301,7 +322,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         }
         finally
         {
-            handleErrorResponse(context, request, raw, errors);
+            checkAccess(context, request, raw, errors);
         }
     }
 
@@ -347,20 +368,26 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             throw new DataObjectParsingException(BASE_TYPE_BAD_LENGTH, Helpers.format("The \"nonce\" value must be between %d and %d characters long.", MIN_NONCE_LENGTH, MAX_NONCE_LENGTH));
         else if (raw.hasKey("hash_method") && !raw.isType("hash_method", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"hash_method\" value is not string.");
-        else if (raw.hasKey("hash_method") && !hasMode(raw.getString("hash_method")))
-            throw createParsingException(getModes());
+        else if (raw.hasKey("hash_method") && !ApplicationUtil.MODES.containsKey(raw.getString("hash_method")))
+            throw createParsingException(ApplicationUtil.MODES.keySet());
     }
 
-    private void handleErrorResponse(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                     @Nonnull DataObject raw,
-                                     @Nonnull List<InvalidResponseException.SchemaError> errors)
+    private void checkAccess(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull DataObject raw,
+                             @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
         if (errors.isEmpty())
-            handleInternally(context, request, raw);
+            handleAccess(context, request, raw);
         else if (errors.stream().allMatch(this::containsLocation))
             throw new InteractionResponseException(InteractionResponse.INVALID_FLAG, ErrorResponse.INVALID_FORM_BODY);
         else
             throw new InteractionResponseException(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY);
+    }
+
+    private void handleAccess(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull DataObject raw)
+    {
+        DataObject rawAccess = DataPath.getObject(raw, "client.key.jwk");
+        AccessEntryData access = api.getAccessSignatureManager().verify(context, request, rawAccess);
+        handleInternally(context, request, access, raw);
     }
 
     private boolean containsLocation(@Nonnull InvalidResponseException.SchemaError error)
@@ -369,11 +396,8 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                                  @Nonnull DataObject raw)
+                                  @Nonnull AccessEntryData access, @Nonnull DataObject raw)
     {
-        ProofObjectData proof = retrieveSelfProof(context);
-        String thumbprint = retrieveThumbprint(proof);
-        checkClientKey(raw.getObject("client"), proof, thumbprint);
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID ownerId = UUID.fromString(params.get("user_id"));
         UUID applicationId = UUID.fromString(params.get("application_id"));
@@ -382,19 +406,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         DataObject finish = raw.getObject("interact").getObject("finish");
         api.retrieveUserById(ownerId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
-                .queue(application -> handleApplication(context, proof, thumbprint, application, ownerId, permissions, label, finish), failure -> handleInteractionException(context, failure));
-    }
-
-    private void checkClientKey(@Nonnull DataObject client, @Nonnull ProofObjectData data, @Nonnull String thumbprint)
-    {
-        if (!client.hasKey("key"))
-            return;
-        else if (!client.isType("key", DataType.OBJECT))
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
-        DataObject key = client.getObject("key");
-        if (!"dpop".equals(key.getString("proof", null)) || !key.isType("jwk", DataType.OBJECT)
-                || !hasModified(thumbprint, retrieveThumbprint(data, key.getObject("jwk"))))
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
+                .queue(application -> handleApplication(context, access, access.toData(), application, ownerId, permissions, label, finish), failure -> handleInteractionException(context, failure));
     }
 
     private void handleInteractionException(@Nonnull ChannelHandlerContext context, @Nonnull Throwable failure)
@@ -414,71 +426,61 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             context.fireExceptionCaught(failure);
     }
 
-    private void handleApplication(@Nonnull ChannelHandlerContext context, @Nonnull ProofObjectData data,
-                                   @Nonnull String thumbprint,
+    private void handleApplication(@Nonnull ChannelHandlerContext context, @Nonnull AccessEntryData data,
+                                   @Nonnull DataObject rawAccess,
                                    @Nonnull Application application, @Nonnull UUID ownerId,
                                    long permissions, @Nullable String label, @Nonnull DataObject finish)
     {
         if (!Helpers.contains(application.getRedirectUris(), finish.getString("uri"), false))
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_REQUEST, ErrorResponse.INVALID_FORM_BODY));
         else
-            checkClient(context, data, application,
-                    () -> handleClient(context, thumbprint, application, ownerId, permissions, label, finish));
+            checkClient(context, data, rawAccess, application, ownerId, permissions, label, finish);
     }
 
-    public void checkClient(@Nonnull ChannelHandlerContext context, @Nonnull ProofObjectData data,
-                            @Nonnull Application application, @Nonnull Runnable handler)
+    public void checkClient(@Nonnull ChannelHandlerContext context, @Nonnull AccessEntryData data,
+                            @Nonnull DataObject rawAccess, @Nonnull Application application, @Nonnull UUID ownerId,
+                            long permissions, @Nullable String label, @Nonnull DataObject finish)
     {
         URI uri = URI.create(application.getOrigin());
         int port = uri.getPort() == -1 ? 443 : uri.getPort();
-        InetAddress address = resolveAddress(uri.getHost());
+        InetAddress address = MiscUtil.resolveSafeAddress(uri.getHost());
         if (address == null)
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS));
         else
-            connect(context, data, address, port, handler);
+            connect(context, data, rawAccess, application, ownerId, permissions, label, finish, address, port);
     }
 
-    private void connect(@Nonnull ChannelHandlerContext context, @Nonnull ProofObjectData data,
-                         @Nonnull InetAddress address, int port, @Nonnull Runnable handler)
+    private void connect(@Nonnull ChannelHandlerContext context, @Nonnull AccessEntryData data,
+                         @Nonnull DataObject rawAccess, @Nonnull Application application, @Nonnull UUID ownerId,
+                         long permissions, @Nullable String label, @Nonnull DataObject finish,
+                         @Nonnull InetAddress address, int port)
     {
         api.getSocketManager().connect(new InetSocketAddress(address, port)).addListener((ChannelFutureListener) connect ->
         {
             if (connect.isSuccess())
-                handleConnect(connect.channel().pipeline(), context, data, handler);
+                handleConnect(connect.channel().pipeline(), context, data, rawAccess, application, ownerId, permissions, label, finish);
             else
                 context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS));
         });
     }
 
-    @Nullable
-    private InetAddress resolveAddress(@Nullable String host)
-    {
-        try
-        {
-            InetAddress address = SocketUtils.addressByName(host);
-            return MiscUtil.isUnsafeAddress(address) ? null : address;
-        }
-        catch (UnknownHostException ex)
-        {
-            return null;
-        }
-    }
-
     private void handleConnect(@Nonnull ChannelPipeline pipeline, @Nonnull ChannelHandlerContext context,
-                               @Nonnull ProofObjectData data, @Nonnull Runnable handler)
+                               @Nonnull AccessEntryData data, @Nonnull DataObject rawAccess,
+                               @Nonnull Application application, @Nonnull UUID ownerId,
+                               long permissions, @Nullable String label, @Nonnull DataObject finish)
     {
         ClassicResponseReceiveHandlerImpl receiver = pipeline.get(ClassicResponseReceiveHandlerImpl.class);
         if (receiver != null)
             pipeline.replace(receiver, null, new ClassicResponseReceiveHandlerImpl(1 << 10, MAX_ACCESS_LENGTH));
-        pipeline.addLast(new ApplicationInteractionActionImpl(context, data, handler));
+        pipeline.addLast(new ApplicationInteractionActionImpl(context, data, rawAccess, application, ownerId, permissions, label, finish));
     }
 
-    private void handleClient(@Nonnull ChannelHandlerContext context, @Nonnull String thumbprint,
-                              @Nonnull Application application, @Nonnull UUID ownerId,
-                              long permissions, @Nullable String label, @Nonnull DataObject finish)
+    public void handleClient(@Nonnull ChannelHandlerContext context, @Nonnull DataObject access,
+                             @Nonnull Application application, @Nonnull UUID ownerId,
+                             long permissions, @Nullable String label, @Nonnull DataObject finish)
     {
-        String token = randomToken();
-        ApplicationContextInteraction interaction = createContextInteraction(application, ownerId, permissions, label, finish, thumbprint, token);
+        String token = ApplicationUtil.randomToken();
+        ApplicationContextInteraction interaction = createContextInteraction(application, ownerId, permissions, label, finish, access, token);
         createInteraction(interaction).queue(success -> handleSuccess(context, interaction, token), context::fireExceptionCaught);
     }
 
@@ -487,53 +489,22 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                                                                    @Nonnull UUID ownerId, long permissions,
                                                                    @Nullable String label,
                                                                    @Nonnull DataObject finish,
-                                                                   @Nonnull String thumbprint,
+                                                                   @Nonnull DataObject access,
                                                                    @Nonnull String continueToken)
     {
         UUID applicationId = application.getUniqueId();
         UUID interactionId = UUIDv7.randomUUID().toUUID();
-        String hashMethod = finish.getString("hash_method", DEFAULT_HASH_METHOD);
+        String hashMethod = finish.getString("hash_method", ApplicationUtil.DEFAULT_HASH_METHOD);
         OffsetDateTime expires = OffsetDateTime.now().plusSeconds(EXPIRES_IN);
         return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expires, permissions,
-                finish.getString("uri"), finish.getString("nonce"), randomToken(), hashMethod,
-                retrieveUri(ownerId, applicationId), digest(continueToken), thumbprint, label);
+                finish.getString("uri"), finish.getString("nonce"), ApplicationUtil.randomToken(), hashMethod,
+                retrieveUri(ownerId, applicationId), ApplicationUtil.digest(continueToken), access, label);
     }
 
     @Nonnull
     private String retrieveUri(@Nonnull UUID ownerId, @Nonnull UUID applicationId)
     {
         return api.getBaseUri() + Routes.Interactions.CREATE_APPLICATION_INTERACTION.compile(ownerId.toString(), applicationId.toString()).getCompiledRoute();
-    }
-
-    @Nonnull
-    private String retrieveThumbprint(@Nonnull ProofObjectData data)
-    {
-        try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
-        {
-            return contextData.digest();
-        }
-        catch (Exception ex)
-        {
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
-        }
-    }
-
-    @Nonnull
-    private String retrieveThumbprint(@Nonnull ProofObjectData data, @Nonnull DataObject jwk)
-    {
-        try
-        {
-            SignType type = SignType.from(jwk.getString("alg", data.getEntryData().getMode().getName()));
-            AccessEntryData entry = EntityBuilder.createAccessEntry(jwk.getString("kid", null), type, jwk);
-            try (AccessContextData contextData = entry.getContext(AccessContextType.SHA_256))
-            {
-                return contextData.digest();
-            }
-        }
-        catch (Exception ex)
-        {
-            throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
-        }
     }
 
     @Nonnull
@@ -560,7 +531,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                 .put("method_hash", interaction.getMethodHash())
                 .put("uri", interaction.getUri())
                 .put("hash", interaction.hash())
-                .put("client_thumbprint", interaction.getThumbprint())
+                .put("access_raw", interaction.getAccessRaw().toString())
                 .put("label", interaction.getLabel())
                 .build();
     }
@@ -621,24 +592,33 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                 .toData();
     }
 
-    private static class ApplicationInteractionActionImpl extends RestActionImpl
+    private class ApplicationInteractionActionImpl extends AccessEntryActionImpl
     {
-        private static final Route BASE_ROUTE = new Route(Method.GET, ".well-known/jwks.json", true);
-
         private final ChannelHandlerContext context;
-        private final ProofObjectData data;
-        private final Runnable handler;
+        private final AccessEntryData data;
+        private final DataObject rawAccess;
+        private final Application application;
+        private final UUID ownerId;
+        private final long permissions;
+        private final String label;
+        private final DataObject finish;
 
         private ScheduledFuture<?> deadline;
         private boolean finished;
 
-        public ApplicationInteractionActionImpl(@Nonnull ChannelHandlerContext context, @Nonnull ProofObjectData data,
-                                                @Nonnull Runnable handler)
+        public ApplicationInteractionActionImpl(@Nonnull ChannelHandlerContext context, @Nonnull AccessEntryData data,
+                                                @Nonnull DataObject rawAccess, @Nonnull Application application,
+                                                @Nonnull UUID ownerId, long permissions, @Nullable String label,
+                                                @Nonnull DataObject finish)
         {
-            super(BASE_ROUTE);
             this.context = context;
             this.data = data;
-            this.handler = handler;
+            this.rawAccess = rawAccess;
+            this.application = application;
+            this.ownerId = ownerId;
+            this.permissions = permissions;
+            this.label = label;
+            this.finish = finish;
         }
 
         @Override
@@ -667,7 +647,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                                       @Nonnull JacksonResponseBody body) throws Exception
         {
             AccessEntryArray array = EntityBuilder.createAccessEntryArray(body.getObject());
-            if (array.contains(this.data.getEntryData()))
+            if (array.contains(this.data))
                 closeResource(context);
             else
                 onFailure(context);
@@ -713,7 +693,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             finished = true;
             try (CallbackContext<ChannelHandlerContext> resource = new CallbackContext<>(context, ChannelOutboundInvoker::close))
             {
-                handler.run();
+                handleClient(this.context, rawAccess, application, ownerId, permissions, label, finish);
             }
         }
 

@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.api.entities;
 
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
+import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
@@ -25,6 +26,9 @@ import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationCallbackResponse;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -36,7 +40,6 @@ import com.reganjohn.c4j.api.utils.data.BufferObject;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PublicKey;
@@ -93,8 +96,8 @@ public class EntityBuilder extends AbstractEntityBuilder
 
         if (Helpers.nonEmpty(audiences))
             rawData.put("aud", audiences.stream().collect(Helpers.toDataArray()));
-        String header = IOUtil.encodeURL(optionData.toString().getBytes(StandardCharsets.UTF_8));
-        String payload = IOUtil.encodeURL(rawData.toString().getBytes(StandardCharsets.UTF_8));
+        String header = IOUtil.encodeURL(optionData);
+        String payload = IOUtil.encodeURL(rawData);
 
         try
         {
@@ -157,7 +160,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         String alg = data.getString("alg");
         SignType signType = SignType.from(alg);
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKey);
-        KeyFactory keyFactory = KeyFactory.getInstance(alg);
+        KeyFactory keyFactory = KeyFactory.getInstance(getAlgorithm(AccessEntryType.valueOf(type), alg), "BC");
         PublicKey key = keyFactory.generatePublic(keySpec);
         DataObject rawData = createAccessSecretData(AccessEntryType.valueOf(type), new KeyPair(key, null), true);
         DataObject rawEntryData = DataObject.empty()
@@ -171,6 +174,20 @@ public class EntityBuilder extends AbstractEntityBuilder
             rawData.put("use", usage);
         rawEntryData.putAll(rawData);
         return createAccessEntry(id, signType, rawEntryData);
+    }
+
+    @Nonnull
+    private static String getAlgorithm(@Nonnull AccessEntryType type, @Nonnull String alg)
+    {
+        switch (type)
+        {
+            case EC:
+                return "EC";
+            case RSA:
+                return "RSA";
+            default:
+                return alg;
+        }
     }
 
     @Nonnull
@@ -235,10 +252,10 @@ public class EntityBuilder extends AbstractEntityBuilder
         String hashMethod = data.getString("method_hash");
         String grantUri = data.getString("uri");
         String continueHash = data.getString("hash");
-        String clientThumbprint = data.getString("client_thumbprint");
+        DataObject accessRaw = DataObject.fromJson(data.getString("access_raw"));
         String label = data.getString("label", null);
         return new ApplicationContextInteractionImpl(api, ownerId, applicationId, interactionId, expiresAt, rawPermissions, uri,
-                clientNonce, finishNonce, hashMethod, grantUri, continueHash, clientThumbprint, label);
+                clientNonce, finishNonce, hashMethod, grantUri, continueHash, accessRaw, label);
     }
 
     @Nonnull
@@ -251,12 +268,12 @@ public class EntityBuilder extends AbstractEntityBuilder
         long rawPermissions = data.getLong("permissions");
         String reference = data.getString("reference");
         String continueHash = data.getString("hash");
-        String clientThumbprint = data.getString("client_thumbprint");
+        DataObject accessRaw = DataObject.fromJson(data.getString("access_raw"));
         String thumbprint = data.getString("thumbprint");
         String label = data.getString("label", null);
         boolean denied = data.getBoolean("denied", false);
         return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions,
-                reference, continueHash, clientThumbprint, thumbprint, label, denied);
+                reference, continueHash, accessRaw, thumbprint, label, denied);
     }
 
     @Nonnull

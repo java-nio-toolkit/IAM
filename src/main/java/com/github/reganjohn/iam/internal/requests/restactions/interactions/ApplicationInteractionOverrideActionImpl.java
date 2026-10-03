@@ -45,6 +45,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicatio
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
+import com.github.reganjohn.iam.internal.utils.ApplicationUtil;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
@@ -160,7 +161,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         UUID interactionId = UUID.fromString(params.get("interaction_id"));
         UUID userId = retrieveSelfUserId(context);
         String thumbprint = retrieveThumbprint(retrieveSelfProof(context));
-        String token = randomToken();
+        String token = ApplicationUtil.randomToken();
         api.retrieveUserById(ownerId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveInteractionById(interactionId))
@@ -229,7 +230,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         String clientNonce = interaction.getClientNonce();
         String finishNonce = interaction.getFinishNonce();
         String uri = interaction.getUri();
-        String hash = hash(method, clientNonce, finishNonce, reference, uri);
+        String hash = ApplicationUtil.hash(method, clientNonce, finishNonce, reference, uri);
         return new Query(interaction.getRedirectUri())
                 .withQueryParam("hash", hash)
                 .withQueryParam("interact_ref", reference)
@@ -261,6 +262,6 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
                 .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", ownerId, applicationId, interactionId)
                 .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions,
-                        reference, interaction.hash(), interaction.getThumbprint(), thumbprint, interaction.getLabel(), denied);
+                        reference, interaction.hash(), interaction.getAccessRaw().toString(), thumbprint, interaction.getLabel(), denied);
     }
 }
