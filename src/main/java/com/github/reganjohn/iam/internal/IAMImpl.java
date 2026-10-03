@@ -31,6 +31,7 @@ import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.config.OriginAccessConfig;
+import com.github.adamorgan.jnt.internal.utils.tracker.SocketTracker;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.User;
@@ -62,6 +63,8 @@ import com.reganjohn.c4j.api.utils.Compression;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.logging.LoggingMeterRegistry;
 import io.netty.util.ResourceLeakDetector;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
@@ -88,6 +91,7 @@ public class IAMImpl implements IAM
     private final SocketManager socketManager;
     private final String baseUri;
     private final AccessSignatureManagerImpl accessSignatureManager = new AccessSignatureManagerImpl();
+    private final SocketTracker tracker = new SocketTracker(new LoggingMeterRegistry(), "unknown");
 
     private final EntityBuilder entityBuilder = new EntityBuilder(this);
 
@@ -145,6 +149,7 @@ public class IAMImpl implements IAM
         this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, "https://localhost.com");
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
+                .addEventListeners(new SocketTrackerManagerImpl(tracker))
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
                 .addEventListeners(new ClockObjectManagerImpl())
                 .addEventListeners(new OriginAccessManagerImpl(cors()))
@@ -165,7 +170,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ClassicIdleObjectManagerImpl::new)
                 .addEventListenerProvider(ContentEncodingManagerImpl::new)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
-                //.addEventListenerProvider(() -> new GlobalRestRateLimiter(100, 10000, 1, TimeUnit.SECONDS, "user"))
+                .addEventListeners(new GlobalRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user"))
 
                 .addEventListeners(new WebhookOverrideManagerImpl(this))
                 .addEventListeners(new AccessEntryActionImpl())
