@@ -165,7 +165,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ClassicIdleObjectManagerImpl::new)
                 .addEventListenerProvider(ContentEncodingManagerImpl::new)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
-                //.addEventListenerProvider(() -> new SequentialRestRateLimiter(10, 10, TimeUnit.SECONDS, "user"))
+                //.addEventListenerProvider(() -> new GlobalRestRateLimiter(100, 10000, 1, TimeUnit.SECONDS, "user"))
 
                 .addEventListeners(new WebhookOverrideManagerImpl(this))
                 .addEventListeners(new AccessEntryActionImpl())
