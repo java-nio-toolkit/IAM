@@ -161,6 +161,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
+                .addEventListeners(new GlobalRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user"))
                 .addEventListeners(accessSignatureManager)
                 .addEventListeners(manager)
 
@@ -170,7 +171,6 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ClassicIdleObjectManagerImpl::new)
                 .addEventListenerProvider(ContentEncodingManagerImpl::new)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
-                .addEventListeners(new GlobalRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user"))
 
                 .addEventListeners(new WebhookOverrideManagerImpl(this))
                 .addEventListeners(new AccessEntryActionImpl())
