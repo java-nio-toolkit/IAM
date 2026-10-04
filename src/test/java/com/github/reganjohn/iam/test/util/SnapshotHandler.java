@@ -16,9 +16,9 @@
 package com.github.reganjohn.iam.test.util;
 
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
+import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import org.junit.jupiter.api.TestInfo;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,13 +32,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class SnapshotHandler
 {
+    public static final Logger LOG = JNTLogger.getLog(SnapshotHandler.class);
+
     private final TestInfo testInfo;
-    private final Logger logger;
 
     public SnapshotHandler(TestInfo testInfo)
     {
         this.testInfo = testInfo;
-        this.logger = LoggerFactory.getLogger(SnapshotHandler.class);
     }
 
     public void compareWithSnapshot(String actual, String suffix)
@@ -92,12 +92,12 @@ public class SnapshotHandler
 
         if (!file.exists())
         {
-            logger.info("Creating snapshot {}", file);
+            LOG.info("Creating snapshot {}", file);
             file.getParentFile().mkdirs();
             assertThat(file.createNewFile()).isTrue();
         }
 
-        logger.info("Updating snapshot {}", file);
+        LOG.info("Updating snapshot {}", file);
         Files.write(file.toPath(), actual.getBytes(StandardCharsets.UTF_8));
     }
 
