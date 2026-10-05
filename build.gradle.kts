@@ -23,7 +23,7 @@ dependencies {
     implementation("com.google.crypto.tink:tink:1.12.0")
     implementation("com.nimbusds:nimbus-jose-jwt:10.9")
     implementation("org.bouncycastle:bcprov-lts8on:2.73.10")
-    implementation("com.adamorgan:JNT:0.15.3_DEV")
+    implementation("com.adamorgan:JNT:0.15.5_DEV")
     implementation("com.reganjohn:C4J:0.0.60_DEV")
     implementation("ch.qos.logback:logback-classic:1.5.16")
 
