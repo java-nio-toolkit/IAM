@@ -27,6 +27,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryTarget;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.managers.ProofSignatureManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -112,12 +113,7 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
                     .put(ProofObjectManager.ALG, raw.getString(ProofObjectManager.ALG))
                     .put(ProofObjectManager.KEY, raw)
                     .toData();
-            AccessEntryData data = EntityBuilder.createAccessEntry(rawData);
-            if (data.getUsage() == AccessEntryTarget.ENC)
-                throw new IllegalArgumentException(); //todo: add message!
-            else if (data.getType() == AccessEntryType.RSA && ((RSAKey) data.getPublic()).getModulus().bitLength() < data.getMode().getRequiredLength())
-                throw new IllegalArgumentException(); //todo: add message!
-            return data;
+            return createAccessEntry(EntityBuilder.createAccessEntry(rawData));
         }
         catch (Exception ex)
         {
@@ -125,11 +121,23 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
         }
     }
 
+    @Nonnull
+    private AccessEntryData createAccessEntry(@Nonnull AccessEntryData data)
+    {
+        if (data.getUsage() == AccessEntryTarget.ENC)
+            throw new IllegalArgumentException("Cannot use an encrypt access for sign.");
+        else if (data.getType() == AccessEntryType.RSA && ((RSAKey) data.getPublic()).getModulus().bitLength() < data.getMode().getRequiredLength())
+            throw new IllegalArgumentException(
+                    Helpers.format("The RSA access size for %s must be higher or equal to %d bits.", data.getMode().getName(), data.getMode().getRequiredLength()));
+        else
+            return data;
+    }
+
     @Override
     public void verify(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull AccessEntryData data)
     {
         context.channel().attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(data);
-        try
+        try (CallbackContext<ChannelHandlerContext> resource = new CallbackContext<>(context, this::cleanup))
         {
             verify(context, request);
         }
@@ -143,10 +151,11 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
         {
             throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
         }
-        finally
-        {
-            context.channel().attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(null);
-        }
+    }
+
+    private void cleanup(@Nonnull ChannelHandlerContext context)
+    {
+        context.channel().attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(null);
     }
 
     @Override
