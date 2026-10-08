@@ -5,7 +5,9 @@ import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -26,22 +28,32 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.HashedWheelTimer;
 import org.apache.commons.lang3.exception.UncheckedException;
 import org.jetbrains.annotations.Unmodifiable;
+import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements GlobalAccessManager
 {
+    public static final Logger LOG = JNTLogger.getLog(GlobalAccessManagerImpl.class);
+
     private final IAMImpl api;
+
+    private final Set<AccessEntrySnapshot> unavailableSnapshots = ConcurrentHashMap.newKeySet();
 
     public GlobalAccessManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout,
                                    @Nonnull TimeUnit unit, @Nonnull String audience)
@@ -152,11 +164,80 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         return AccessUtil.checkAccess(key, SignType.from(mode), rawData.getRawHeaders(), rawData.getRawBody(), rawData.getRawSign());
     }
 
+    @Nonnull
+    @Override
+    public AccessEntrySnapshot getCurrentOrder()
+    {
+        AccessEntrySnapshot current = super.getCurrentOrder();
+        if (!unavailableSnapshots.contains(current))
+            return current;
+        return snapshots.values().stream()
+                .filter(snapshot -> !unavailableSnapshots.contains(snapshot) && !snapshot.isExpired())
+                .max(Comparator.comparing(AccessEntrySnapshot::getTimeCreated))
+                .orElse(current);
+    }
+
     @Override
     protected void onCreateSnapshot(@Nonnull AccessEntrySnapshot snapshot)
     {
-        //todo: consider what to do with the key if it wasn't added to the database
-        onCreateSnapshot(snapshot, mapFromData(snapshot)).queue(success -> super.onCreateSnapshot(snapshot), Throwable::printStackTrace);
+        unavailableSnapshots.add(snapshot);
+        try
+        {
+            handleSnapshot(snapshot, 0);
+        }
+        catch (Exception error)
+        {
+            LOG.error("RestAction queue returned failure", error);
+        }
+    }
+
+    private void handleSnapshot(@Nonnull AccessEntrySnapshot snapshot, long delay)
+    {
+        onCreateSnapshot(snapshot, mapFromData(snapshot))
+                .submitAfter(delay, TimeUnit.SECONDS)
+                .whenComplete((success, ex) ->
+                {
+                    if (isDone(ex instanceof CompletionException ? ex.getCause() : ex))
+                        handleSuccess(snapshot);
+                    else
+                        handleFailure(snapshot, delay, ex);
+                });
+    }
+
+    private void handleSuccess(@Nonnull AccessEntrySnapshot snapshot)
+    {
+        try (CallbackContext<AccessEntrySnapshot> context = new CallbackContext<>(snapshot, unavailableSnapshots::remove))
+        {
+            super.onCreateSnapshot(snapshot);
+        }
+        catch (Exception error)
+        {
+            LOG.error("One of the EventListeners had an uncaught exception", error);
+        }
+    }
+
+    private void handleFailure(@Nonnull AccessEntrySnapshot snapshot, long delay, @Nonnull Throwable failure)
+    {
+        if (snapshot.isExpired())
+            unavailableSnapshots.remove(snapshot);
+        else
+            retry(snapshot, Math.min(delay * 2 + 1, 60), failure);
+    }
+
+    private void retry(@Nonnull AccessEntrySnapshot snapshot, long backoff, @Nonnull Throwable failure)
+    {
+        LOG.warn("Request failed! Next attempt in {}s", backoff, failure);
+        handleSnapshot(snapshot, backoff);
+    }
+
+    private boolean isDone(@Nullable Throwable failure)
+    {
+        return failure == null || failure instanceof ErrorResponseException && isDone((ErrorResponseException) failure);
+    }
+
+    private boolean isDone(@Nonnull ErrorResponseException ex)
+    {
+        return ex.getErrorCode() == ErrorResponse.ACCESS_ALREADY_EXISTS.getCode();
     }
 
     @Nonnull
@@ -166,7 +247,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     {
         Checks.notNull(snapshot, "Snapshot");
         Checks.notNull(contextMap, "Map");
-        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_issued_signer.cql"), mapFromData(snapshot))
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_issued_signer.cql"), contextMap)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
