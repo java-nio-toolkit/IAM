@@ -16,10 +16,11 @@
 
 package com.github.reganjohn.iam.test.restaction.self;
 
+import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.self.SelfUserRetrieveActionImpl;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
-import com.github.reganjohn.iam.test.restaction.UserRetrieveActionTest;
+import com.github.reganjohn.iam.test.restaction.user.UserRetrieveActionTest;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -41,13 +42,19 @@ public class SelfUserRetrieveActionTest extends UserRetrieveActionTest
         return assertThatRequestTo(newAction());
     }
 
+    @Override
+    protected String getUserIdField()
+    {
+        return "sub";
+    }
+
     @Test
     void testMissingAccess()
     {
         assertThatRequestTo(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

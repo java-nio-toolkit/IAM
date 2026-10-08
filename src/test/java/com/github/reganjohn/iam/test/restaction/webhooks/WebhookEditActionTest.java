@@ -103,29 +103,29 @@ public class WebhookEditActionTest extends RestActionTest
         String longName = new String(new char[Webhook.MAX_NAME_LENGTH + 1]).replace('\0', 'a');
         String longAvatar = new String(new char[Webhook.ICON_CID_MAX_LENGTH + 1]).replace('\0', 'a');
         return Stream.of(
-                arguments("name_not_string", body("name", 5)),
-                arguments("name_empty", body("name", "")),
-                arguments("name_too_long", body("name", longName)),
-                arguments("avatar_not_string", body("avatar_id", 5)),
-                arguments("avatar_too_long", body("avatar_id", longAvatar)),
-                arguments("url_not_string", body("url", 5)),
-                arguments("url_not_url", body("url", "not-a-url")),
-                arguments("url_not_https", body("url", "http://example.org/hook")),
-                arguments("url_localhost", body("url", "https://localhost/hook")),
-                arguments("url_loopback", body("url", "https://127.0.0.1/hook")),
-                arguments("url_private", body("url", "https://192.168.0.1/hook")),
-                arguments("scopes_not_number", body("scopes", "all")),
-                arguments("everything_invalid", body("name", 5, "avatar_id", 5, "url", 5, "scopes", "all")));
+                arguments("name_not_string", body("name", 5), "name=STRING_TYPE_COERCE"),
+                arguments("name_empty", body("name", ""), "name=STRING_TYPE_MIN"),
+                arguments("name_too_long", body("name", longName), "name=STRING_TYPE_MAX"),
+                arguments("avatar_not_string", body("avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
+                arguments("avatar_too_long", body("avatar_id", longAvatar), "avatar_id=STRING_TYPE_MAX"),
+                arguments("url_not_string", body("url", 5), "url=STRING_TYPE_COERCE"),
+                arguments("url_not_url", body("url", "not-a-url"), "url=BASE_TYPE_CHOICES"),
+                arguments("url_not_https", body("url", "http://example.org/hook"), "url=BASE_TYPE_CHOICES"),
+                arguments("url_localhost", body("url", "https://localhost/hook"), "url=BASE_TYPE_CHOICES"),
+                arguments("url_loopback", body("url", "https://127.0.0.1/hook"), "url=BASE_TYPE_CHOICES"),
+                arguments("url_private", body("url", "https://192.168.0.1/hook"), "url=BASE_TYPE_CHOICES"),
+                arguments("scopes_not_number", body("scopes", "all"), "scopes=NUMBER_TYPE_COERCE"),
+                arguments("everything_invalid", body("name", 5, "avatar_id", 5, "url", 5, "scopes", "all"), "name=STRING_TYPE_COERCE,avatar_id=STRING_TYPE_COERCE,url=STRING_TYPE_COERCE,scopes=NUMBER_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidWebhookId()
     {
         return Stream.of(
-                arguments("empty", ""),
-                arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "04d3c48c-1255-7041-8dc9"),
-                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
-                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c"));
+                arguments("empty", "", "webhook_id=BASE_TYPE_REQUIRED"),
+                arguments("not_uuid", "not-a-uuid", "webhook_id=UUID_TYPE_COERCE"),
+                arguments("too_short", "04d3c48c-1255-7041-8dc9", "webhook_id=UUID_TYPE_COERCE"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", "webhook_id=UUID_TYPE_COERCE"),
+                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c", "webhook_id=UUID_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -148,7 +148,7 @@ public class WebhookEditActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(WEBHOOK_ID.toString())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -159,14 +159,14 @@ public class WebhookEditActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(WEBHOOK_ID.toString())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         withAccess(USER_ID);
 
@@ -174,7 +174,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .withRouteParams(WEBHOOK_ID.toString())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -183,7 +183,7 @@ public class WebhookEditActionTest extends RestActionTest
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidWebhookId(String name, String webhookId)
+    void testInvalidWebhookId(String name, String webhookId, String errors)
     {
         withAccess(USER_ID);
 
@@ -191,7 +191,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .withRouteParams(webhookId)
                 .withJsonBody(body("name", "renamed"))
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -250,7 +250,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .withJsonBody(body("name", "renamed"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -267,7 +267,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .withJsonBody(body("name", "renamed"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_WEBHOOK)
                 .whenHandled();
     }
 
@@ -283,7 +283,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .withJsonBody(body("name", "renamed"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_WEBHOOK)
                 .whenHandled();
     }
 
@@ -295,7 +295,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .withJsonBody(body("name", "renamed"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -312,7 +312,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .withJsonBody(body("name", "renamed"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

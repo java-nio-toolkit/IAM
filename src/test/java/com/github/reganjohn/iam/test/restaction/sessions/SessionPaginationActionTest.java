@@ -132,7 +132,7 @@ public class SessionPaginationActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -142,7 +142,7 @@ public class SessionPaginationActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -157,7 +157,7 @@ public class SessionPaginationActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

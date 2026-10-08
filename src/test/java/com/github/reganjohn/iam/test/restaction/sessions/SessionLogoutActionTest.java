@@ -146,7 +146,7 @@ public class SessionLogoutActionTest extends RestActionTest
             assertThatRequestTo(newAction())
                     .hasNoResponse()
                     .hasFailureOfType(ErrorResponseException.class)
-                    .hasFailureMatchingSnapshot()
+                    .hasFailure(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION)
                     .whenHandled();
 
             assertThat(logout.constructed()).isEmpty();
@@ -163,7 +163,7 @@ public class SessionLogoutActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -179,7 +179,7 @@ public class SessionLogoutActionTest extends RestActionTest
             assertThatRequestTo(newAction())
                     .hasNoResponse()
                     .hasFailureOfType(ErrorResponseException.class)
-                    .hasFailureMatchingSnapshot()
+                    .hasFailure(ErrorResponse.MISSING_ACCESS)
                     .whenHandled();
         }
     }
@@ -205,7 +205,7 @@ public class SessionLogoutActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -221,7 +221,7 @@ public class SessionLogoutActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

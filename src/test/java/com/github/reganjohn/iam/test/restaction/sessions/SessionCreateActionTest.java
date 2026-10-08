@@ -100,28 +100,28 @@ public class SessionCreateActionTest extends RestActionTest
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
-                arguments("missing_kty", body("use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("kty_not_string", body("kty", 5, "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("kty_unknown", body("kty", "XYZ", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("kty_symmetric", body("kty", "oct", "use", "sig", "kid", "k", "alg", "HS256", "k", "AAAA")),
-                arguments("missing_use", body("kty", "OKP", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("use_not_string", body("kty", "OKP", "use", 5, "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("use_not_signature", body("kty", "OKP", "use", "enc", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("kty_and_use_invalid", body("kty", 5, "use", 5)),
-                arguments("missing_crv", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "x", "AAAA")),
-                arguments("crv_not_string", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", 5, "x", "AAAA")),
-                arguments("crv_unknown", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "P-999", "x", "AAAA")),
-                arguments("crv_of_another_algorithm", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed448", "crv", "Ed25519", "x", "AAAA")),
-                arguments("missing_kid", body("kty", "OKP", "use", "sig", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("kid_not_string", body("kty", "OKP", "use", "sig", "kid", 5, "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA")),
-                arguments("missing_alg", body("kty", "OKP", "use", "sig", "kid", "k", "crv", "Ed25519", "x", "AAAA")),
-                arguments("alg_not_string", body("kty", "OKP", "use", "sig", "kid", "k", "alg", 5, "crv", "Ed25519", "x", "AAAA")),
-                arguments("alg_unknown", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "HS256", "crv", "Ed25519", "x", "AAAA")),
-                arguments("alg_of_another_type", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "ES256", "crv", "Ed25519", "x", "AAAA")),
-                arguments("okp_missing_x", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519")),
-                arguments("okp_x_not_string", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", 5)),
-                arguments("ec_missing_x_y", body("kty", "EC", "use", "sig", "kid", "k", "alg", "ES256", "crv", "P-256")),
-                arguments("rsa_missing_n_e", body("kty", "RSA", "use", "sig", "kid", "k", "alg", "RS256")));
+                arguments("missing_kty", body("use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kty=BASE_TYPE_REQUIRED"),
+                arguments("kty_not_string", body("kty", 5, "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kty=STRING_TYPE_COERCE"),
+                arguments("kty_unknown", body("kty", "XYZ", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kty=BASE_TYPE_CHOICES"),
+                arguments("kty_symmetric", body("kty", "oct", "use", "sig", "kid", "k", "alg", "HS256", "k", "AAAA"), "kty=BASE_TYPE_CHOICES"),
+                arguments("missing_use", body("kty", "OKP", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "use=BASE_TYPE_REQUIRED"),
+                arguments("use_not_string", body("kty", "OKP", "use", 5, "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "use=STRING_TYPE_COERCE"),
+                arguments("use_not_signature", body("kty", "OKP", "use", "enc", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "use=BASE_TYPE_CHOICES"),
+                arguments("kty_and_use_invalid", body("kty", 5, "use", 5), "kty=STRING_TYPE_COERCE,use=STRING_TYPE_COERCE"),
+                arguments("missing_crv", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "x", "AAAA"), "crv=BASE_TYPE_REQUIRED"),
+                arguments("crv_not_string", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", 5, "x", "AAAA"), "crv=BASE_TYPE_CHOICES"),
+                arguments("crv_unknown", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "P-999", "x", "AAAA"), "crv=BASE_TYPE_CHOICES"),
+                arguments("crv_of_another_algorithm", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed448", "crv", "Ed25519", "x", "AAAA"), "crv=BASE_TYPE_CHOICES"),
+                arguments("missing_kid", body("kty", "OKP", "use", "sig", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kid=BASE_TYPE_REQUIRED"),
+                arguments("kid_not_string", body("kty", "OKP", "use", "sig", "kid", 5, "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kid=STRING_TYPE_COERCE"),
+                arguments("missing_alg", body("kty", "OKP", "use", "sig", "kid", "k", "crv", "Ed25519", "x", "AAAA"), "alg=BASE_TYPE_REQUIRED"),
+                arguments("alg_not_string", body("kty", "OKP", "use", "sig", "kid", "k", "alg", 5, "crv", "Ed25519", "x", "AAAA"), "alg=BASE_TYPE_CHOICES,crv=BASE_TYPE_CHOICES"),
+                arguments("alg_unknown", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "HS256", "crv", "Ed25519", "x", "AAAA"), "alg=BASE_TYPE_CHOICES"),
+                arguments("alg_of_another_type", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "ES256", "crv", "Ed25519", "x", "AAAA"), "alg=BASE_TYPE_CHOICES,crv=BASE_TYPE_CHOICES"),
+                arguments("okp_missing_x", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519"), "x=BASE_TYPE_REQUIRED"),
+                arguments("okp_x_not_string", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", 5), "x=STRING_TYPE_COERCE"),
+                arguments("ec_missing_x_y", body("kty", "EC", "use", "sig", "kid", "k", "alg", "ES256", "crv", "P-256"), "x=BASE_TYPE_REQUIRED,y=BASE_TYPE_REQUIRED"),
+                arguments("rsa_missing_n_e", body("kty", "RSA", "use", "sig", "kid", "k", "alg", "RS256"), "n=BASE_TYPE_REQUIRED,e=BASE_TYPE_REQUIRED"));
     }
 
     static Stream<String> testParsingFailure()
@@ -157,7 +157,7 @@ public class SessionCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -167,14 +167,14 @@ public class SessionCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         withProof(SignType.ED25519);
         withAccess(USER_ID);
@@ -182,7 +182,7 @@ public class SessionCreateActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -270,7 +270,7 @@ public class SessionCreateActionTest extends RestActionTest
                 .withJsonBody(entry.toData().toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot());
+                .hasFailure(ErrorResponse.MAX_SESSIONS));
     }
 
     @Test
@@ -297,7 +297,7 @@ public class SessionCreateActionTest extends RestActionTest
                 .withJsonBody(entry.toData().toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot());
+                .hasFailure(ErrorResponse.UNKNOWN_USER));
     }
 
     @Test
@@ -311,7 +311,7 @@ public class SessionCreateActionTest extends RestActionTest
                 .withJsonBody(entry.toData().toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot());
+                .hasFailure(ErrorResponse.UNKNOWN_USER));
     }
 
     @Test
@@ -326,7 +326,7 @@ public class SessionCreateActionTest extends RestActionTest
                 .withJsonBody(entry.toData().toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot());
+                .hasFailure(ErrorResponse.ACCESS_ALREADY_EXISTS));
     }
 
     @Test
@@ -338,7 +338,7 @@ public class SessionCreateActionTest extends RestActionTest
                 .withJsonBody(entry.toData().toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -355,7 +355,7 @@ public class SessionCreateActionTest extends RestActionTest
                 .withJsonBody(entry.toData().toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

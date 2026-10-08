@@ -101,20 +101,20 @@ public class PermissionOverrideEditActionTest extends RestActionTest
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
-                arguments("empty_body", body()),
-                arguments("permissions_not_number", body("permissions", "all")),
-                arguments("permissions_null", "{\"permissions\":null}"),
-                arguments("permissions_fraction", body("permissions", 1.5)));
+                arguments("empty_body", body(), "permissions=BASE_TYPE_REQUIRED"),
+                arguments("permissions_not_number", body("permissions", "all"), "permissions=NUMBER_TYPE_COERCE"),
+                arguments("permissions_null", "{\"permissions\":null}", "permissions=NUMBER_TYPE_COERCE"),
+                arguments("permissions_fraction", body("permissions", 1.5), "permissions=NUMBER_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidApplicationId()
     {
         return Stream.of(
-                arguments("empty", ""),
-                arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "04d3c48c-1255-7041-8dc9"),
-                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
-                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c"));
+                arguments("empty", "", "application_id=BASE_TYPE_REQUIRED"),
+                arguments("not_uuid", "not-a-uuid", "application_id=UUID_TYPE_COERCE"),
+                arguments("too_short", "04d3c48c-1255-7041-8dc9", "application_id=UUID_TYPE_COERCE"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", "application_id=UUID_TYPE_COERCE"),
+                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c", "application_id=UUID_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -137,7 +137,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(APPLICATION_ID.toString())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -148,14 +148,14 @@ public class PermissionOverrideEditActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(APPLICATION_ID.toString())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest(name = "{0}")
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         withAccess(USER_ID);
 
@@ -163,7 +163,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .withRouteParams(APPLICATION_ID.toString())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -172,7 +172,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidApplicationId(String name, String applicationId)
+    void testInvalidApplicationId(String name, String applicationId, String errors)
     {
         withAccess(USER_ID);
 
@@ -180,7 +180,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .withRouteParams(applicationId)
                 .withJsonBody(body("permissions", 1))
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -236,7 +236,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .withJsonBody(body("permissions", 1))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -253,7 +253,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .withJsonBody(body("permissions", 1))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_ENTITLEMENT)
                 .whenHandled();
     }
 
@@ -269,7 +269,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .withJsonBody(body("permissions", 1))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_ENTITLEMENT)
                 .whenHandled();
     }
 
@@ -281,7 +281,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .withJsonBody(body("permissions", 1))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -298,7 +298,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .withJsonBody(body("permissions", 1))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

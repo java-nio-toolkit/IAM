@@ -147,16 +147,16 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
     static Stream<Arguments> testInvalidIds()
     {
         return Stream.of(
-                arguments("application_empty", OWNER_ID.toString(), "", INTERACTION_ID.toString()),
-                arguments("application_not_uuid", OWNER_ID.toString(), "not-a-uuid", INTERACTION_ID.toString()),
-                arguments("application_too_short", OWNER_ID.toString(), "04d3c48c-1255-7041-8dc9", INTERACTION_ID.toString()),
-                arguments("interaction_empty", OWNER_ID.toString(), APPLICATION_ID.toString(), ""),
-                arguments("interaction_not_uuid", OWNER_ID.toString(), APPLICATION_ID.toString(), "not-a-uuid"),
-                arguments("interaction_too_short", OWNER_ID.toString(), APPLICATION_ID.toString(), "05e4d59d-2366-7152-9eda"),
-                arguments("owner_empty", "", APPLICATION_ID.toString(), INTERACTION_ID.toString()),
-                arguments("owner_not_uuid", "not-a-uuid", APPLICATION_ID.toString(), INTERACTION_ID.toString()),
-                arguments("owner_too_short", "02b1a26a-f033-7e2f-8ba7", APPLICATION_ID.toString(), INTERACTION_ID.toString()),
-                arguments("all_invalid", "not-a-uuid", "not-a-uuid", "not-a-uuid"));
+                arguments("application_empty", OWNER_ID.toString(), "", INTERACTION_ID.toString(), "application_id=BASE_TYPE_REQUIRED"),
+                arguments("application_not_uuid", OWNER_ID.toString(), "not-a-uuid", INTERACTION_ID.toString(), "application_id=UUID_TYPE_COERCE"),
+                arguments("application_too_short", OWNER_ID.toString(), "04d3c48c-1255-7041-8dc9", INTERACTION_ID.toString(), "application_id=UUID_TYPE_COERCE"),
+                arguments("interaction_empty", OWNER_ID.toString(), APPLICATION_ID.toString(), "", "interaction_id=BASE_TYPE_REQUIRED"),
+                arguments("interaction_not_uuid", OWNER_ID.toString(), APPLICATION_ID.toString(), "not-a-uuid", "interaction_id=UUID_TYPE_COERCE"),
+                arguments("interaction_too_short", OWNER_ID.toString(), APPLICATION_ID.toString(), "05e4d59d-2366-7152-9eda", "interaction_id=UUID_TYPE_COERCE"),
+                arguments("owner_empty", "", APPLICATION_ID.toString(), INTERACTION_ID.toString(), "user_id=BASE_TYPE_REQUIRED"),
+                arguments("owner_not_uuid", "not-a-uuid", APPLICATION_ID.toString(), INTERACTION_ID.toString(), "user_id=UUID_TYPE_COERCE"),
+                arguments("owner_too_short", "02b1a26a-f033-7e2f-8ba7", APPLICATION_ID.toString(), INTERACTION_ID.toString(), "user_id=UUID_TYPE_COERCE"),
+                arguments("all_invalid", "not-a-uuid", "not-a-uuid", "not-a-uuid", "user_id=UUID_TYPE_COERCE,application_id=UUID_TYPE_COERCE,interaction_id=UUID_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -170,14 +170,14 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidIds(String name, String ownerId, String applicationId, String interactionId)
+    void testInvalidIds(String name, String ownerId, String applicationId, String interactionId, String errors)
     {
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
                 .withRouteParams(ownerId, applicationId, interactionId)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -310,7 +310,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -327,7 +327,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_APPLICATION)
                 .whenHandled();
     }
 
@@ -347,7 +347,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_INTERACTION)
                 .whenHandled();
     }
 
@@ -363,7 +363,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
     }
 
@@ -374,7 +374,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -390,7 +390,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

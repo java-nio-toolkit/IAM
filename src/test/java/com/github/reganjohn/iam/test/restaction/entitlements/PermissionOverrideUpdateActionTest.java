@@ -176,11 +176,11 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
-                arguments("empty", ""),
-                arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "04d3c48c-1255-7041-8dc9"),
-                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
-                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c"));
+                arguments("empty", "", "application_id=BASE_TYPE_REQUIRED"),
+                arguments("not_uuid", "not-a-uuid", "application_id=UUID_TYPE_COERCE"),
+                arguments("too_short", "04d3c48c-1255-7041-8dc9", "application_id=UUID_TYPE_COERCE"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", "application_id=UUID_TYPE_COERCE"),
+                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c", "application_id=UUID_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidToken()
@@ -197,13 +197,13 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
 
     @MethodSource("testInvalidInputs")
     @ParameterizedTest
-    void testInvalidApplicationId(String name, String applicationId)
+    void testInvalidApplicationId(String name, String applicationId, String errors)
     {
         assertThatRequestTo(newAction())
                 .withRouteParams(applicationId)
                 .withHeader("Authorization", "DPoP " + TOKEN)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -252,7 +252,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
                 .withRouteParams(APPLICATION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNAUTHORIZED)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -304,7 +304,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(), access);
+                .hasFailure(ErrorResponse.ONLY_APPLICATION_ALLOWED), access);
     }
 
     @MethodSource
@@ -319,7 +319,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name), access);
+                .hasFailure(ErrorResponse.INVALID_TOKEN), access);
     }
 
     @Test
@@ -344,7 +344,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(), accessObject());
+                .hasFailure(ErrorResponse.UNKNOWN_USER), accessObject());
     }
 
     @Test
@@ -359,7 +359,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(), accessObject());
+                .hasFailure(ErrorResponse.UNKNOWN_ENTITLEMENT), accessObject());
     }
 
     @Test
@@ -376,6 +376,6 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(), accessObject());
+                .hasFailure(ErrorResponse.MISSING_ACCESS), accessObject());
     }
 }

@@ -121,17 +121,17 @@ public class SelfUserCreateActionTest extends RestActionTest
         String username = StringUtils.repeat('a', User.MAX_NAME_LENGTH + 1);
         String avatar = StringUtils.repeat('a', User.AVATAR_CID_MAX_LENGTH + 1);
         return Stream.of(
-                arguments("missing_username", body()),
-                arguments("username_not_string", body("username", 5)),
-                arguments("username_empty", body("username", "")),
-                arguments("username_too_long", body("username", username)),
-                arguments("avatar_not_string", body("username", "a", "avatar_id", 5)),
-                arguments("avatar_too_long", body("username", "a", "avatar_id", avatar)),
-                arguments("flags_not_number", body("username", "a", "flags", "x")),
-                arguments("flags_negative", body("username", "a", "flags", -1)),
-                arguments("session_flags_not_number", body("username", "a", "session", session("flags", "x"))),
-                arguments("session_flags_negative", body("username", "a", "session", session("flags", -1))),
-                arguments("every_field_invalid", body("avatar_id", 5, "flags", -1, "session", session("flags", -1))));
+                arguments("missing_username", body(), "username=BASE_TYPE_REQUIRED"),
+                arguments("username_not_string", body("username", 5), "username=STRING_TYPE_COERCE"),
+                arguments("username_empty", body("username", ""), "username=STRING_TYPE_MIN"),
+                arguments("username_too_long", body("username", username), "username=STRING_TYPE_MAX"),
+                arguments("avatar_not_string", body("username", "a", "avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
+                arguments("avatar_too_long", body("username", "a", "avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
+                arguments("flags_not_number", body("username", "a", "flags", "x"), "flags=NUMBER_TYPE_COERCE"),
+                arguments("flags_negative", body("username", "a", "flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("session_flags_not_number", body("username", "a", "session", session("flags", "x")), "session.flags=NUMBER_TYPE_COERCE"),
+                arguments("session_flags_negative", body("username", "a", "session", session("flags", -1)), "session.flags=NUMBER_TYPE_MIN"),
+                arguments("every_field_invalid", body("avatar_id", 5, "flags", -1, "session", session("flags", -1)), "username=BASE_TYPE_REQUIRED,avatar_id=STRING_TYPE_COERCE,flags=NUMBER_TYPE_MIN,session.flags=NUMBER_TYPE_MIN"));
     }
 
     static Stream<String> testValidInputs()
@@ -174,7 +174,7 @@ public class SelfUserCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -184,19 +184,19 @@ public class SelfUserCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         assertThatRequestTo(newAction())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -345,7 +345,7 @@ public class SelfUserCreateActionTest extends RestActionTest
                     .withJsonBody(VALID_BODY)
                     .hasNoResponse()
                     .hasFailureMatching(error -> error == failure)
-                    .hasFailureMatchingSnapshot()
+                    .hasFailure(ErrorResponse.ACCESS_ALREADY_EXISTS)
                     .whenHandled();
         }
     }

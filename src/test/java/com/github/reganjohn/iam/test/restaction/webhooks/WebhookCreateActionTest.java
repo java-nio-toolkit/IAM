@@ -114,23 +114,23 @@ public class WebhookCreateActionTest extends RestActionTest
         String longName = new String(new char[Webhook.MAX_NAME_LENGTH + 1]).replace('\0', 'a');
         String longAvatar = new String(new char[Webhook.ICON_CID_MAX_LENGTH + 1]).replace('\0', 'a');
         return Stream.of(
-                arguments("empty_body", body()),
-                arguments("missing_name", body("avatar_id", "cid", "url", URL, "scopes", 3)),
-                arguments("name_not_string", body("name", 5, "avatar_id", "cid", "url", URL, "scopes", 3)),
-                arguments("name_empty", body("name", "", "avatar_id", "cid", "url", URL, "scopes", 3)),
-                arguments("name_too_long", body("name", longName, "avatar_id", "cid", "url", URL, "scopes", 3)),
-                arguments("avatar_not_string", body("name", "hook", "avatar_id", 5, "url", URL, "scopes", 3)),
-                arguments("avatar_too_long", body("name", "hook", "avatar_id", longAvatar, "url", URL, "scopes", 3)),
-                arguments("missing_url", body("name", "hook", "avatar_id", "cid", "scopes", 3)),
-                arguments("url_not_string", body("name", "hook", "avatar_id", "cid", "url", 5, "scopes", 3)),
-                arguments("url_not_url", body("name", "hook", "avatar_id", "cid", "url", "not-a-url", "scopes", 3)),
-                arguments("url_not_https", body("name", "hook", "avatar_id", "cid", "url", "http://example.org/hook", "scopes", 3)),
-                arguments("url_localhost", body("name", "hook", "avatar_id", "cid", "url", "https://localhost/hook", "scopes", 3)),
-                arguments("url_loopback", body("name", "hook", "avatar_id", "cid", "url", "https://127.0.0.1/hook", "scopes", 3)),
-                arguments("url_private", body("name", "hook", "avatar_id", "cid", "url", "https://192.168.0.1/hook", "scopes", 3)),
-                arguments("missing_scopes", body("name", "hook", "avatar_id", "cid", "url", URL)),
-                arguments("scopes_not_number", body("name", "hook", "avatar_id", "cid", "url", URL, "scopes", "all")),
-                arguments("everything_invalid", body("name", 5, "avatar_id", 5, "url", 5, "scopes", "all")));
+                arguments("empty_body", body(), "name=BASE_TYPE_REQUIRED,url=BASE_TYPE_REQUIRED,scopes=BASE_TYPE_REQUIRED"),
+                arguments("missing_name", body("avatar_id", "cid", "url", URL, "scopes", 3), "name=BASE_TYPE_REQUIRED"),
+                arguments("name_not_string", body("name", 5, "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_COERCE"),
+                arguments("name_empty", body("name", "", "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_MIN"),
+                arguments("name_too_long", body("name", longName, "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_MAX"),
+                arguments("avatar_not_string", body("name", "hook", "avatar_id", 5, "url", URL, "scopes", 3), "avatar_id=STRING_TYPE_COERCE"),
+                arguments("avatar_too_long", body("name", "hook", "avatar_id", longAvatar, "url", URL, "scopes", 3), "avatar_id=STRING_TYPE_MAX"),
+                arguments("missing_url", body("name", "hook", "avatar_id", "cid", "scopes", 3), "url=BASE_TYPE_REQUIRED"),
+                arguments("url_not_string", body("name", "hook", "avatar_id", "cid", "url", 5, "scopes", 3), "url=STRING_TYPE_COERCE"),
+                arguments("url_not_url", body("name", "hook", "avatar_id", "cid", "url", "not-a-url", "scopes", 3), "url=BASE_TYPE_CHOICES"),
+                arguments("url_not_https", body("name", "hook", "avatar_id", "cid", "url", "http://example.org/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
+                arguments("url_localhost", body("name", "hook", "avatar_id", "cid", "url", "https://localhost/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
+                arguments("url_loopback", body("name", "hook", "avatar_id", "cid", "url", "https://127.0.0.1/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
+                arguments("url_private", body("name", "hook", "avatar_id", "cid", "url", "https://192.168.0.1/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
+                arguments("missing_scopes", body("name", "hook", "avatar_id", "cid", "url", URL), "scopes=BASE_TYPE_REQUIRED"),
+                arguments("scopes_not_number", body("name", "hook", "avatar_id", "cid", "url", URL, "scopes", "all"), "scopes=NUMBER_TYPE_COERCE"),
+                arguments("everything_invalid", body("name", 5, "avatar_id", 5, "url", 5, "scopes", "all"), "name=STRING_TYPE_COERCE,avatar_id=STRING_TYPE_COERCE,url=STRING_TYPE_COERCE,scopes=NUMBER_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -147,7 +147,7 @@ public class WebhookCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -157,21 +157,21 @@ public class WebhookCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -273,7 +273,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MAX_WEBHOOKS)
                 .whenHandled();
 
         assertThat(created.getAllValues()).isEmpty();
@@ -303,7 +303,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -318,7 +318,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.ACCESS_ALREADY_EXISTS)
                 .whenHandled();
     }
 
@@ -329,7 +329,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -345,7 +345,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

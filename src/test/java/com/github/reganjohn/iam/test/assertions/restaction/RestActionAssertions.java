@@ -45,10 +45,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -252,6 +255,50 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
         return checkAssertions(outcome -> assertThat(outcome.failure)
                 .withRepresentation(new PrettyRepresentation())
                 .matches(condition));
+    }
+
+    @CheckReturnValue
+    @Contract("_->this")
+    public RestActionAssertions hasFailure(@Nonnull ErrorResponse error)
+    {
+        return checkAssertions(outcome ->
+        {
+            assertThat(outcome.failure).isInstanceOf(InvalidResponseException.class);
+            assertThat(((InvalidResponseException) outcome.failure).getObject().toMap())
+                    .containsOnly(entry("code", error.getCode()), entry("message", error.getMeaning()));
+        });
+    }
+
+    @CheckReturnValue
+    @Contract("_->this")
+    @SuppressWarnings("unchecked")
+    public RestActionAssertions hasFormErrors(@Nonnull String... pairs)
+    {
+        Map<String, List<Object>> expected = new LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2)
+            expected.computeIfAbsent(pairs[i], key -> new ArrayList<>()).add(pairs[i + 1]);
+        return checkAssertions(outcome ->
+        {
+            assertThat(outcome.failure).isInstanceOf(InvalidResponseException.class);
+            Map<String, Object> object = ((InvalidResponseException) outcome.failure).getObject().toMap();
+            assertThat(object).containsEntry("code", ErrorResponse.INVALID_FORM_BODY.getCode())
+                    .containsEntry("message", ErrorResponse.INVALID_FORM_BODY.getMeaning());
+            Map<String, List<Object>> actual = new LinkedHashMap<>();
+            collectFormErrors(null, (Map<String, Object>) object.get("errors"), actual);
+            assertThat(actual).isEqualTo(expected);
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void collectFormErrors(@Nullable String path, @Nonnull Map<String, Object> node, @Nonnull Map<String, List<Object>> errors)
+    {
+        node.forEach((key, value) ->
+        {
+            if (key.equals("_errors"))
+                ((List<Map<String, Object>>) value).forEach(error -> errors.computeIfAbsent(path, field -> new ArrayList<>()).add(error.get("code")));
+            else
+                collectFormErrors(path == null ? key : path + "." + key, (Map<String, Object>) value, errors);
+        });
     }
 
     @CheckReturnValue

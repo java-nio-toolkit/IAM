@@ -77,14 +77,14 @@ public class SelfUserEditActionTest extends RestActionTest
         String username = StringUtils.repeat('a', User.MAX_NAME_LENGTH + 1);
         String avatar = StringUtils.repeat('a', User.AVATAR_CID_MAX_LENGTH + 1);
         return Stream.of(
-                arguments("username_not_string", body("username", 5)),
-                arguments("username_empty", body("username", "")),
-                arguments("username_too_long", body("username", username)),
-                arguments("avatar_not_string", body("avatar_id", 5)),
-                arguments("avatar_too_long", body("avatar_id", avatar)),
-                arguments("flags_not_number", body("flags", "x")),
-                arguments("flags_negative", body("flags", -1)),
-                arguments("every_field_invalid", body("username", 5, "avatar_id", 5, "flags", -1)));
+                arguments("username_not_string", body("username", 5), "username=STRING_TYPE_COERCE"),
+                arguments("username_empty", body("username", ""), "username=STRING_TYPE_MIN"),
+                arguments("username_too_long", body("username", username), "username=STRING_TYPE_MAX"),
+                arguments("avatar_not_string", body("avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
+                arguments("avatar_too_long", body("avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
+                arguments("flags_not_number", body("flags", "x"), "flags=NUMBER_TYPE_COERCE"),
+                arguments("flags_negative", body("flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("every_field_invalid", body("username", 5, "avatar_id", 5, "flags", -1), "username=STRING_TYPE_COERCE,avatar_id=STRING_TYPE_COERCE,flags=NUMBER_TYPE_MIN"));
     }
 
     static Stream<String> testValidInputs()
@@ -122,7 +122,7 @@ public class SelfUserEditActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -132,21 +132,21 @@ public class SelfUserEditActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -278,7 +278,7 @@ public class SelfUserEditActionTest extends RestActionTest
                 .withJsonBody(body("username", "bob"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -349,7 +349,7 @@ public class SelfUserEditActionTest extends RestActionTest
                 .withJsonBody(body("username", "bob"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -365,7 +365,7 @@ public class SelfUserEditActionTest extends RestActionTest
                 .withJsonBody(body("username", "bob"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

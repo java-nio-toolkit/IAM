@@ -140,36 +140,36 @@ public class ApplicationCreateActionTest extends RestActionTest
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
-                arguments("empty_body", body()),
-                arguments("missing_name", body("origin", ORIGIN, "redirect_uris", uris(CALLBACK))),
-                arguments("name_not_string", valid().replace("\"app\"", "5")),
-                arguments("name_empty", valid().replace("\"app\"", "\"\"")),
-                arguments("name_too_long", valid().replace("\"app\"", "\"" + repeat(Application.MAX_NAME_LENGTH + 1) + "\"")),
-                arguments("missing_origin", body("name", "app", "redirect_uris", uris(CALLBACK))),
-                arguments("origin_not_string", body("name", "app", "origin", 5, "redirect_uris", uris(CALLBACK))),
-                arguments("origin_empty", body("name", "app", "origin", "", "redirect_uris", uris(CALLBACK))),
-                arguments("origin_not_url", body("name", "app", "origin", "not-a-url", "redirect_uris", uris(CALLBACK))),
-                arguments("origin_not_https", body("name", "app", "origin", "http://example.org", "redirect_uris", uris(CALLBACK))),
-                arguments("origin_localhost", body("name", "app", "origin", "https://localhost", "redirect_uris", uris(CALLBACK))),
-                arguments("origin_loopback", body("name", "app", "origin", "https://127.0.0.1", "redirect_uris", uris(CALLBACK))),
-                arguments("origin_private", body("name", "app", "origin", "https://192.168.0.1", "redirect_uris", uris(CALLBACK))),
-                arguments("description_not_string", valid("description", 5)),
-                arguments("description_too_long", valid("description", repeat(Application.MAX_DESCRIPTION_LENGTH + 1))),
-                arguments("icon_not_string", valid("icon_id", 5)),
-                arguments("icon_too_long", valid("icon_id", repeat(Application.ICON_CID_MAX_LENGTH + 1))),
-                arguments("flags_not_number", valid("flags", "all")),
-                arguments("flags_negative", valid("flags", -1)),
-                arguments("missing_redirect_uris", body("name", "app", "origin", ORIGIN)),
-                arguments("redirect_uris_not_array", body("name", "app", "origin", ORIGIN, "redirect_uris", CALLBACK)),
-                arguments("redirect_uris_empty", body("name", "app", "origin", ORIGIN, "redirect_uris", uris())),
-                arguments("redirect_uris_too_many", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, CALLBACK, CALLBACK, CALLBACK, CALLBACK, CALLBACK))),
-                arguments("redirect_uris_not_string", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(5))),
-                arguments("redirect_uris_one_not_string", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, 5))),
-                arguments("redirect_uris_too_long", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("https://example.org/" + repeat(Application.MAX_URL_LENGTH)))),
-                arguments("redirect_uris_one_too_long", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, "https://example.org/" + repeat(Application.MAX_URL_LENGTH)))),
-                arguments("redirect_uris_not_url", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("not-a-url"))),
-                arguments("redirect_uris_one_not_url", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, "not-a-url"))),
-                arguments("everything_invalid", body("name", 5, "origin", 5, "description", 5, "icon_id", 5, "flags", "all", "redirect_uris", "all")));
+                arguments("empty_body", body(), "name=BASE_TYPE_REQUIRED,origin=BASE_TYPE_REQUIRED,redirect_uris=BASE_TYPE_REQUIRED"),
+                arguments("missing_name", body("origin", ORIGIN, "redirect_uris", uris(CALLBACK)), "name=BASE_TYPE_REQUIRED"),
+                arguments("name_not_string", valid().replace("\"app\"", "5"), "name=STRING_TYPE_COERCE"),
+                arguments("name_empty", valid().replace("\"app\"", "\"\""), "name=STRING_TYPE_MIN"),
+                arguments("name_too_long", valid().replace("\"app\"", "\"" + repeat(Application.MAX_NAME_LENGTH + 1) + "\""), "name=STRING_TYPE_MAX"),
+                arguments("missing_origin", body("name", "app", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_REQUIRED"),
+                arguments("origin_not_string", body("name", "app", "origin", 5, "redirect_uris", uris(CALLBACK)), "origin=STRING_TYPE_COERCE"),
+                arguments("origin_empty", body("name", "app", "origin", "", "redirect_uris", uris(CALLBACK)), "origin=STRING_TYPE_MIN"),
+                arguments("origin_not_url", body("name", "app", "origin", "not-a-url", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
+                arguments("origin_not_https", body("name", "app", "origin", "http://example.org", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
+                arguments("origin_localhost", body("name", "app", "origin", "https://localhost", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
+                arguments("origin_loopback", body("name", "app", "origin", "https://127.0.0.1", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
+                arguments("origin_private", body("name", "app", "origin", "https://192.168.0.1", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
+                arguments("description_not_string", valid("description", 5), "description=STRING_TYPE_COERCE"),
+                arguments("description_too_long", valid("description", repeat(Application.MAX_DESCRIPTION_LENGTH + 1)), "description=STRING_TYPE_MAX"),
+                arguments("icon_not_string", valid("icon_id", 5), "icon_id=STRING_TYPE_COERCE"),
+                arguments("icon_too_long", valid("icon_id", repeat(Application.ICON_CID_MAX_LENGTH + 1)), "icon_id=STRING_TYPE_MAX"),
+                arguments("flags_not_number", valid("flags", "all"), "flags=NUMBER_TYPE_COERCE"),
+                arguments("flags_negative", valid("flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("missing_redirect_uris", body("name", "app", "origin", ORIGIN), "redirect_uris=BASE_TYPE_REQUIRED"),
+                arguments("redirect_uris_not_array", body("name", "app", "origin", ORIGIN, "redirect_uris", CALLBACK), "redirect_uris=MODEL_TYPE_CONVERT"),
+                arguments("redirect_uris_empty", body("name", "app", "origin", ORIGIN, "redirect_uris", uris()), "redirect_uris=BASE_TYPE_MIN_LENGTH"),
+                arguments("redirect_uris_too_many", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, CALLBACK, CALLBACK, CALLBACK, CALLBACK, CALLBACK)), "redirect_uris=BASE_TYPE_MAX_LENGTH"),
+                arguments("redirect_uris_not_string", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(5)), "redirect_uris=STRING_TYPE_COERCE"),
+                arguments("redirect_uris_one_not_string", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, 5)), "redirect_uris=STRING_TYPE_COERCE"),
+                arguments("redirect_uris_too_long", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("https://example.org/" + repeat(Application.MAX_URL_LENGTH))), "redirect_uris=STRING_TYPE_MAX"),
+                arguments("redirect_uris_one_too_long", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, "https://example.org/" + repeat(Application.MAX_URL_LENGTH))), "redirect_uris=STRING_TYPE_MAX"),
+                arguments("redirect_uris_not_url", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("not-a-url")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_one_not_url", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, "not-a-url")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("everything_invalid", body("name", 5, "origin", 5, "description", 5, "icon_id", 5, "flags", "all", "redirect_uris", "all"), "name=STRING_TYPE_COERCE,origin=STRING_TYPE_COERCE,description=STRING_TYPE_COERCE,icon_id=STRING_TYPE_COERCE,flags=NUMBER_TYPE_COERCE,redirect_uris=MODEL_TYPE_CONVERT"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -186,7 +186,7 @@ public class ApplicationCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -196,21 +196,21 @@ public class ApplicationCreateActionTest extends RestActionTest
     {
         assertThatRequestTo(newAction())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest(name = "{0}")
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -303,7 +303,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .withJsonBody(valid())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MAX_APPLICATIONS)
                 .whenHandled();
 
         assertThat(created.getAllValues()).isEmpty();
@@ -333,7 +333,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .withJsonBody(valid())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -348,7 +348,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .withJsonBody(valid())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.APPLICATION_ALREADY_EXISTS)
                 .whenHandled();
     }
 
@@ -359,7 +359,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .withJsonBody(valid())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -375,7 +375,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .withJsonBody(valid())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

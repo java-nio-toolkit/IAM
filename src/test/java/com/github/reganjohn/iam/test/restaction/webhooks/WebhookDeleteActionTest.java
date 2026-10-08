@@ -61,11 +61,11 @@ public class WebhookDeleteActionTest extends RestActionTest
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
-                arguments("empty", ""),
-                arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "04d3c48c-1255-7041-8dc9"),
-                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
-                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c"));
+                arguments("empty", "", "webhook_id=BASE_TYPE_REQUIRED"),
+                arguments("not_uuid", "not-a-uuid", "webhook_id=UUID_TYPE_COERCE"),
+                arguments("too_short", "04d3c48c-1255-7041-8dc9", "webhook_id=UUID_TYPE_COERCE"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", "webhook_id=UUID_TYPE_COERCE"),
+                arguments("without_dashes", "04d3c48c125570418dc9765df2ce977c", "webhook_id=UUID_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -79,14 +79,14 @@ public class WebhookDeleteActionTest extends RestActionTest
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String webhookId)
+    void testInvalidInputs(String name, String webhookId, String errors)
     {
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
                 .withRouteParams(webhookId)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -140,7 +140,7 @@ public class WebhookDeleteActionTest extends RestActionTest
                 .withRouteParams(WEBHOOK_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -156,7 +156,7 @@ public class WebhookDeleteActionTest extends RestActionTest
                 .withRouteParams(WEBHOOK_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_WEBHOOK)
                 .whenHandled();
     }
 
@@ -172,7 +172,7 @@ public class WebhookDeleteActionTest extends RestActionTest
                 .withRouteParams(WEBHOOK_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
     }
 
@@ -183,7 +183,7 @@ public class WebhookDeleteActionTest extends RestActionTest
                 .withRouteParams(WEBHOOK_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -199,7 +199,7 @@ public class WebhookDeleteActionTest extends RestActionTest
                 .withRouteParams(WEBHOOK_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

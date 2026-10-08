@@ -62,11 +62,11 @@ public class SessionDeleteActionTest extends RestActionTest
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
-                arguments("empty", ""),
-                arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "02b1a26a-f033-7e2f-8ba7"),
-                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
-                arguments("without_dashes", "02b1a26af0337e2f8ba7543bd0ac755a"));
+                arguments("empty", "", "session_id=BASE_TYPE_REQUIRED"),
+                arguments("not_uuid", "not-a-uuid", "session_id=UUID_TYPE_COERCE"),
+                arguments("too_short", "02b1a26a-f033-7e2f-8ba7", "session_id=UUID_TYPE_COERCE"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", "session_id=UUID_TYPE_COERCE"),
+                arguments("without_dashes", "02b1a26af0337e2f8ba7543bd0ac755a", "session_id=UUID_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -80,14 +80,14 @@ public class SessionDeleteActionTest extends RestActionTest
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String sessionId)
+    void testInvalidInputs(String name, String sessionId, String errors)
     {
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
                 .withRouteParams(sessionId)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -141,7 +141,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .withRouteParams(SESSION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION)
                 .whenHandled();
 
         verify(session, never()).delete();
@@ -157,7 +157,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .withRouteParams(SESSION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -174,7 +174,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .withRouteParams(SESSION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_SESSION)
                 .whenHandled();
     }
 
@@ -190,7 +190,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .withRouteParams(SESSION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
     }
 
@@ -201,7 +201,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .withRouteParams(SESSION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -217,7 +217,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .withRouteParams(SESSION_ID.toString())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());

@@ -88,22 +88,22 @@ public class SessionEditActionTest extends RestActionTest
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
-                arguments("user_agent_not_string", body("user_agent", 5)),
-                arguments("user_agent_empty", body("user_agent", "")),
-                arguments("user_agent_too_long", body("user_agent", StringUtils.repeat('a', User.MAX_NAME_LENGTH + 1))),
-                arguments("flags_not_number", body("flags", "x")),
-                arguments("flags_negative", body("flags", -1)),
-                arguments("every_field_invalid", body("user_agent", 5, "flags", -1)));
+                arguments("user_agent_not_string", body("user_agent", 5), "user_agent=STRING_TYPE_COERCE"),
+                arguments("user_agent_empty", body("user_agent", ""), "user_agent=STRING_TYPE_MIN"),
+                arguments("user_agent_too_long", body("user_agent", StringUtils.repeat('a', User.MAX_NAME_LENGTH + 1)), "user_agent=STRING_TYPE_MAX"),
+                arguments("flags_not_number", body("flags", "x"), "flags=NUMBER_TYPE_COERCE"),
+                arguments("flags_negative", body("flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("every_field_invalid", body("user_agent", 5, "flags", -1), "user_agent=STRING_TYPE_COERCE,flags=NUMBER_TYPE_MIN"));
     }
 
     static Stream<Arguments> testInvalidSessionId()
     {
         return Stream.of(
-                arguments("empty", ""),
-                arguments("not_uuid", "not-a-uuid"),
-                arguments("too_short", "02b1a26a-f033-7e2f-8ba7"),
-                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz"),
-                arguments("without_dashes", "02b1a26af0337e2f8ba7543bd0ac755a"));
+                arguments("empty", "", "session_id=BASE_TYPE_REQUIRED"),
+                arguments("not_uuid", "not-a-uuid", "session_id=UUID_TYPE_COERCE"),
+                arguments("too_short", "02b1a26a-f033-7e2f-8ba7", "session_id=UUID_TYPE_COERCE"),
+                arguments("bad_characters", "zzzzzzzz-zzzz-zzzz-zzzz-zzzzzzzzzzzz", "session_id=UUID_TYPE_COERCE"),
+                arguments("without_dashes", "02b1a26af0337e2f8ba7543bd0ac755a", "session_id=UUID_TYPE_COERCE"));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -145,7 +145,7 @@ public class SessionEditActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(SESSION_ID.toString())
                 .withBody(nonObjectBody())
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
@@ -156,14 +156,14 @@ public class SessionEditActionTest extends RestActionTest
         assertThatRequestTo(newAction())
                 .withRouteParams(SESSION_ID.toString())
                 .withBody(mock(RequestBody.class))
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.INVALID_FROM_OBJECT_BODY)
                 .hasNoResponse()
                 .whenHandled();
     }
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidInputs(String name, String json)
+    void testInvalidInputs(String name, String json, String errors)
     {
         withProof(SignType.ED25519);
         withAccess(USER_ID);
@@ -172,7 +172,7 @@ public class SessionEditActionTest extends RestActionTest
                 .withRouteParams(SESSION_ID.toString())
                 .withJsonBody(json)
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -181,7 +181,7 @@ public class SessionEditActionTest extends RestActionTest
 
     @MethodSource
     @ParameterizedTest
-    void testInvalidSessionId(String name, String sessionId)
+    void testInvalidSessionId(String name, String sessionId, String errors)
     {
         withProof(SignType.ED25519);
         withAccess(USER_ID);
@@ -190,7 +190,7 @@ public class SessionEditActionTest extends RestActionTest
                 .withRouteParams(sessionId)
                 .withJsonBody(body("user_agent", "curl/8.0"))
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFormErrors(errors.split("[=,]"))
                 .hasNoResponse()
                 .whenHandled();
 
@@ -307,7 +307,7 @@ public class SessionEditActionTest extends RestActionTest
                 .withJsonBody(body("user_agent", "curl/8.0"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
                 .whenHandled();
     }
 
@@ -325,7 +325,7 @@ public class SessionEditActionTest extends RestActionTest
                 .withJsonBody(body("user_agent", "curl/8.0"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.UNKNOWN_SESSION)
                 .whenHandled();
     }
 
@@ -354,7 +354,7 @@ public class SessionEditActionTest extends RestActionTest
                 .withJsonBody(body("user_agent", "curl/8.0"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot()
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
@@ -372,7 +372,7 @@ public class SessionEditActionTest extends RestActionTest
                 .withJsonBody(body("user_agent", "curl/8.0"))
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailureMatchingSnapshot(name)
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
