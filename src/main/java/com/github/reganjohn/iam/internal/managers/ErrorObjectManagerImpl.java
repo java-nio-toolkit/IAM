@@ -22,6 +22,7 @@ import com.github.adamorgan.jnt.api.events.session.InactiveType;
 import com.github.adamorgan.jnt.api.events.session.SessionInactiveEvent;
 import com.github.adamorgan.jnt.api.exceptions.*;
 import com.github.adamorgan.jnt.api.handle.classic.ClassicObjectController;
+import com.github.adamorgan.jnt.api.managers.RestRateLimiter;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -41,11 +42,14 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
+import java.io.UnsupportedEncodingException;
 import java.net.ProtocolException;
+import java.net.SocketTimeoutException;
 import java.security.GeneralSecurityException;
 import java.security.SignatureException;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.RejectedExecutionException;
 
 public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 {
@@ -54,10 +58,17 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final boolean printStackTrace;
+    private final long retryAfter;
 
     public ErrorObjectManagerImpl(boolean printStackTrace)
     {
+        this(printStackTrace, 0);
+    }
+
+    public ErrorObjectManagerImpl(boolean printStackTrace, long retryAfter)
+    {
         this.printStackTrace = printStackTrace;
+        this.retryAfter = retryAfter;
     }
 
     @Override
@@ -72,6 +83,12 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleProtocolFailure(context, error, StatusReason.BAD_REQUEST);
         else if (error instanceof BufferLimitedException)
             handleProtocolFailure(context, error, StatusReason.REQUEST_ENTITY_TOO_LARGE);
+        else if (error instanceof UnsupportedEncodingException)
+            handleFailure(context, 0, error.getMessage(), StatusReason.UNSUPPORTED_MEDIA_TYPE);
+        else if (error instanceof SocketTimeoutException)
+            handleProtocolFailure(context, error, StatusReason.REQUEST_TIMEOUT);
+        else if (error instanceof RejectedExecutionException)
+            handleOverloadFailure(context, error);
         else if (error instanceof InvalidTokenException)
             handleFailure(context, ErrorResponse.INVALID_TOKEN, StatusReason.UNAUTHORIZED);
         else if (error instanceof MissingAccessException)
@@ -210,9 +227,22 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 
     private void handleProtocolFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error, @Nonnull StatusReason reason)
     {
+        handleProtocolFailure(context, error, reason, new CaseInsensitiveMap<>());
+    }
+
+    private void handleOverloadFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error)
+    {
+        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        if (retryAfter > 0)
+            headers.put(RestRateLimiter.RETRY_AFTER_HEADER, Collections.singletonList(String.valueOf(retryAfter)));
+        handleProtocolFailure(context, error, StatusReason.SERVICE_UNAVAILABLE, headers);
+    }
+
+    private void handleProtocolFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error, @Nonnull StatusReason reason,
+                                       @Nonnull CaseInsensitiveMap<String, Collection<String>> headers)
+    {
         ErrorResponseException errorResponse = new ErrorResponseException(0, error.getMessage());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
-        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
         headers.put(ClassicObjectController.CONNECTION, Collections.singletonList(ClassicObjectController.CLOSE));
         Response response = new Response(context, reason, headers, body);
         context.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
