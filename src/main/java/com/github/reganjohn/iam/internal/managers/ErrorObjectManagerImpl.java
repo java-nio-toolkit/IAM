@@ -21,6 +21,7 @@ import com.github.adamorgan.jnt.api.events.GenericEvent;
 import com.github.adamorgan.jnt.api.events.session.InactiveType;
 import com.github.adamorgan.jnt.api.events.session.SessionInactiveEvent;
 import com.github.adamorgan.jnt.api.exceptions.*;
+import com.github.adamorgan.jnt.api.handle.classic.ClassicObjectController;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -34,13 +35,17 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
+import java.net.ProtocolException;
 import java.security.GeneralSecurityException;
 import java.security.SignatureException;
+import java.util.Collection;
+import java.util.Collections;
 
 public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 {
@@ -63,6 +68,10 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, ErrorResponse.INVALID_REQUEST_BODY, StatusReason.BAD_REQUEST);
         else if (error instanceof RateLimitedException)
             handleFailure(context, request, (RateLimitedException) error);
+        else if (error instanceof ProtocolException)
+            handleProtocolFailure(context, error, StatusReason.BAD_REQUEST);
+        else if (error instanceof BufferLimitedException)
+            handleProtocolFailure(context, error, StatusReason.REQUEST_ENTITY_TOO_LARGE);
         else if (error instanceof InvalidTokenException)
             handleFailure(context, ErrorResponse.INVALID_TOKEN, StatusReason.UNAUTHORIZED);
         else if (error instanceof MissingAccessException)
@@ -197,6 +206,16 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
         Response response = new Response(context, reason, new CaseInsensitiveMap<>(), body);
         context.writeAndFlush(response);
+    }
+
+    private void handleProtocolFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error, @Nonnull StatusReason reason)
+    {
+        ErrorResponseException errorResponse = new ErrorResponseException(0, error.getMessage());
+        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
+        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        headers.put(ClassicObjectController.CONNECTION, Collections.singletonList(ClassicObjectController.CLOSE));
+        Response response = new Response(context, reason, headers, body);
+        context.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
     private void onSessionInactive(@Nonnull ChannelHandlerContext context, @Nonnull SessionInactiveEvent event)
