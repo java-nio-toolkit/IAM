@@ -161,7 +161,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(new ProofCryptoManagerImpl())
-                .addEventListeners(new GlobalRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user"))
+                .addEventListeners(new GlobalRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user", 1024))
                 .addEventListeners(accessSignatureManager)
                 .addEventListeners(manager)
 
@@ -216,7 +216,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new WebhookEditActionImpl(this))
                 .addEventListenerProvider(() -> new WebhookDeleteActionImpl(this))
 
-                .addEventListeners(new ErrorObjectManagerImpl(true))
+                .addEventListeners(new ErrorObjectManagerImpl(true, 10))
                 .build();
     }
 
