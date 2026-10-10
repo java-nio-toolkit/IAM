@@ -20,6 +20,7 @@ import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.exceptions.MissingAttributeException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.interactions.middle.digest.ContentAssertionRequest;
+import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Route;
@@ -27,6 +28,7 @@ import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
+import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
@@ -51,6 +53,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -74,6 +77,9 @@ public class AccessSignatureManagerTest extends IntegrationTest
             Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
         pair = newPair();
         channel.attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(entryOf(pair));
+        AccessEntryManager entries = mock(AccessEntryManager.class);
+        when(entries.getAudiences()).thenReturn(Collections.singletonList("https://" + AUTHORITY));
+        channel.attr(AccessEntryManagerImpl.IDENTIFIER).set(entries);
     }
 
     private static KeyPair newPair() throws Exception
@@ -125,7 +131,6 @@ public class AccessSignatureManagerTest extends IntegrationTest
     {
         CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
         headers.put("Host", Collections.singletonList(AUTHORITY));
-        headers.put("Forwarded", Collections.singletonList("proto=https"));
         return headers;
     }
 
