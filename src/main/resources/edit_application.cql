@@ -21,6 +21,6 @@ SET name          = :name,
     redirect_uris = :redirect_uris,
     icon_id       = :icon_id
 WHERE owner_id = :user_id
-  AND application_id = :application_id IF EXISTS
+  AND application_id = :application_id IF flags = :current_flags
 
 

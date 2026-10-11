@@ -264,6 +264,26 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
                 .whenHandled();
     }
 
+    @ValueSource(strings = {"javascript://x/%0aalert(1)", "http://example.org/callback", "https://example.org/callback#fragment"})
+    @ParameterizedTest
+    void testInvalidRedirectUri(String redirectUri)
+    {
+        withProofOfUser();
+        ApplicationContextInteraction interaction = newInteraction();
+        when(interaction.getRedirectUri()).thenReturn(redirectUri);
+        withStoredInteraction(interaction);
+        ApplicationInteractionOverrideActionImpl action = spy(newAction());
+
+        assertThatRequestTo(action)
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.INVALID_REDIRECT_URI)
+                .whenHandled();
+
+        verify(action, never()).createResponse(any(), any(), any(), any());
+    }
+
     @Test
     void testReferenceIsNotReused()
     {

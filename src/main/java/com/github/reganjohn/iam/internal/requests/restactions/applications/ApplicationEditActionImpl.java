@@ -40,6 +40,7 @@ import com.github.reganjohn.iam.api.utils.applications.ApplicationEditBuilder;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
@@ -252,8 +253,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
         api.retrieveUserById(userId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
-                .map(application -> fromData(application, rawBody))
-                .flatMap(this::modify)
+                .flatMap(application -> modify(application, fromData(application, rawBody)))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
@@ -294,10 +294,14 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> modify(@Nonnull ApplicationEditData application)
+    public InteractionCallbackAction<Void> modify(@Nonnull Application application, @Nonnull ApplicationEditData data)
     {
         Checks.notNull(application, "Application");
-        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("edit_application.cql"), application)
+        Checks.notNull(data, "ApplicationEditData");
+        InteractionMapping map = new InteractionMapping.Builder(data.toMap())
+                .put("current_flags", application.getFlagsRaw())
+                .build();
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("edit_application.cql"), map)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,

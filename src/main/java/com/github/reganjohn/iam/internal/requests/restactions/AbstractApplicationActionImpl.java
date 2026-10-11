@@ -38,9 +38,11 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
@@ -72,7 +74,20 @@ public abstract class AbstractApplicationActionImpl extends AbstractOverrideActi
         else if (!array.allMatch(node -> node.textValue().length() <= Application.MAX_URL_LENGTH))
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"redirect_uris\" value may not be longer than %d characters.", Application.MAX_URL_LENGTH));
-        else if (!array.allMatch(node -> MiscUtil.isURL(node.textValue(), false)))
+        else if (!array.allMatch(node -> isRedirectUri(node.textValue())))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "The \"redirect_uris\" contains value which is not a url.");
+    }
+
+    protected boolean isRedirectUri(@Nullable String str)
+    {
+        if (!MiscUtil.isURL(str, false))
+            return false;
+        URI uri = URI.create(str);
+        if (uri.getRawUserInfo() != null || uri.getRawFragment() != null)
+            return false;
+        else if (Helpers.equals(uri.getScheme(), "https", true))
+            return true;
+        else
+            return Helpers.equals(uri.getScheme(), "http", true) && Helpers.contains(Arrays.asList("localhost", "127.0.0.1", "[::1]"), uri.getHost(), true);
     }
 }

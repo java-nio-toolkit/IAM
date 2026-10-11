@@ -27,6 +27,7 @@ import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
@@ -121,6 +122,8 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!rawData.isType("permissions", DataType.INT))
             throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"permissions\" is not number.");
+        else if (rawData.getLong("permissions") < 0)
+            throw new DataObjectParsingException(NUMBER_TYPE_MIN, "Value \"permissions\" should be greater than or equal to 0.");
     }
 
     private void handleErrorResponse(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -151,13 +154,18 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
     {
         Checks.notNull(override, "Entitlement");
         Checks.notNull(rawBody, "Body");
+        long permissions = rawBody.getLong("permissions", override.getPermissionsRaw());
+        if ((permissions & ~(override.getPermissionsRaw() & Permission.getRaw(Permission.values()))) != 0)
+            throw new ErrorResponseException(ErrorResponse.MISSING_ACCESS);
         InteractionMapping map = new InteractionMapping.Builder()
                 .put("user_id", override.getUserId())
                 .put("application_id", override.getApplicationId())
-                .put("permissions", rawBody.getLong("permissions", override.getPermissionsRaw()))
+                .put("permissions", permissions)
                 .put("updated_at", OffsetDateTime.now())
+                .put("flags", override.getFlagsRaw())
+                .put("current_permissions", override.getPermissionsRaw())
                 .build();
-        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.entitlements SET permissions = :permissions, updated_at = :updated_at WHERE user_id = :user_id AND application_id = :application_id IF EXISTS", map)
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.entitlements SET permissions = :permissions, updated_at = :updated_at WHERE user_id = :user_id AND application_id = :application_id IF flags = :flags AND permissions = :current_permissions", map)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,

@@ -188,8 +188,6 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
         else if (!MiscUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
-        else if (MiscUtil.isUnsafeURL(URI.create(url)))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
     }
     
     private void handleScopes(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -246,7 +244,9 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
     {
         Checks.notNull(webhook, "Webhook");
         Checks.notNull(rawBody, "Body");
-        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :endpoint, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF EXISTS", fromData(webhook, rawBody))
+        if (rawBody.hasKey("url") && MiscUtil.isUnsafeURL(URI.create(rawBody.getString("url"))))
+            throw createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe."));
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :endpoint, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF flags = :flags", fromData(webhook, rawBody))
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,

@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.internal.requests.restactions.self;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
-import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -30,7 +29,6 @@ import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
-import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
@@ -65,8 +63,6 @@ import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
-import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.INVALID_REQUEST;
 
 public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements SelfUserCreateAction
 {
@@ -210,9 +206,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        else if (!context.channel().hasAttr(ProofObjectManagerImpl.CONTEXT))
-            throw new ProofAccessException(api.getIdentifierString(), INVALID_REQUEST, "This action requires a DPoP proof.");
-        ProofObjectData data = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
+        ProofObjectData data = retrieveSelfProof(context);
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
         try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))

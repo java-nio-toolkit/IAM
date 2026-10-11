@@ -151,7 +151,12 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
     private void withStoredApplication()
     {
-        Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://example.org", 0, CALLBACK);
+        withStoredApplication(CALLBACK);
+    }
+
+    private void withStoredApplication(String redirectUri)
+    {
+        Application application = withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, "https://example.org", 0, redirectUri);
         User owner = withUser(OWNER_ID, "bob", null, 0);
         withApplication(owner, APPLICATION_ID, completed(application));
         withRetrieval(OWNER_ID, completed(owner));
@@ -251,6 +256,10 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("finish_uri_missing", grant(finish(finish -> finish.remove("uri")))),
                 arguments("finish_uri_not_string", grant(finish(finish -> finish.put("uri", 5)))),
                 arguments("finish_uri_not_url", grant(finish(finish -> finish.put("uri", "not-a-url")))),
+                arguments("finish_uri_http", grant(finish(finish -> finish.put("uri", "http://example.org/callback")))),
+                arguments("finish_uri_http_localhost_suffix", grant(finish(finish -> finish.put("uri", "http://localhost.example.org/callback")))),
+                arguments("finish_uri_userinfo", grant(finish(finish -> finish.put("uri", "https://user@example.org/callback")))),
+                arguments("finish_uri_fragment", grant(finish(finish -> finish.put("uri", "https://example.org/callback#fragment")))),
                 arguments("finish_nonce_missing", grant(finish(finish -> finish.remove("nonce")))),
                 arguments("finish_nonce_empty", grant(finish(finish -> finish.put("nonce", "")))),
                 arguments("finish_nonce_too_short", grant(finish(finish -> finish.put("nonce", "1")))),
@@ -390,7 +399,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
 
         assertThatGranting(newAction(), grant().toString())
                 .hasNoResponse()
-                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_USER)
+                .hasInteractionResponse(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_APPLICATION)
                 .whenHandled();
     }
 
@@ -439,6 +448,21 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(created.getAllValues()).isEmpty();
+    }
+
+    @ValueSource(strings = {"http://localhost:8080/callback", "http://127.0.0.1/callback", "http://[::1]:8080/callback"})
+    @ParameterizedTest
+    void testLoopbackFinishUri(String uri)
+    {
+        withProofOfClient();
+        withStoredApplication(uri);
+        ArgumentCaptor<ApplicationContextInteraction> created = ArgumentCaptor.forClass(ApplicationContextInteraction.class);
+
+        assertThatGranting(newAction(created, true), grant(finish(finish -> finish.put("uri", uri))))
+                .hasStatus(StatusReason.OK.code)
+                .whenHandled();
+
+        assertThat(created.getValue().getRedirectUri()).isEqualTo(uri);
     }
 
     @Test

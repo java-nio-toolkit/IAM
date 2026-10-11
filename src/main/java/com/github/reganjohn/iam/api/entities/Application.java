@@ -146,7 +146,7 @@ public interface Application extends IUnique
          */
         public static final ApplicationFlag[] EMPTY_FLAGS = new ApplicationFlag[0];
 
-        public static final long ALL = 1 | getRaw(EnumSet.allOf(ApplicationFlag.class));
+        public static final long ALL = getRaw(EnumSet.allOf(ApplicationFlag.class));
 
         public static final long SYSTEM = ALL & ~getRaw();
 

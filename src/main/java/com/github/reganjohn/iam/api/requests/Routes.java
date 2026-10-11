@@ -40,6 +40,11 @@ public class Routes
         public static final Route DELETE_ENTITLEMENT = new Route(DELETE, "users/@me/applications/{application_id}");
     }
 
+    public static class Health
+    {
+        public static final Route GET_HEALTH = new Route(GET, "health", true);
+    }
+
     public static class Interactions
     {
         public static final Route CREATE_APPLICATION_INTERACTION = new Route(POST, "users/{user_id}/applications/{application_id}/interactions", true);

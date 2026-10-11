@@ -150,9 +150,6 @@ public class ApplicationCreateActionTest extends RestActionTest
                 arguments("origin_empty", body("name", "app", "origin", "", "redirect_uris", uris(CALLBACK)), "origin=STRING_TYPE_MIN"),
                 arguments("origin_not_url", body("name", "app", "origin", "not-a-url", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
                 arguments("origin_not_https", body("name", "app", "origin", "http://example.org", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
-                arguments("origin_localhost", body("name", "app", "origin", "https://localhost", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
-                arguments("origin_loopback", body("name", "app", "origin", "https://127.0.0.1", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
-                arguments("origin_private", body("name", "app", "origin", "https://192.168.0.1", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
                 arguments("description_not_string", valid("description", 5), "description=STRING_TYPE_COERCE"),
                 arguments("description_too_long", valid("description", repeat(Application.MAX_DESCRIPTION_LENGTH + 1)), "description=STRING_TYPE_MAX"),
                 arguments("icon_not_string", valid("icon_id", 5), "icon_id=STRING_TYPE_COERCE"),
@@ -169,6 +166,12 @@ public class ApplicationCreateActionTest extends RestActionTest
                 arguments("redirect_uris_one_too_long", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, "https://example.org/" + repeat(Application.MAX_URL_LENGTH))), "redirect_uris=STRING_TYPE_MAX"),
                 arguments("redirect_uris_not_url", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("not-a-url")), "redirect_uris=BASE_TYPE_CHOICES"),
                 arguments("redirect_uris_one_not_url", body("name", "app", "origin", ORIGIN, "redirect_uris", uris(CALLBACK, "not-a-url")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_javascript", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("javascript://x/%0aalert(1)")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_custom_scheme", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("app://example.org/callback")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_http", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("http://example.org/callback")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_http_localhost_suffix", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("http://localhost.example.org/callback")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_fragment", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("https://example.org/callback#fragment")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_userinfo", body("name", "app", "origin", ORIGIN, "redirect_uris", uris("https://user@example.org/callback")), "redirect_uris=BASE_TYPE_CHOICES"),
                 arguments("everything_invalid", body("name", 5, "origin", 5, "description", 5, "icon_id", 5, "flags", "all", "redirect_uris", "all"), "name=STRING_TYPE_COERCE,origin=STRING_TYPE_COERCE,description=STRING_TYPE_COERCE,icon_id=STRING_TYPE_COERCE,flags=NUMBER_TYPE_COERCE,redirect_uris=MODEL_TYPE_CONVERT"));
     }
 
@@ -217,12 +220,30 @@ public class ApplicationCreateActionTest extends RestActionTest
         verify(api, never()).retrieveUserById(any());
     }
 
+    @ValueSource(strings = {"https://localhost", "https://127.0.0.1", "https://192.168.0.1"})
+    @ParameterizedTest
+    void testUnsafeOrigin(String origin)
+    {
+        ArgumentCaptor<ApplicationCreateData> created = ArgumentCaptor.forClass(ApplicationCreateData.class);
+        withStoredUser(1);
+
+        assertThatRequestTo(newAction(created))
+                .withJsonBody(body("name", "app", "origin", origin, "redirect_uris", uris(CALLBACK)))
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFormErrors("origin", "BASE_TYPE_CHOICES")
+                .hasNoResponse()
+                .whenHandled();
+
+        assertThat(created.getAllValues()).isEmpty();
+    }
+
     @ValueSource(strings = {
             "{\"name\":\"a\",\"origin\":\"https://example.org\",\"redirect_uris\":[\"https://example.org/callback\"]}",
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"description\":\"\",\"redirect_uris\":[\"https://example.org/callback\"]}",
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"description\":null,\"redirect_uris\":[\"https://example.org/callback\"]}",
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"redirect_uris\":[\"https://example.org/1\",\"https://example.org/2\",\"https://example.org/3\",\"https://example.org/4\",\"https://example.org/5\"]}",
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"redirect_uris\":[\"https://example.org/callback\"],\"unknown\":true}",
+            "{\"name\":\"app\",\"origin\":\"https://example.org\",\"redirect_uris\":[\"http://localhost:8080/callback\",\"http://127.0.0.1/callback\",\"http://[::1]:8080/callback\"]}",
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"description\":\"description\",\"icon_id\":\"icon-cid\",\"flags\":4,\"redirect_uris\":[\"https://example.org/callback\"]}"})
     @ParameterizedTest
     void testValidInputs(String json)

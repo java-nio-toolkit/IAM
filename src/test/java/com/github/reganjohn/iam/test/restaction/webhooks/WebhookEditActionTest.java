@@ -111,9 +111,6 @@ public class WebhookEditActionTest extends RestActionTest
                 arguments("url_not_string", body("url", 5), "url=STRING_TYPE_COERCE"),
                 arguments("url_not_url", body("url", "not-a-url"), "url=BASE_TYPE_CHOICES"),
                 arguments("url_not_https", body("url", "http://example.org/hook"), "url=BASE_TYPE_CHOICES"),
-                arguments("url_localhost", body("url", "https://localhost/hook"), "url=BASE_TYPE_CHOICES"),
-                arguments("url_loopback", body("url", "https://127.0.0.1/hook"), "url=BASE_TYPE_CHOICES"),
-                arguments("url_private", body("url", "https://192.168.0.1/hook"), "url=BASE_TYPE_CHOICES"),
                 arguments("scopes_not_number", body("scopes", "all"), "scopes=NUMBER_TYPE_COERCE"),
                 arguments("everything_invalid", body("name", 5, "avatar_id", 5, "url", 5, "scopes", "all"), "name=STRING_TYPE_COERCE,avatar_id=STRING_TYPE_COERCE,url=STRING_TYPE_COERCE,scopes=NUMBER_TYPE_COERCE"));
     }
@@ -237,6 +234,21 @@ public class WebhookEditActionTest extends RestActionTest
                 .whenHandled();
 
         verify(action).modify(webhook, modified.getValue());
+    }
+
+    @ValueSource(strings = {"https://localhost/hook", "https://127.0.0.1/hook", "https://192.168.0.1/hook"})
+    @ParameterizedTest
+    void testUnsafeUrl(String url)
+    {
+        withStoredWebhook();
+
+        assertThatRequestTo(newAction())
+                .withRouteParams(WEBHOOK_ID.toString())
+                .withJsonBody(body("url", url))
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFormErrors("url", "BASE_TYPE_CHOICES")
+                .hasNoResponse()
+                .whenHandled();
     }
 
     @Test
@@ -369,6 +381,23 @@ public class WebhookEditActionTest extends RestActionTest
                 .containsEntry("endpoint", "https://example.net/hook")
                 .containsEntry("scopes", 7L)
                 .containsEntry("flags", 4L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testModifyRace() throws Exception
+    {
+        InteractionMappingActionImpl<Void> modification = modification(withWebhook(WEBHOOK_ID, USER_ID, "hook", null, URL, 0, 4), DataObject.empty());
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+
+        modification.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(false, false));
+
+        assertThat(modification.getContent()).contains("IF flags = :flags");
+        assertThat(modification.getParams()).containsEntry("flags", 4L);
+        verify(interaction, never()).onSuccess(any());
+        verify(interaction).onFailure(argThat(error ->
+                error instanceof InvalidResponseException
+                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.UNKNOWN_WEBHOOK.getCode()));
     }
 
     @Test

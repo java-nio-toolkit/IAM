@@ -356,7 +356,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!raw.isType("uri", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"uri\" value is not string.");
-        else if (!MiscUtil.isURL(raw.getString("uri"), false))
+        else if (!isRedirectUri(raw.getString("uri")))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"uri\" is not url.");
         else if (!raw.hasKey("nonce"))
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
@@ -421,7 +421,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     {
         int code = failure.getErrorCode();
         if (code == ErrorResponse.UNKNOWN_USER.getCode() || code == ErrorResponse.UNKNOWN_APPLICATION.getCode())
-            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, code == ErrorResponse.UNKNOWN_USER.getCode() ? ErrorResponse.UNKNOWN_USER : ErrorResponse.UNKNOWN_APPLICATION));
+            context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_APPLICATION));
         else
             context.fireExceptionCaught(failure);
     }

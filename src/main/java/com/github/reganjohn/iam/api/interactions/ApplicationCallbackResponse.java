@@ -67,7 +67,6 @@ public interface ApplicationCallbackResponse
     @Nonnull
     String getContinueHash();
 
-    //todo:rename
     @Nonnull
     DataObject getAccessRaw();
 

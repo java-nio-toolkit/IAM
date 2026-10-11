@@ -99,6 +99,7 @@ public class SessionUpdateActionTest extends RestActionTest
     {
         AccessObjectData access = mock(AccessObjectData.class);
         when(access.getThumbprint()).thenReturn("proof-thumbprint");
+        when(access.getExpirationTimestamp()).thenReturn(System.currentTimeMillis());
         when(access.getSubject()).thenReturn(subject);
         when(access.getContextData()).thenReturn(confirmation);
         when(access.getActor()).thenReturn(actor);

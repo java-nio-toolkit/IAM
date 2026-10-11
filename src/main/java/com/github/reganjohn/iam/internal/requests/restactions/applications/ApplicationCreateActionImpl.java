@@ -133,8 +133,6 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not url.");
         else if (!MiscUtil.isURL(body.getString("origin"), true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe.");
-        else if (MiscUtil.isUnsafeURL(URI.create(body.getString("origin"))))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe.");
     }
 
     private void handleDescription(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -269,7 +267,9 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
     @CheckReturnValue
     private ApplicationCreateData fromData(@Nonnull DataObject rawBody, @Nonnull UUID userId, int count)
     {
-        if (count >= MAX_APPLICATION_COUNT)
+        if (MiscUtil.isUnsafeURL(URI.create(rawBody.getString("origin"))))
+            throw createErrorResponse("origin", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe."));
+        else if (count >= MAX_APPLICATION_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_APPLICATIONS);
         UUIDv7 applicationId = UUIDv7.randomUUID();
         String name = rawBody.getString("name");

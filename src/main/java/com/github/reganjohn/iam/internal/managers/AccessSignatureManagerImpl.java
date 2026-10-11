@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.internal.managers;
 
+import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.exceptions.MissingAttributeException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
@@ -67,8 +68,11 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
     public KeyPair getSecret(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                              @Nonnull EdwardsMetadata metadata) throws IOException
     {
-        if (!acceptInboundMessage(request.getRoute().getBaseRoute()))
+        Route route = request.getRoute().getBaseRoute();
+        if (!acceptInboundMessage(route))
             return super.getSecret(context, request, metadata);
+        else if (route == Routes.Session.ADD_SESSION && !Helpers.contains(metadata.getComponents(), ProofObjectManager.AUTHORIZATION, true))
+            throw new InvalidTokenException();
         else
             return new KeyPair(retrieveAccess(context).getPublic(), null);
     }
@@ -167,6 +171,7 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
 
     private boolean acceptInboundMessage(@Nonnull Route route)
     {
-        return route == Routes.Interactions.CREATE_APPLICATION_INTERACTION || route == Routes.Interactions.EXECUTE_APPLICATION_INTERACTION;
+        return route == Routes.Interactions.CREATE_APPLICATION_INTERACTION || route == Routes.Interactions.EXECUTE_APPLICATION_INTERACTION
+                || route == Routes.Session.ADD_SESSION;
     }
 }

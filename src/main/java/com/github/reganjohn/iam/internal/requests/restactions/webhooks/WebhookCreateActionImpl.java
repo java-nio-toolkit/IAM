@@ -159,8 +159,6 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
         else if (!MiscUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
-        else if (MiscUtil.isUnsafeURL(URI.create(url)))
-            throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
     }
 
     private void handleScopes(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody,
@@ -211,7 +209,9 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
     @CheckReturnValue
     public InteractionCallbackAction<Void> create(@Nonnull WebhookCreateData webhook, int count)
     {
-        if (count >= MAX_WEBHOOK_COUNT)
+        if (MiscUtil.isUnsafeURL(URI.create(webhook.getUrl())))
+            throw createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe."));
+        else if (count >= MAX_WEBHOOK_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS);
         else
             return create(webhook);

@@ -18,7 +18,14 @@ package com.github.reganjohn.iam.internal;
 
 import com.github.adamorgan.jnt.api.JNT;
 import com.github.adamorgan.jnt.api.JNTBuilder;
+import com.github.adamorgan.jnt.api.managers.CacheObjectManager;
+import com.github.adamorgan.jnt.api.managers.ContentEncodingManager;
+import com.github.adamorgan.jnt.api.managers.ContentObjectManager;
+import com.github.adamorgan.jnt.api.managers.DigestObjectManager;
 import com.github.adamorgan.jnt.api.managers.OriginAccessManager;
+import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
+import com.github.adamorgan.jnt.api.managers.RestRateLimiter;
+import com.github.adamorgan.jnt.api.managers.SignatureObjectManager;
 import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.socket.DefaultSocketManagerBuilder;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
@@ -30,6 +37,7 @@ import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHa
 import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
+import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.config.OriginAccessConfig;
 import com.github.adamorgan.jnt.internal.utils.tracker.SocketTracker;
 import com.github.reganjohn.iam.api.IAM;
@@ -40,6 +48,7 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.managers.AccessSignatureManager;
 import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.github.reganjohn.iam.internal.managers.*;
+import com.github.reganjohn.iam.internal.requests.restactions.HealthRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.*;
 import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCreateActionImpl;
@@ -66,11 +75,14 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImp
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.logging.LoggingMeterRegistry;
 import io.netty.util.ResourceLeakDetector;
+import io.netty.util.internal.EmptyArrays;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.security.Security;
+import java.time.Clock;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -82,7 +94,7 @@ public class IAMImpl implements IAM
     {
         if (Security.getProvider("BC") == null)
             Security.addProvider(new BouncyCastleProvider());
-        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
+        ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.SIMPLE);
     }
 
     private final JNT api;
@@ -97,19 +109,36 @@ public class IAMImpl implements IAM
 
     public static void main(String[] args) throws Exception
     {
-        new IAMImpl(8080, "https://localhost.com");
+        IAMImpl api = new IAMImpl(8080, "https://localhost.com");
+        Runtime.getRuntime().addShutdownHook(new Thread(api::shutdown));
     }
 
     @Nonnull
     private OriginAccessConfig cors()
     {
-        return new OriginAccessManager.Builder()
-                .allowMethods(Method.GET, Method.POST, Method.PUT, Method.PATCH, Method.DELETE, Method.OPTIONS)
-                .allowHeaders()
-                .allowExposeHeaders()
+        return new OriginAccessManager.Builder(String.join(", ", manager.getAudiences()))
+                .allowMethods(Method.GET, Method.POST, Method.PUT, Method.PATCH, Method.DELETE)
+                .allowHeaders(ProofObjectManager.AUTHORIZATION, ProofObjectManager.DPOP, ContentObjectManager.CONTENT_TYPE,
+                        ContentEncodingManager.CONTENT_ENCODING, DigestObjectManager.CONTENT_DIGEST, DigestObjectManager.WANT_CONTENT_DIGEST,
+                        SignatureObjectManager.SIGN, SignatureObjectManager.SIGN_IN, CacheObjectManager.MATCH, CacheObjectManager.NONE_MATCH,
+                        CacheObjectManager.MODIFIED_SINCE, CacheObjectManager.UNMODIFIED_SINCE)
+                .allowExposeHeaders(ProofObjectManager.CHALLENGE, ProofObjectManager.WWW_AUTHENTICATE, RestRateLimiter.RETRY_AFTER_HEADER,
+                        RestRateLimiter.LIMIT_HEADER, RestRateLimiter.REMAINING_HEADER, RestRateLimiter.RESET_HEADER, RestRateLimiter.POLICY_HEADER,
+                        CacheObjectManager.ETAG, DigestObjectManager.CONTENT_DIGEST, SignatureObjectManager.SIGN, SignatureObjectManager.SIGN_IN)
                 .allowCredentials(false)
                 .allowMaxAge(3600)
                 .build();
+    }
+
+    @Nonnull
+    private static byte[] getNonceSecret()
+    {
+        String secret = System.getenv("nonce.secret");
+        if (Helpers.isEmpty(secret))
+            return EmptyArrays.EMPTY_BYTES;
+        byte[] decoded = Base64.getDecoder().decode(secret.trim());
+        Checks.inRange(decoded.length, 32, 64, "nonce.secret");
+        return decoded;
     }
 
     @Nonnull
@@ -149,6 +178,7 @@ public class IAMImpl implements IAM
         this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, "https://localhost.com");
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
+                .setIdentifierString("IAM")
                 .addEventListeners(new SocketTrackerManagerImpl(tracker))
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
                 .addEventListeners(new ClockObjectManagerImpl())
@@ -158,10 +188,10 @@ public class IAMImpl implements IAM
 
                 .addEventListeners(new ContentSecurityOverrideManagerImpl())
 
-                .addEventListeners(new ProofObjectManagerImpl(60, 15, true))
+                .addEventListeners(new ProofObjectManagerImpl(Clock.systemUTC(), getNonceSecret(), 60, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
-                .addEventListeners(new ProofCryptoManagerImpl())
-                .addEventListeners(new GlobalRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user", 1024))
+                .addEventListeners(new SessionCryptoManagerImpl(this))
+                .addEventListeners(new SubjectRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user", 1024))
                 .addEventListeners(accessSignatureManager)
                 .addEventListeners(manager)
 
@@ -177,6 +207,7 @@ public class IAMImpl implements IAM
 
                 .addEventListeners(new PermOverrideManagerImpl())
 
+                .addEventListenerProvider(() -> new HealthRetrieveActionImpl(this))
                 .addEventListenerProvider(() -> new UserRetrieveActionImpl(this))
 
                 .addEventListenerProvider(() -> new SelfUserCreateActionImpl(this))
@@ -289,5 +320,21 @@ public class IAMImpl implements IAM
     public String getIdentifierString()
     {
         return ((JNTImpl) api).getIdentifierString();
+    }
+
+    public void shutdown()
+    {
+        getJNT().shutdown();
+        try
+        {
+            getJNT().awaitShutdown(30, TimeUnit.SECONDS);
+        }
+        catch (InterruptedException ex)
+        {
+            Thread.currentThread().interrupt();
+        }
+        ((GlobalAccessManagerImpl) getAccessManager()).shutdown();
+        getSocketManager().shutdown();
+        getJCA().shutdown();
     }
 }

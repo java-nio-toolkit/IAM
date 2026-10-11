@@ -125,9 +125,6 @@ public class WebhookCreateActionTest extends RestActionTest
                 arguments("url_not_string", body("name", "hook", "avatar_id", "cid", "url", 5, "scopes", 3), "url=STRING_TYPE_COERCE"),
                 arguments("url_not_url", body("name", "hook", "avatar_id", "cid", "url", "not-a-url", "scopes", 3), "url=BASE_TYPE_CHOICES"),
                 arguments("url_not_https", body("name", "hook", "avatar_id", "cid", "url", "http://example.org/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
-                arguments("url_localhost", body("name", "hook", "avatar_id", "cid", "url", "https://localhost/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
-                arguments("url_loopback", body("name", "hook", "avatar_id", "cid", "url", "https://127.0.0.1/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
-                arguments("url_private", body("name", "hook", "avatar_id", "cid", "url", "https://192.168.0.1/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
                 arguments("missing_scopes", body("name", "hook", "avatar_id", "cid", "url", URL), "scopes=BASE_TYPE_REQUIRED"),
                 arguments("scopes_not_number", body("name", "hook", "avatar_id", "cid", "url", URL, "scopes", "all"), "scopes=NUMBER_TYPE_COERCE"),
                 arguments("everything_invalid", body("name", 5, "avatar_id", 5, "url", 5, "scopes", "all"), "name=STRING_TYPE_COERCE,avatar_id=STRING_TYPE_COERCE,url=STRING_TYPE_COERCE,scopes=NUMBER_TYPE_COERCE"));
@@ -176,6 +173,23 @@ public class WebhookCreateActionTest extends RestActionTest
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
+    }
+
+    @ValueSource(strings = {"https://localhost/hook", "https://127.0.0.1/hook", "https://192.168.0.1/hook"})
+    @ParameterizedTest
+    void testUnsafeUrl(String url)
+    {
+        ArgumentCaptor<WebhookCreateData> created = ArgumentCaptor.forClass(WebhookCreateData.class);
+        withStoredUser(1);
+
+        assertThatRequestTo(newAction(created))
+                .withJsonBody(body("name", "hook", "avatar_id", "cid", "url", url, "scopes", 3))
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFormErrors("url", "BASE_TYPE_CHOICES")
+                .hasNoResponse()
+                .whenHandled();
+
+        assertThat(created.getAllValues()).isEmpty();
     }
 
     @ValueSource(strings = {

@@ -68,7 +68,7 @@ public class SelfUserEditActionTest extends RestActionTest
     private SelfUserEditActionImpl newAction(ArgumentCaptor<UserEditData> edited)
     {
         SelfUserEditActionImpl action = spy(newAction());
-        doReturn(completed(null)).when(action).modify(edited.capture());
+        doReturn(completed(null)).when(action).modify(any(User.class), edited.capture());
         return action;
     }
 
@@ -286,7 +286,31 @@ public class SelfUserEditActionTest extends RestActionTest
     void testNullArguments()
     {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().modify(null));
+                .isThrownBy(() -> newAction().modify(null, mock(UserEditData.class)));
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> newAction().modify(mock(User.class), null));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testModifyRace() throws Exception
+    {
+        withJCA();
+        User user = withUser(USER_ID, "alice", null, 6);
+        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(user, mock(UserEditData.class));
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+        BufferObject row = mock(BufferObject.class);
+        BufferArray rows = mock(BufferArray.class);
+        when(rows.getObject(0)).thenReturn(row);
+
+        modification.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows);
+
+        assertThat(modification.getContent()).contains("IF flags = :current_flags");
+        assertThat(modification.getParams()).containsEntry("current_flags", 6L);
+        verify(interaction, never()).onSuccess(any());
+        verify(interaction).onFailure(argThat(error ->
+                error instanceof InvalidResponseException
+                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.UNKNOWN_USER.getCode()));
     }
 
     @Test
@@ -294,7 +318,7 @@ public class SelfUserEditActionTest extends RestActionTest
     void testModifyApplied() throws Exception
     {
         withJCA();
-        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(UserEditData.class));
+        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(User.class), mock(UserEditData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
         BufferObject row = mock(BufferObject.class);
         BufferArray rows = mock(BufferArray.class);
@@ -313,7 +337,7 @@ public class SelfUserEditActionTest extends RestActionTest
     void testModifyMissing(boolean empty, boolean applied) throws Exception
     {
         withJCA();
-        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(UserEditData.class));
+        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(User.class), mock(UserEditData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
         BufferObject row = mock(BufferObject.class);
         BufferArray rows = mock(BufferArray.class);
@@ -376,7 +400,7 @@ public class SelfUserEditActionTest extends RestActionTest
     {
         withJCA();
         UserEditData data = new UserEditBuilder().setUserId(USER_ID).setName("alice").setAvatarId("avatar-cid").setUserFlags(0).build();
-        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(data);
+        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(User.class), data);
 
         assertThat(modification.getContent()).contains("username = :username", "avatar_id = :avatar_id", "flags = :flags", "user_id = :user_id");
     }

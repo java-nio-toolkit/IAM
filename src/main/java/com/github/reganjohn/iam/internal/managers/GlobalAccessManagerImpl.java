@@ -23,7 +23,6 @@ import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
-import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.HashedWheelTimer;
 import org.apache.commons.lang3.exception.UncheckedException;
@@ -32,7 +31,6 @@ import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
@@ -43,7 +41,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +49,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     public static final Logger LOG = JNTLogger.getLog(GlobalAccessManagerImpl.class);
 
     private final IAMImpl api;
+    private final HashedWheelTimer worker;
 
     private final Set<AccessEntrySnapshot> unavailableSnapshots = ConcurrentHashMap.newKeySet();
 
@@ -64,8 +62,20 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     public GlobalAccessManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout,
                                    @Nonnull TimeUnit unit, @Nonnull List<String> audiences)
     {
-        super(new HashedWheelTimer(1L, unit), type, limit, timeout, unit, audiences);
+        this(api, new HashedWheelTimer(1L, unit), type, limit, timeout, unit, audiences);
+    }
+
+    private GlobalAccessManagerImpl(IAMImpl api, @Nonnull HashedWheelTimer worker, @Nonnull SignType type, int limit, long timeout,
+                                    @Nonnull TimeUnit unit, @Nonnull List<String> audiences)
+    {
+        super(worker, type, limit, timeout, unit, audiences);
         this.api = api;
+        this.worker = worker;
+    }
+
+    public void shutdown()
+    {
+        worker.stop();
     }
 
     @Override
@@ -197,7 +207,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                 .submitAfter(delay, TimeUnit.SECONDS)
                 .whenComplete((success, ex) ->
                 {
-                    if (isDone(ex instanceof CompletionException ? ex.getCause() : ex))
+                    if (ex == null)
                         handleSuccess(snapshot);
                     else
                         handleFailure(snapshot, delay, ex);
@@ -221,23 +231,14 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
         if (snapshot.isExpired())
             unavailableSnapshots.remove(snapshot);
         else
-            retry(snapshot, Math.min(delay * 2 + 1, 60), failure);
+            retry(snapshot, delay, failure);
     }
 
-    private void retry(@Nonnull AccessEntrySnapshot snapshot, long backoff, @Nonnull Throwable failure)
+    private void retry(@Nonnull AccessEntrySnapshot snapshot, long delay, @Nonnull Throwable failure)
     {
+        long backoff = Math.min(delay * 2 + 1, 60);
         LOG.warn("Request failed! Next attempt in {}s", backoff, failure);
         handleSnapshot(snapshot, backoff);
-    }
-
-    private boolean isDone(@Nullable Throwable failure)
-    {
-        return failure == null || failure instanceof ErrorResponseException && isDone((ErrorResponseException) failure);
-    }
-
-    private boolean isDone(@Nonnull ErrorResponseException ex)
-    {
-        return ex.getErrorCode() == ErrorResponse.ACCESS_ALREADY_EXISTS.getCode();
     }
 
     @Nonnull
@@ -254,10 +255,7 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
                                       @Nonnull InteractionImpl<Void> interaction,
                                       @Nonnull BufferArray array)
             {
-                if (InteractionUtil.isDone(array))
-                    interaction.onSuccess(null);
-                else
-                    throw new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS);
+                interaction.onSuccess(null);
             }
         };
     }

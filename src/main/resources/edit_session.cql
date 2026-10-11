@@ -18,4 +18,4 @@ UPDATE users.sessions
 SET user_agent = :user_agent,
     flags      = :flags
 WHERE user_id = :user_id
-  AND session_id = :session_id IF EXISTS
+  AND session_id = :session_id IF flags = :current_flags

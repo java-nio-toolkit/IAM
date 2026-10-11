@@ -150,7 +150,7 @@ public interface User extends IUnique
          */
         public static final UserFlag[] EMPTY_FLAGS = new UserFlag[0];
 
-        public static final long ALL = 1 | getRaw(EnumSet.allOf(UserFlag.class));
+        public static final long ALL = getRaw(EnumSet.allOf(UserFlag.class));
 
         public static final long SYSTEM = ALL & ~getRaw();
 

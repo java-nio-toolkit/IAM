@@ -13,3 +13,8 @@ services:
       - CASSANDRA_RPC_ADDRESS=0.0.0.0
       - CASSANDRA_BROADCAST_ADDRESS=127.0.0.1
       - CASSANDRA_LISTEN_ADDRESS=
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+
+volumes:
+  cassandra-data:

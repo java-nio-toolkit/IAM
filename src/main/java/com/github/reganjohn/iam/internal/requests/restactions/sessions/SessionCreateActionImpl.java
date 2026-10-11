@@ -37,10 +37,12 @@ import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionCreateAction;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
@@ -381,26 +383,41 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         String id = rawBody.getString(KID, null);
         SignType type = SignType.from(rawBody.getString(ALG));
         UUID userId = retrieveSelfUserId(context);
+        ProofObjectData proof = retrieveSelfProof(context);
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
         AccessEntryData entryData = AbstractEntityBuilder.createAccessEntry(id, type, rawBody);
-        try (AccessContextData contextData = entryData.getContext(AccessContextType.SHA_256))
+        verify(context, request, entryData);
+        try (AccessContextData contextData = entryData.getContext(AccessContextType.SHA_256);
+             AccessContextData proofData = proof.getContext(AccessContextType.SHA_256))
         {
             String uniqueId = UUIDv7.randomUUID().toString();
             String issuer = api.getJNT().getIdentifierString();
             String subject = userId.toString();
             AccessObjectData json = EntityBuilder.createObjectData(uniqueId, issuer, subject, manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
             SessionCreateData rawData = fromData(request, entryData, contextData, json);
-            handleInternally(context, json, rawData);
+            handleInternally(context, json, rawData, proofData.digest());
+        }
+    }
+
+    private void verify(@Nonnull ChannelHandlerContext context, @Nonnull Request request, @Nonnull AccessEntryData data)
+    {
+        try
+        {
+            api.getAccessSignatureManager().verify(context, request, data);
+        }
+        catch (InteractionResponseException ex)
+        {
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         }
     }
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData data,
-                                  @Nonnull SessionCreateData session)
+                                  @Nonnull SessionCreateData session, @Nonnull String thumbprint)
     {
         api.retrieveUserById(session.getUserId())
-                .flatMap(User::retrieveSessionCount)
-                .flatMap(count -> create(session, count))
+                .flatMap(User::retrieveSessions)
+                .flatMap(sessions -> create(session, sessions, thumbprint))
                 .queue(success -> handleSuccess(context, data), context::fireExceptionCaught);
     }
 
@@ -426,12 +443,13 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> create(SessionCreateData session, int count)
+    private InteractionCallbackAction<Void> create(@Nonnull SessionCreateData session, @Nonnull List<Session> sessions,
+                                                   @Nonnull String thumbprint)
     {
-        if (count == 0)
+        if (sessions.isEmpty())
             throw new ErrorResponseException(ErrorResponse.UNKNOWN_USER);
-        else if (count >= MAX_SESSION_COUNT)
-            throw new ErrorResponseException(ErrorResponse.MAX_SESSIONS);
+        else if (sessions.stream().noneMatch(entry -> Helpers.equals(entry.getThumbprint(), thumbprint, false)))
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else
             return create(session);
     }

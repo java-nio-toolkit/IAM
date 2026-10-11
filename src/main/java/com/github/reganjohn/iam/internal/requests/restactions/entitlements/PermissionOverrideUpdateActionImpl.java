@@ -36,6 +36,7 @@ import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -152,8 +153,10 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
                                                                @Nonnull AccessObjectData json,
                                                                @Nonnull PermissionOverride permission)
     {
-        return api.retrieveUserById(permission.getUserId())
-                .flatMap(User::retrieveAccess)
+        return api.retrieveUserById(permission.getOwnerId())
+                .flatMap(owner -> owner.retrieveApplicationById(permission.getApplicationId()))
+                .flatMap(application -> api.retrieveUserById(permission.getUserId()))
+                .flatMap(User::retrieveSessions)
                 .map(this::retrieveThumbprints)
                 .flatMap(thumbprints -> update(context, data, json, thumbprints, permission));
     }
@@ -175,6 +178,8 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
         else if (!json.getActor().hasKey("sub", DataType.STRING))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else if (!MiscUtil.isUUID(json.getActor().getString("sub")))
+            throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+        else if (!UUID.fromString(json.getActor().getString("sub")).equals(permission.getApplicationId()))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else if (!contextData.hasKey(JKT))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
@@ -227,21 +232,8 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
 
     @Nonnull
     @Unmodifiable
-    private List<String> retrieveThumbprints(@Nonnull AccessEntryArray interactions)
+    private List<String> retrieveThumbprints(@Nonnull List<Session> sessions)
     {
-        return interactions.stream().map(this::retrieveThumbprint).collect(Collectors.toUnmodifiableList());
-    }
-
-    @Nonnull
-    private String retrieveThumbprint(@Nonnull AccessEntryData data)
-    {
-        try (AccessContextData context = data.getContext(AccessContextType.SHA_256))
-        {
-            return context.digest();
-        }
-        catch (Exception ex)
-        {
-            throw new IllegalStateException("Failed to retrieve the snapshot hash", ex);
-        }
+        return sessions.stream().map(Session::getThumbprint).collect(Collectors.toUnmodifiableList());
     }
 }

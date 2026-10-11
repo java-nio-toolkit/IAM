@@ -41,10 +41,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import javax.annotation.Nonnull;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
+import java.security.Signature;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
@@ -126,6 +129,20 @@ public class AccessSignatureManagerTest extends IntegrationTest
         return new Request(context, route, headers);
     }
 
+    private Request signed(Route.CompiledRoute route, KeyPair signer, String authorization) throws Exception
+    {
+        String params = "(\"@method\" \"@path\" \"authorization\");created=" + System.currentTimeMillis() / 1000;
+        String base = "\"@method\": POST\n\"@path\": /" + route.getCompiledRoute() + "\n\"authorization\": " + authorization + "\n\"@signature-params\": " + params;
+        Signature signature = Signature.getInstance("Ed25519", "BC");
+        signature.initSign(signer.getPrivate());
+        signature.update(base.getBytes(StandardCharsets.US_ASCII));
+        CaseInsensitiveMap<String, Collection<String>> headers = headers();
+        headers.put("Authorization", Collections.singletonList(authorization));
+        headers.put("Signature-Input", Collections.singletonList("sig1=" + params));
+        headers.put("Signature", Collections.singletonList("sig1=:" + Base64.getEncoder().encodeToString(signature.sign()) + ":"));
+        return new Request(context, route, headers);
+    }
+
     @Nonnull
     private static CaseInsensitiveMap<String, Collection<String>> headers()
     {
@@ -174,6 +191,43 @@ public class AccessSignatureManagerTest extends IntegrationTest
 
         assertThat(data.getPublic()).isEqualTo(pair.getPublic());
         assertThat(channel.attr(AccessSignatureManagerImpl.CLIENT_ACCESS).get()).isNull();
+    }
+
+    @Test
+    void testVerifiedSessionKey() throws Exception
+    {
+        AccessEntryData data = manager.verify(context, signed(Routes.Session.ADD_SESSION.compile(), pair, "DPoP access-token"), rawOf(pair));
+
+        assertThat(data.getPublic()).isEqualTo(pair.getPublic());
+    }
+
+    @Test
+    void testSessionKeyOfAnotherSigner() throws Exception
+    {
+        assertRejected(signed(Routes.Session.ADD_SESSION.compile(), newPair(), "DPoP access-token"), rawOf(pair));
+    }
+
+    @Test
+    void testSessionKeyWithoutAuthorization() throws Exception
+    {
+        assertRejected(signed(Routes.Session.ADD_SESSION.compile()), rawOf(pair));
+    }
+
+    @Test
+    void testSessionKeyOfAnotherAuthorization() throws Exception
+    {
+        Request request = signed(Routes.Session.ADD_SESSION.compile(), pair, "DPoP access-token");
+        request.getHeaders().put("Authorization", Collections.singletonList("DPoP another-token"));
+
+        assertRejected(request, rawOf(pair));
+    }
+
+    @Test
+    void testSessionSignatureWithoutAuthorization() throws Exception
+    {
+        Request request = signed(Routes.Session.ADD_SESSION.compile());
+
+        assertThatThrownBy(() -> manager.verify(context, request)).isInstanceOf(InvalidTokenException.class);
     }
 
     @Test
@@ -303,7 +357,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
     @Test
     void testClientRoutesAreForwardedUnverified() throws Exception
     {
-        for (Route.CompiledRoute route : Arrays.asList(createRoute(), continueRoute()))
+        for (Route.CompiledRoute route : Arrays.asList(createRoute(), continueRoute(), Routes.Session.ADD_SESSION.compile()))
         {
             Request request = new Request(context, route, headers());
 

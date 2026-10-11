@@ -35,7 +35,7 @@ public enum AccessEntryFlag
      */
     public static final AccessEntryFlag[] EMPTY_FLAGS = new AccessEntryFlag[0];
 
-    public static final long ALL = 1 | getRaw(EnumSet.allOf(AccessEntryFlag.class));
+    public static final long ALL = getRaw(EnumSet.allOf(AccessEntryFlag.class));
 
     public static final long SYSTEM = ALL & ~getRaw();
 

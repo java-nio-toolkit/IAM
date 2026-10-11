@@ -24,8 +24,6 @@ import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
@@ -33,8 +31,10 @@ import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.reganjohn.iam.api.Permission;
+import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -53,6 +53,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -73,6 +74,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
     private static final UUID OWNER_ID = UUID.fromString("02b1a26a-f033-7e2f-8ba7-543bd0ac755a");
     private static final UUID ACTOR_ID = UUID.fromString("03c2b37b-0144-7f30-9cb8-654ce1bd866b");
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
+    private static final UUID SESSION_ID = UUID.fromString("05e4d59d-2366-7152-9eda-876e03dfa88d");
     private static final String TOKEN = "access.token.value";
     private static final String THUMBPRINT = "owner-thumbprint";
 
@@ -113,6 +115,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
     {
         AccessObjectData access = mock(AccessObjectData.class);
         when(access.getThumbprint()).thenReturn("proof-thumbprint");
+        when(access.getExpirationTimestamp()).thenReturn(System.currentTimeMillis());
         when(access.getSubject()).thenReturn(subject);
         when(access.getContextData()).thenReturn(confirmation);
         when(access.getActor()).thenReturn(actor);
@@ -121,25 +124,29 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
 
     private static AccessObjectData accessObject()
     {
-        return accessObject(USER_ID.toString(), DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty().put("sub", ACTOR_ID.toString()));
-    }
-
-    private static AccessEntryData entryOf(String thumbprint)
-    {
-        AccessContextData contextData = mock(AccessContextData.class);
-        when(contextData.digest()).thenReturn(thumbprint);
-        AccessEntryData entry = mock(AccessEntryData.class);
-        when(entry.getContext(AccessContextType.SHA_256)).thenReturn(contextData);
-        return entry;
+        return accessObject(USER_ID.toString(), DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty().put("sub", APPLICATION_ID.toString()));
     }
 
     private void withStoredEntitlement()
     {
+        withStoredEntitlement(Collections.singletonList(withSession(SESSION_ID, USER_ID, null, 0, THUMBPRINT)));
+    }
+
+    private void withStoredEntitlement(List<Session> sessions)
+    {
         PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1, 0);
         User user = withUser(USER_ID, "alice", null, 0);
         withEntitlement(user, APPLICATION_ID, completed(entitlement));
-        withAccessEntries(user, completed(new AccessEntryArray(Collections.singletonList(entryOf(THUMBPRINT)))));
+        withSessions(user, completed(sessions));
         withRetrieval(USER_ID, completed(user));
+        withStoredApplication(completed(withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, null, 0)));
+    }
+
+    private void withStoredApplication(InteractionCallbackAction<Application> application)
+    {
+        User owner = withUser(OWNER_ID, "bob", null, 0);
+        withApplication(owner, APPLICATION_ID, application);
+        withRetrieval(OWNER_ID, completed(owner));
     }
 
     private RestActionAssertions assertThatUpdating()
@@ -186,10 +193,10 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
     static Stream<Arguments> testInvalidToken()
     {
         return Stream.of(
-                arguments("no_confirmation", null, DataObject.empty().put("sub", ACTOR_ID.toString())),
-                arguments("no_thumbprint_claim", DataObject.empty(), DataObject.empty().put("sub", ACTOR_ID.toString())),
-                arguments("thumbprint_claim_not_string", DataObject.empty().put(JKT, 5), DataObject.empty().put("sub", ACTOR_ID.toString())),
-                arguments("other_user_thumbprint", DataObject.empty().put(JKT, "another-thumbprint"), DataObject.empty().put("sub", ACTOR_ID.toString())),
+                arguments("no_confirmation", null, DataObject.empty().put("sub", APPLICATION_ID.toString())),
+                arguments("no_thumbprint_claim", DataObject.empty(), DataObject.empty().put("sub", APPLICATION_ID.toString())),
+                arguments("thumbprint_claim_not_string", DataObject.empty().put(JKT, 5), DataObject.empty().put("sub", APPLICATION_ID.toString())),
+                arguments("other_user_thumbprint", DataObject.empty().put(JKT, "another-thumbprint"), DataObject.empty().put("sub", APPLICATION_ID.toString())),
                 arguments("actor_without_subject", DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty()),
                 arguments("actor_subject_not_string", DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty().put("sub", 5)),
                 arguments("actor_subject_not_uuid", DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty().put("sub", "application")));
@@ -223,7 +230,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
                 .hasBodyEqualTo(ISSUED_OBJECT), accessObject());
 
         assertThat(issuedSubject).isEqualTo(USER_ID.toString());
-        assertThat(issuedActor).isEqualTo(ACTOR_ID);
+        assertThat(issuedActor).isEqualTo(APPLICATION_ID);
         assertThat(issuedPermissions.toString()).isEqualTo(PermissionUtil.toDataArray(Permission.getPermissions(1)).toString());
     }
 
@@ -363,19 +370,74 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownKeys()
+    void testUnknownSessions()
     {
         withAccessProof("proof-thumbprint", hashOf(TOKEN));
         withManager(true);
         PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1, 0);
         User user = withUser(USER_ID, "alice", null, 0);
         withEntitlement(user, APPLICATION_ID, completed(entitlement));
-        withAccessEntries(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
+        withSessions(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
         withRetrieval(USER_ID, completed(user));
+        withStoredApplication(completed(withApplication(APPLICATION_ID, OWNER_ID, "app", null, null, null, 0)));
 
         whenHandled(assertThatUpdating()
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailure(ErrorResponse.MISSING_ACCESS), accessObject());
+    }
+
+    @Test
+    void testTokenOfAnotherApplication()
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredEntitlement();
+        AccessObjectData access = accessObject(USER_ID.toString(), DataObject.empty().put(JKT, THUMBPRINT), DataObject.empty().put("sub", ACTOR_ID.toString()));
+
+        whenHandled(assertThatUpdating()
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.INVALID_TOKEN), access);
+    }
+
+    @Test
+    void testDeletedApplication()
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredEntitlement();
+        withStoredApplication(failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
+
+        whenHandled(assertThatUpdating()
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.UNKNOWN_APPLICATION), accessObject());
+    }
+
+    @Test
+    void testDeletedSession()
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredEntitlement(Collections.emptyList());
+
+        whenHandled(assertThatUpdating()
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.INVALID_TOKEN), accessObject());
+    }
+
+    @Test
+    void testLoggedOutSession()
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredEntitlement(Collections.singletonList(withSession(UUID.randomUUID(), USER_ID, null, 0, "another-thumbprint")));
+
+        whenHandled(assertThatUpdating()
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.INVALID_TOKEN), accessObject());
     }
 }

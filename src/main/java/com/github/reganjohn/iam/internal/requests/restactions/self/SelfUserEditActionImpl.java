@@ -36,6 +36,7 @@ import com.github.reganjohn.iam.api.utils.users.UserEditBuilder;
 import com.github.reganjohn.iam.api.utils.users.UserEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractUserActionImpl;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
@@ -159,8 +160,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
 
         api.retrieveUserById(retrieveSelfUserId(context))
-                .map(user -> fromData(user, json))
-                .flatMap(this::modify)
+                .flatMap(user -> modify(user, fromData(user, json)))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
@@ -184,10 +184,14 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> modify(@Nonnull UserEditData user)
+    public InteractionCallbackAction<Void> modify(@Nonnull User user, @Nonnull UserEditData data)
     {
         Checks.notNull(user, "User");
-        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.accounts SET username = :username, avatar_id = :avatar_id, flags = :flags WHERE user_id = :user_id IF EXISTS", user)
+        Checks.notNull(data, "UserEditData");
+        InteractionMapping map = new InteractionMapping.Builder(data.toMap())
+                .put("current_flags", user.getFlagsRaw())
+                .build();
+        return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.accounts SET username = :username, avatar_id = :avatar_id, flags = :flags WHERE user_id = :user_id IF flags = :current_flags", map)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,

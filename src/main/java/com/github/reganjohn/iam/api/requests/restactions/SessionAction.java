@@ -20,5 +20,4 @@ import com.github.adamorgan.jnt.api.requests.restaction.RestAction;
 
 public interface SessionAction extends RestAction
 {
-    int MAX_SESSION_COUNT = 10;
 }

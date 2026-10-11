@@ -33,18 +33,6 @@ CREATE KEYSPACE IF NOT EXISTS integrations WITH replication =
         'replication_factor': 1
         };
 
-DROP TABLE IF EXISTS global.public_keys;
-DROP TABLE IF EXISTS users.public_keys;
-DROP TABLE IF EXISTS users.accounts;
-DROP TABLE IF EXISTS users.sessions;
-
-DROP TABLE IF EXISTS users.entitlements;
-DROP TABLE IF EXISTS integrations.applications;
-DROP TABLE IF EXISTS integrations.interactions;
-DROP TABLE IF EXISTS integrations.responses;
-
-DROP TABLE IF EXISTS users.webhooks;
-
 CREATE TABLE IF NOT EXISTS global.public_keys
 (
     kid        TEXT,
@@ -112,6 +100,7 @@ CREATE TABLE IF NOT EXISTS users.entitlements
     updated_at     TIMESTAMP,
     PRIMARY KEY ((user_id), application_id)
 ) WITH transactional_mode = 'full';
+
 
 CREATE TABLE IF NOT EXISTS integrations.applications
 (

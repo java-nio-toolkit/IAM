@@ -94,7 +94,7 @@ public interface Webhook extends IUnique, SerializableData
          */
         public static final WebhookFlag[] EMPTY_FLAGS = new WebhookFlag[0];
 
-        public static final long ALL = 1 | getRaw(EnumSet.allOf(WebhookFlag.class));
+        public static final long ALL = getRaw(EnumSet.allOf(WebhookFlag.class));
 
         public static final long SYSTEM = ALL & ~getRaw();
 

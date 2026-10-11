@@ -45,6 +45,7 @@ import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.net.InetAddress;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -108,10 +109,11 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
     private void handleInternally(@Nonnull Webhook webhook, @Nonnull DataObject rawData)
     {
         URI uri = URI.create(webhook.getUrl());
-        Checks.check(!MiscUtil.isUnsafeURL(uri), "The URL is not safe.");
+        InetAddress address = MiscUtil.resolveSafeAddress(uri.getHost());
+        Checks.check(address != null, "The URL is not safe.");
         int port = uri.getPort() == -1 ? 443 : uri.getPort();
-        Route route = new Route(Method.POST, uri.getPath().split("/")[1]);
-        api.getSocketManager().connect(uri.getHost(), port).addListener((ChannelFutureListener) obj ->
+        Route route = new Route(Method.POST, uri.getRawPath().length() > 1 ? uri.getRawPath().substring(1) : "/");
+        api.getSocketManager().connect(address, port).addListener((ChannelFutureListener) obj ->
         {
             if (obj.isSuccess())
                 handleSuccess(obj, route, rawData);

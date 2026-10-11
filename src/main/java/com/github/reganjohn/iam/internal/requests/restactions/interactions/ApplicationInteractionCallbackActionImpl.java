@@ -40,6 +40,7 @@ import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -276,8 +277,19 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
                                                                            @Nonnull ApplicationCallbackResponse response)
     {
         return api.retrieveUserById(response.getUserId())
-                .flatMap(User::retrieveAccess)
+                .flatMap(user -> user.retrieveSessions().flatMap(sessions -> retrieveAccess(user, sessions, response)))
                 .map(entries -> createAccessObject(context, entries, response));
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<AccessEntryArray> retrieveAccess(@Nonnull User user, @Nonnull List<Session> sessions,
+                                                                       @Nonnull ApplicationCallbackResponse response)
+    {
+        if (sessions.stream().noneMatch(session -> Helpers.equals(session.getThumbprint(), response.getThumbprint(), false)))
+            throw new InteractionResponseException(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION);
+        else
+            return user.retrieveAccess();
     }
 
     @Nonnull

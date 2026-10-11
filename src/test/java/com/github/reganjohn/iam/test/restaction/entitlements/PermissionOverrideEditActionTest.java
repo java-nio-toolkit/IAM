@@ -43,6 +43,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -73,7 +74,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
 
     private PermissionOverride withStoredEntitlement()
     {
-        PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1, 0);
+        PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 2, 0);
         User user = withUser(USER_ID, "alice", null, 0);
         withEntitlement(user, APPLICATION_ID, completed(entitlement));
         withAccess(USER_ID);
@@ -85,7 +86,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
     private InteractionMappingActionImpl<Void> modification(DataObject body)
     {
         withJCA();
-        return (InteractionMappingActionImpl<Void>) newAction().modify(withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1, 0), body);
+        return (InteractionMappingActionImpl<Void>) newAction().modify(withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 2, 0), body);
     }
 
     private static BufferArray rows(boolean empty, boolean applied)
@@ -104,7 +105,8 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 arguments("empty_body", body(), "permissions=BASE_TYPE_REQUIRED"),
                 arguments("permissions_not_number", body("permissions", "all"), "permissions=NUMBER_TYPE_COERCE"),
                 arguments("permissions_null", "{\"permissions\":null}", "permissions=NUMBER_TYPE_COERCE"),
-                arguments("permissions_fraction", body("permissions", 1.5), "permissions=NUMBER_TYPE_COERCE"));
+                arguments("permissions_fraction", body("permissions", 1.5), "permissions=NUMBER_TYPE_COERCE"),
+                arguments("permissions_negative", body("permissions", -1), "permissions=NUMBER_TYPE_MIN"));
     }
 
     static Stream<Arguments> testInvalidApplicationId()
@@ -310,7 +312,42 @@ public class PermissionOverrideEditActionTest extends RestActionTest
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> newAction().modify(null, DataObject.empty()));
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().modify(withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1, 0), null));
+                .isThrownBy(() -> newAction().modify(withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 2, 0), null));
+    }
+
+    @Test
+    void testPermissionsBeyondGrant()
+    {
+        withStoredEntitlement();
+
+        assertThatRequestTo(newAction())
+                .withRouteParams(APPLICATION_ID.toString())
+                .withJsonBody(body("permissions", 3))
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.MISSING_ACCESS)
+                .whenHandled();
+    }
+
+    @ValueSource(longs = {1, 3, -1, Long.MIN_VALUE, Long.MAX_VALUE, 1L << 40 | 2})
+    @ParameterizedTest
+    void testModifyBeyondGrant(long permissions)
+    {
+        PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 2, 0);
+
+        assertThatThrownBy(() -> newAction().modify(entitlement, DataObject.empty().put("permissions", permissions)))
+                .isInstanceOf(ErrorResponseException.class)
+                .satisfies(error -> assertThat(((ErrorResponseException) error).getErrorCode()).isEqualTo(ErrorResponse.MISSING_ACCESS.getCode()));
+    }
+
+    @Test
+    void testModifyUnknownStoredPermissions()
+    {
+        PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 1L << 40 | 2, 0);
+
+        assertThatThrownBy(() -> newAction().modify(entitlement, DataObject.empty()))
+                .isInstanceOf(ErrorResponseException.class)
+                .satisfies(error -> assertThat(((ErrorResponseException) error).getErrorCode()).isEqualTo(ErrorResponse.MISSING_ACCESS.getCode()));
     }
 
     @Test
@@ -319,7 +356,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
         InteractionMappingActionImpl<Void> modification = modification(DataObject.empty());
 
         assertThat(modification.getContent()).contains("UPDATE users.entitlements", "permissions = :permissions",
-                "updated_at = :updated_at", "user_id = :user_id", "application_id = :application_id", "IF EXISTS");
+                "updated_at = :updated_at", "user_id = :user_id", "application_id = :application_id", "IF flags = :flags AND permissions = :current_permissions");
         assertThatStatementIsBound(modification);
     }
 
@@ -329,7 +366,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
         assertThat(modification(DataObject.empty()).getParams())
                 .containsEntry("user_id", USER_ID)
                 .containsEntry("application_id", APPLICATION_ID)
-                .containsEntry("permissions", 1L)
+                .containsEntry("permissions", 2L)
                 .containsKey("updated_at");
     }
 
@@ -338,6 +375,24 @@ public class PermissionOverrideEditActionTest extends RestActionTest
     {
         assertThat(modification(DataObject.empty().put("permissions", 0)).getParams())
                 .containsEntry("permissions", 0L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testModifyRace() throws Exception
+    {
+        InteractionMappingActionImpl<Void> modification = modification(DataObject.empty().put("permissions", 0));
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+
+        modification.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(false, false));
+
+        assertThat(modification.getParams())
+                .containsEntry("flags", 0L)
+                .containsEntry("current_permissions", 2L);
+        verify(interaction, never()).onSuccess(any());
+        verify(interaction).onFailure(argThat(error ->
+                error instanceof InvalidResponseException
+                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.UNKNOWN_ENTITLEMENT.getCode()));
     }
 
     @Test

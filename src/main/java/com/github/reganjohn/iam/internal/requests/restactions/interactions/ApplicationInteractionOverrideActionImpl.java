@@ -165,8 +165,16 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
         api.retrieveUserById(ownerId)
                 .flatMap(user -> user.retrieveApplicationById(applicationId))
                 .flatMap(application -> application.retrieveInteractionById(interactionId))
-                .flatMap(interaction -> createResponse(userId, thumbprint, token, interaction))
+                .flatMap(interaction -> createResponse(userId, thumbprint, token, checkRedirectUri(interaction)))
                 .queue(interaction -> handleSuccess(context, interaction, token, isJson(request)), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    private ApplicationContextInteraction checkRedirectUri(@Nonnull ApplicationContextInteraction interaction)
+    {
+        if (!isRedirectUri(interaction.getRedirectUri()))
+            throw new ErrorResponseException(ErrorResponse.INVALID_REDIRECT_URI);
+        return interaction;
     }
 
     @Nonnull

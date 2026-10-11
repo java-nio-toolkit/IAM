@@ -43,6 +43,7 @@ import com.github.reganjohn.iam.api.utils.sessions.SessionEditBuilder;
 import com.github.reganjohn.iam.api.utils.sessions.SessionEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionActionImpl;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
@@ -175,8 +176,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
             UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
             api.retrieveUserById(userId)
                     .flatMap(user -> user.retrieveSessionById(sessionId))
-                    .map(session -> fromData(session, rawBody, data, contextData.digest()))
-                    .flatMap(this::modify)
+                    .flatMap(session -> modify(session, fromData(session, rawBody, data, contextData.digest())))
                     .queue(success -> handleSuccess(context), context::fireExceptionCaught);
         }
     }
@@ -204,10 +204,14 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> modify(@Nonnull SessionEditData session)
+    public InteractionCallbackAction<Void> modify(@Nonnull Session session, @Nonnull SessionEditData data)
     {
         Checks.notNull(session, "Session");
-        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("edit_session.cql"), session)
+        Checks.notNull(data, "SessionEditData");
+        InteractionMapping map = new InteractionMapping.Builder(data.toMap())
+                .put("current_flags", session.getFlagsRaw())
+                .build();
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("edit_session.cql"), map)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,

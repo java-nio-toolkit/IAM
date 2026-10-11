@@ -68,7 +68,7 @@ public interface Session extends IUnique
          */
         public static final SessionFlag[] EMPTY_FLAGS = new SessionFlag[0];
 
-        public static final long ALL = 1 | getRaw(EnumSet.allOf(SessionFlag.class));
+        public static final long ALL = getRaw(EnumSet.allOf(SessionFlag.class));
 
         public static final long SYSTEM = ALL & ~getRaw();
 

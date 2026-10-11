@@ -72,7 +72,7 @@ public class ApplicationEditActionTest extends RestActionTest
     private ApplicationEditActionImpl newAction(ArgumentCaptor<ApplicationEditData> modified)
     {
         ApplicationEditActionImpl action = spy(newAction());
-        doReturn(completed(null)).when(action).modify(modified.capture());
+        doReturn(completed(null)).when(action).modify(any(Application.class), modified.capture());
         return action;
     }
 
@@ -105,7 +105,7 @@ public class ApplicationEditActionTest extends RestActionTest
     private InteractionMappingActionImpl<Void> modification()
     {
         withJCA();
-        return (InteractionMappingActionImpl<Void>) newAction().modify(newData());
+        return (InteractionMappingActionImpl<Void>) newAction().modify(withApplication(APPLICATION_ID, USER_ID, "app", "description", "icon-cid", ORIGIN, 2, CALLBACK), newData());
     }
 
     private static BufferArray rows(boolean empty, boolean applied)
@@ -152,6 +152,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 arguments("redirect_uris_one_too_long", body("redirect_uris", uris(CALLBACK, "https://example.org/" + repeat(Application.MAX_URL_LENGTH))), "redirect_uris=STRING_TYPE_MAX"),
                 arguments("redirect_uris_not_url", body("redirect_uris", uris("not-a-url")), "redirect_uris=BASE_TYPE_CHOICES"),
                 arguments("redirect_uris_one_not_url", body("redirect_uris", uris(CALLBACK, "not-a-url")), "redirect_uris=BASE_TYPE_CHOICES"),
+                arguments("redirect_uris_http", body("redirect_uris", uris("http://example.org/callback")), "redirect_uris=BASE_TYPE_CHOICES"),
                 arguments("everything_invalid", body("name", 5, "description", 5, "icon_id", 5, "flags", "all", "redirect_uris", "all"), "name=STRING_TYPE_COERCE,description=STRING_TYPE_COERCE,icon_id=STRING_TYPE_COERCE,flags=NUMBER_TYPE_COERCE,redirect_uris=MODEL_TYPE_CONVERT"));
     }
 
@@ -391,7 +392,7 @@ public class ApplicationEditActionTest extends RestActionTest
     {
         withStoredApplication(0);
         ApplicationEditActionImpl action = spy(newAction());
-        doReturn(failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION))).when(action).modify(any(ApplicationEditData.class));
+        doReturn(failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION))).when(action).modify(any(Application.class), any(ApplicationEditData.class));
 
         assertThatRequestTo(action)
                 .withRouteParams(APPLICATION_ID.toString())
@@ -437,7 +438,9 @@ public class ApplicationEditActionTest extends RestActionTest
     void testNullArguments()
     {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().modify(null));
+                .isThrownBy(() -> newAction().modify(null, newData()));
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> newAction().modify(withApplication(APPLICATION_ID, USER_ID, "app", "description", "icon-cid", ORIGIN, 2, CALLBACK), null));
     }
 
     @Test
@@ -461,6 +464,23 @@ public class ApplicationEditActionTest extends RestActionTest
                 .containsEntry("icon_id", "icon-cid")
                 .containsEntry("flags", 4L)
                 .containsKey("redirect_uris");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testModifyRace() throws Exception
+    {
+        InteractionMappingActionImpl<Void> modification = modification();
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+
+        modification.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(false, false));
+
+        assertThat(modification.getContent()).contains("IF flags = :current_flags");
+        assertThat(modification.getParams()).containsEntry("current_flags", 2L);
+        verify(interaction, never()).onSuccess(any());
+        verify(interaction).onFailure(argThat(error ->
+                error instanceof InvalidResponseException
+                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.UNKNOWN_APPLICATION.getCode()));
     }
 
     @Test

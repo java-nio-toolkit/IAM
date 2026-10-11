@@ -34,6 +34,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -65,6 +66,14 @@ public abstract class AbstractOverrideActionImpl extends RestActionImpl implemen
         InvalidResponseException.ErrorCode errorCode = new InvalidResponseException.ErrorCode(exception.getErrorCode(), exception.getMeaning());
         InvalidResponseException.SchemaError schemaError = new InvalidResponseException.SchemaError(name, Collections.singletonList(errorCode));
         errors.add(schemaError);
+    }
+
+    @Nonnull
+    protected ErrorResponseException createErrorResponse(@Nonnull String name, @Nonnull DataObjectParsingException exception)
+    {
+        List<InvalidResponseException.SchemaError> errors = new ArrayList<>();
+        handleErrorResponse(name, exception, errors);
+        return new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
     }
 
     @Nonnull

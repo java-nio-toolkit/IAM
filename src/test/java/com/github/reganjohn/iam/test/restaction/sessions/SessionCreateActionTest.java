@@ -17,6 +17,8 @@
 package com.github.reganjohn.iam.test.restaction.sessions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
+import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
@@ -26,9 +28,13 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
+import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
+import com.github.reganjohn.iam.api.managers.AccessSignatureManager;
 import com.github.reganjohn.iam.api.requests.restactions.SessionAction;
 import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.github.reganjohn.iam.internal.requests.restactions.sessions.SessionCreateActionImpl;
@@ -38,6 +44,7 @@ import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -46,6 +53,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -54,6 +65,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -67,6 +80,8 @@ public class SessionCreateActionTest extends RestActionTest
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
     private static final String USER_AGENT = "iam-test/1.0";
 
+    private AccessSignatureManager signatures;
+
     private SessionCreateActionImpl newAction()
     {
         return new SessionCreateActionImpl(api);
@@ -79,10 +94,25 @@ public class SessionCreateActionTest extends RestActionTest
         return action;
     }
 
-    private void withStoredUser(int count)
+    @BeforeEach
+    void withSignatures()
+    {
+        signatures = mock(AccessSignatureManager.class);
+        when(api.getAccessSignatureManager()).thenReturn(signatures);
+    }
+
+    private void withStoredUser(AccessEntryData entry, int count)
+    {
+        List<Session> sessions = new ArrayList<>();
+        for (int i = 0; i < count; i++)
+            sessions.add(withSession(UUID.randomUUID(), USER_ID, USER_AGENT, 0, i == 0 ? entry.getContext(AccessContextType.SHA_256).digest() : "thumbprint-" + i));
+        withStoredUser(sessions);
+    }
+
+    private void withStoredUser(List<Session> sessions)
     {
         User user = withUser(USER_ID, "alice", null, 0);
-        withSessionCount(user, completed(count));
+        withSessions(user, completed(sessions));
         withAccess(USER_ID);
         withRetrieval(USER_ID, completed(user));
     }
@@ -211,7 +241,7 @@ public class SessionCreateActionTest extends RestActionTest
     {
         AccessEntryData entry = withProof(type);
         ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
-        withStoredUser(1);
+        withStoredUser(entry, 1);
 
         whenHandled(assertThatRequestTo(newAction(created))
                 .withHeader("User-Agent", USER_AGENT)
@@ -235,7 +265,7 @@ public class SessionCreateActionTest extends RestActionTest
     {
         AccessEntryData entry = withProof(type);
         ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
-        withStoredUser(1);
+        withStoredUser(entry, 1);
         DataObject raw = entry.toData();
         raw.remove("crv");
 
@@ -251,7 +281,7 @@ public class SessionCreateActionTest extends RestActionTest
     {
         AccessEntryData entry = withProof(SignType.ED25519);
         ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
-        withStoredUser(1);
+        withStoredUser(entry, 1);
 
         whenHandled(assertThatRequestTo(newAction(created))
                 .withJsonBody(entry.toData().toString())
@@ -261,24 +291,11 @@ public class SessionCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testMaxSessions()
-    {
-        AccessEntryData entry = withProof(SignType.ED25519);
-        withStoredUser(SessionAction.MAX_SESSION_COUNT);
-
-        whenHandled(assertThatRequestTo(newAction())
-                .withJsonBody(entry.toData().toString())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.MAX_SESSIONS));
-    }
-
-    @Test
-    void testLastAllowedSession()
+    void testManySessions()
     {
         AccessEntryData entry = withProof(SignType.ED25519);
         ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
-        withStoredUser(SessionAction.MAX_SESSION_COUNT - 1);
+        withStoredUser(entry, 100);
 
         whenHandled(assertThatRequestTo(newAction(created))
                 .withJsonBody(entry.toData().toString())
@@ -291,7 +308,7 @@ public class SessionCreateActionTest extends RestActionTest
     void testEmptyUser()
     {
         AccessEntryData entry = withProof(SignType.ED25519);
-        withStoredUser(0);
+        withStoredUser(entry, 0);
 
         whenHandled(assertThatRequestTo(newAction())
                 .withJsonBody(entry.toData().toString())
@@ -318,7 +335,7 @@ public class SessionCreateActionTest extends RestActionTest
     void testExistingSession()
     {
         AccessEntryData entry = withProof(SignType.ED25519);
-        withStoredUser(1);
+        withStoredUser(entry, 1);
         SessionCreateActionImpl action = spy(newAction());
         doReturn(failed(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS))).when(action).create(any());
 
@@ -398,5 +415,71 @@ public class SessionCreateActionTest extends RestActionTest
         verify(interaction).onFailure(argThat(error ->
                 error instanceof InvalidResponseException
                         && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.ACCESS_ALREADY_EXISTS.getCode()));
+    }
+
+    @Test
+    void testSignatureOfRegisteredKey()
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
+        withStoredUser(entry, 1);
+
+        whenHandled(assertThatRequestTo(newAction(created))
+                .withJsonBody(entry.toData().toString())
+                .hasStatus(StatusReason.CREATED.code));
+
+        verify(signatures).verify(eq(context), any(Request.class), argThat((AccessEntryData data) ->
+                Arrays.equals(data.getPublic().getEncoded(), entry.getPublic().getEncoded())));
+    }
+
+    @Test
+    void testUnsignedKey()
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        withStoredUser(entry, 1);
+        doThrow(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN))
+                .when(signatures).verify(any(), any(), any(AccessEntryData.class));
+
+        assertThatRequestTo(newAction())
+                .withJsonBody(entry.toData().toString())
+                .hasNoResponse()
+                .hasFailureMatching(failure -> !(failure instanceof InteractionResponseException))
+                .hasFailure(ErrorResponse.INVALID_TOKEN)
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testSignatureNonceChallenge()
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        withStoredUser(entry, 1);
+        doThrow(new ProofAccessException("iam", "use_dpop_nonce", "A DPoP nonce is required for this request.", "nonce"))
+                .when(signatures).verify(any(), any(), any(AccessEntryData.class));
+
+        assertThatRequestTo(newAction())
+                .withJsonBody(entry.toData().toString())
+                .hasNoResponse()
+                .hasFailureOfType(ProofAccessException.class)
+                .whenHandled();
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @Test
+    void testRevokedSession()
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        withStoredUser(Collections.singletonList(withSession(UUID.randomUUID(), USER_ID, USER_AGENT, 0, "another-thumbprint")));
+        SessionCreateActionImpl action = spy(newAction());
+
+        whenHandled(assertThatRequestTo(action)
+                .withJsonBody(entry.toData().toString())
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.INVALID_TOKEN));
+
+        verify(action, never()).create(any());
     }
 }

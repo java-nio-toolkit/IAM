@@ -71,7 +71,7 @@ public class SessionEditActionTest extends RestActionTest
     private SessionEditActionImpl newAction(ArgumentCaptor<SessionEditData> edited)
     {
         SessionEditActionImpl action = spy(newAction());
-        doReturn(completed(null)).when(action).modify(edited.capture());
+        doReturn(completed(null)).when(action).modify(any(Session.class), edited.capture());
         return action;
     }
 
@@ -382,7 +382,9 @@ public class SessionEditActionTest extends RestActionTest
     void testNullArguments()
     {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().modify(null));
+                .isThrownBy(() -> newAction().modify(null, mock(SessionEditData.class)));
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> newAction().modify(mock(Session.class), null));
     }
 
     @Test
@@ -390,9 +392,31 @@ public class SessionEditActionTest extends RestActionTest
     {
         withJCA();
         SessionEditData data = mock(SessionEditData.class);
-        InteractionMappingActionImpl<?> modification = (InteractionMappingActionImpl<?>) newAction().modify(data);
+        InteractionMappingActionImpl<?> modification = (InteractionMappingActionImpl<?>) newAction().modify(mock(Session.class), data);
 
         assertThat(modification.getContent()).contains("user_agent = :user_agent", "flags", ":user_id", ":session_id");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testModifyRace() throws Exception
+    {
+        withJCA();
+        Session session = withSession(SESSION_ID, USER_ID, "Mozilla/5.0", 6, "thumbprint");
+        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(session, mock(SessionEditData.class));
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+        BufferObject row = mock(BufferObject.class);
+        BufferArray rows = mock(BufferArray.class);
+        when(rows.getObject(0)).thenReturn(row);
+
+        modification.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows);
+
+        assertThat(modification.getContent()).contains("IF flags = :current_flags");
+        assertThat(modification.getParams()).containsEntry("current_flags", 6L);
+        verify(interaction, never()).onSuccess(any());
+        verify(interaction).onFailure(argThat(error ->
+                error instanceof InvalidResponseException
+                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.UNKNOWN_SESSION.getCode()));
     }
 
     @Test
@@ -400,7 +424,7 @@ public class SessionEditActionTest extends RestActionTest
     void testModifyApplied() throws Exception
     {
         withJCA();
-        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(SessionEditData.class));
+        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(Session.class), mock(SessionEditData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
         BufferObject row = mock(BufferObject.class);
         BufferArray rows = mock(BufferArray.class);
@@ -419,7 +443,7 @@ public class SessionEditActionTest extends RestActionTest
     void testModifyMissing(boolean empty, boolean applied) throws Exception
     {
         withJCA();
-        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(SessionEditData.class));
+        InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(Session.class), mock(SessionEditData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
         BufferObject row = mock(BufferObject.class);
         BufferArray rows = mock(BufferArray.class);

@@ -18,14 +18,14 @@ repositories {
 
 dependencies {
     implementation("org.jetbrains:annotations:26.0.2-1")
-    implementation("com.fasterxml.jackson.core:jackson-core:2.20.0")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.20.0")
-    implementation("com.google.crypto.tink:tink:1.12.0")
-    implementation("com.nimbusds:nimbus-jose-jwt:10.9")
-    implementation("org.bouncycastle:bcprov-lts8on:2.73.10")
-    implementation("com.adamorgan:JNT:0.20.0_DEV")
-    implementation("com.reganjohn:C4J:0.0.60_DEV")
-    implementation("ch.qos.logback:logback-classic:1.5.16")
+    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
+    testCompileOnly("com.google.code.findbugs:jsr305:3.0.2")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.22.3")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
+    implementation("org.bouncycastle:bcprov-lts8on:2.73.12")
+    implementation("com.adamorgan:JNT:0.21.0_DEV")
+    implementation("com.reganjohn:C4J:0.0.61_DEV")
+    implementation("ch.qos.logback:logback-classic:1.5.32")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

@@ -15,4 +15,4 @@
  */
 
 INSERT INTO global.public_keys (kid, alg, kty, usage, flags, thumbprint, public_key)
-VALUES (:kid, :alg, :kty, :usage, :flags, :thumbprint, :public_key) IF NOT EXISTS;
+VALUES (:kid, :alg, :kty, :usage, :flags, :thumbprint, :public_key) USING TTL 2592000;

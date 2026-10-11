@@ -33,6 +33,7 @@ import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -60,7 +61,10 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -172,11 +176,20 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
 
     private AccessContextData withUserKeys(String... thumbprints)
     {
+        return withUserKeys(Arrays.asList(thumbprints), thumbprints);
+    }
+
+    private AccessContextData withUserKeys(List<String> sessionThumbprints, String... thumbprints)
+    {
         AccessContextData[] selected = new AccessContextData[1];
         AccessEntryData[] entries = new AccessEntryData[thumbprints.length];
         for (int i = 0; i < thumbprints.length; i++)
             entries[i] = entryOf(thumbprints[i], thumbprints[i].equals(USER_KEY) ? selected : null);
+        List<Session> sessions = new ArrayList<>();
+        for (String thumbprint : sessionThumbprints)
+            sessions.add(withSession(UUID.randomUUID(), USER_ID, null, 0, thumbprint));
         User user = withUser(USER_ID, "alice", null, 0);
+        withSessions(user, completed(sessions));
         withAccessEntries(user, completed(new AccessEntryArray(Arrays.asList(entries))));
         withRetrieval(USER_ID, completed(user));
         return selected[0];
@@ -488,13 +501,60 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
     {
         withProofOfClient();
         ApplicationCallbackResponse response = newResponse();
-        withUserKeys("another-jkt");
+        withUserKeys(Collections.singletonList(USER_KEY), "another-jkt");
 
         whenHandled(assertThatContinuing(newAction(response))
                 .hasNoResponse()
                 .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION));
 
         verify(response, never()).delete();
+    }
+
+    @Test
+    void testRevokedSession()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        withUserKeys(Collections.singletonList("another-jkt"), "another-jkt", USER_KEY);
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION));
+
+        verify(response, never()).delete();
+        assertThat(issuedSubject).isNull();
+    }
+
+    @Test
+    void testNoSessions()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        withUserKeys(Collections.emptyList(), USER_KEY);
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION));
+
+        verify(response, never()).delete();
+        assertThat(issuedSubject).isNull();
+    }
+
+    @Test
+    void testSessionFailure()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        User user = withUser(USER_ID, "alice", null, 0);
+        withSessions(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
+        withRetrieval(USER_ID, completed(user));
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class));
+
+        verify(response, never()).delete();
+        verify(user, never()).retrieveAccess();
     }
 
     @Test

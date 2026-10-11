@@ -25,6 +25,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
@@ -226,6 +227,18 @@ public class SelfUserCreateActionTest extends RestActionTest
     @Test
     void testMissingProof()
     {
+        assertThatRequestTo(newAction())
+                .withJsonBody(VALID_BODY)
+                .hasFailureOfType(ProofAccessException.class)
+                .hasNoResponse()
+                .whenHandled();
+    }
+
+    @Test
+    void testClearedProof()
+    {
+        channel.attr(ProofObjectManagerImpl.CONTEXT).set(null);
+
         assertThatRequestTo(newAction())
                 .withJsonBody(VALID_BODY)
                 .hasFailureOfType(ProofAccessException.class)
