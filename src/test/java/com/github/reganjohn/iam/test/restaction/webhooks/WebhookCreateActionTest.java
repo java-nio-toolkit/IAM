@@ -19,7 +19,6 @@ package com.github.reganjohn.iam.test.restaction.webhooks;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -75,10 +74,8 @@ public class WebhookCreateActionTest extends RestActionTest
 
     private void withStoredUser(int count)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhookCount(user, completed(count));
+        withWebhookCount(USER_ID, completed(count));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
     }
 
     private static WebhookCreateData newData()
@@ -172,7 +169,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookCount(any());
     }
 
     @ValueSource(strings = {"https://localhost/hook", "https://127.0.0.1/hook", "https://192.168.0.1/hook"})
@@ -308,20 +305,6 @@ public class WebhookCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withJsonBody(VALID)
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testCreateFailure()
     {
         withStoredUser(1);
@@ -346,7 +329,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookCount(any());
     }
 
     @MethodSource
@@ -362,7 +345,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookCount(any());
     }
 
     @Test

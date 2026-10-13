@@ -135,31 +135,14 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<List<Session>> retrieveSessions()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<List<Session>> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : getIAM().getEntityBuilder().createSessions(array));
-            }
-        };
+        return api.retrieveSessions(userId);
     }
 
     @Nonnull
     @Override
     public InteractionCallbackAction<Integer> retrieveSessionCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT flags FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
-            {
-                request.onSuccess((int) EntityBuilder.count(array));
-            }
-        };
+        return api.retrieveSessionCount(userId);
     }
 
     @Nonnull
@@ -173,121 +156,49 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<List<Webhook>> retrieveWebhooks()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<List<Webhook>> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : getIAM().getEntityBuilder().createWebhooks(array));
-            }
-        };
+        return api.retrieveWebhooks(userId);
     }
 
     @Nonnull
     @Override
     public InteractionCallbackAction<Integer> retrieveWebhookCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT flags FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
-            {
-                request.onSuccess((int) EntityBuilder.count(array));
-            }
-        };
+        return api.retrieveWebhookCount(userId);
     }
 
     @Nonnull
     @Override
     public InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID applicationId)
     {
-        Checks.notNull(applicationId, "Application ID");
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<Application> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createApplication(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
-            }
-        };
+        return api.retrieveApplicationById(userId, applicationId);
     }
 
     @Nonnull
     @Override
     public InteractionCallbackAction<List<Application>> retrieveApplications()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<List<Application>> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                interaction.onSuccess(array.isEmpty() ? Collections.emptyList() : getIAM().getEntityBuilder().createApplications(array));
-            }
-        };
+        return api.retrieveApplications(userId);
     }
 
     @Nonnull
     @Override
     public InteractionCallbackAction<Integer> retrieveApplicationCount()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT flags FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
-            {
-                request.onSuccess((int) EntityBuilder.count(array));
-            }
-        };
+        return api.retrieveApplicationCount(userId);
     }
 
     @Nonnull
     @Override
     public InteractionCallbackAction<PermissionOverride> retrieveEntitlementById(@Nonnull UUID applicationId)
     {
-        Checks.notNull(applicationId, "Application ID");
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.entitlements WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<PermissionOverride> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createPermissionOverride(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
-            }
-        };
+        return api.retrieveEntitlementById(userId, applicationId);
     }
 
     @Nonnull
     @Override
     public InteractionCallbackAction<List<PermissionOverride>> retrieveEntitlements()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.entitlements WHERE user_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<List<PermissionOverride>> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty())
-                    interaction.onSuccess(getIAM().getEntityBuilder().createPermissionOverrides(array));
-                else
-                    interaction.onSuccess(Collections.emptyList());
-            }
-        };
+        return api.retrieveEntitlements(userId);
     }
 
     @Override

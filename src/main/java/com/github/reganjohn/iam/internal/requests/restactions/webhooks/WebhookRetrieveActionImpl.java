@@ -97,8 +97,7 @@ public class WebhookRetrieveActionImpl extends AbstractWebhookActionImpl impleme
     {
         UUID userId = retrieveSelfUserId(context);
         UUID webhookId = UUID.fromString(request.getRoute().getMajorParameters().get("webhook_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveWebhookById(webhookId))
+        api.retrieveWebhookById(userId, webhookId)
                 .map(Webhook::toData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }

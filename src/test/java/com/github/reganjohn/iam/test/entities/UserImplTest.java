@@ -52,6 +52,7 @@ public class UserImplTest extends RestActionTest
     private InteractionContextActionImpl<List<PermissionOverride>> retrieval()
     {
         withJCA();
+        when(api.retrieveEntitlements(any())).thenCallRealMethod();
         UserImpl user = new UserImpl(api, USER_ID, "alice", null, 0);
         return (InteractionContextActionImpl<List<PermissionOverride>>) user.retrieveEntitlements();
     }
@@ -204,6 +205,7 @@ public class UserImplTest extends RestActionTest
     void testSessionCount()
     {
         withJCA();
+        when(api.retrieveSessionCount(any())).thenCallRealMethod();
         assertCount((InteractionContextActionImpl<Integer>) new UserImpl(api, USER_ID, "alice", null, 0).retrieveSessionCount(), "users.sessions");
     }
 
@@ -212,6 +214,7 @@ public class UserImplTest extends RestActionTest
     void testWebhookCount()
     {
         withJCA();
+        when(api.retrieveWebhookCount(any())).thenCallRealMethod();
         assertCount((InteractionContextActionImpl<Integer>) new UserImpl(api, USER_ID, "alice", null, 0).retrieveWebhookCount(), "users.webhooks");
     }
 
@@ -220,6 +223,7 @@ public class UserImplTest extends RestActionTest
     void testApplicationCount()
     {
         withJCA();
+        when(api.retrieveApplicationCount(any())).thenCallRealMethod();
         assertCount((InteractionContextActionImpl<Integer>) new UserImpl(api, USER_ID, "alice", null, 0).retrieveApplicationCount(), "integrations.applications");
     }
 }

@@ -17,12 +17,12 @@
 package com.github.reganjohn.iam.test.restaction.webhooks;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.webhooks.WebhookRetrieveActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -36,6 +36,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class WebhookRetrieveActionTest extends RestActionTest
 {
@@ -47,13 +48,11 @@ public class WebhookRetrieveActionTest extends RestActionTest
         return new WebhookRetrieveActionImpl(api);
     }
 
-    private User withStoredWebhook(UUID webhookId, Webhook webhook)
+    private void withStoredWebhook(UUID webhookId, Webhook webhook)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhook(user, webhookId, completed(webhook));
+        InteractionCallbackAction<Webhook> retrieval = completed(webhook);
+        when(api.retrieveWebhookById(USER_ID, webhookId)).thenReturn(retrieval);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
-        return user;
     }
 
     static Stream<Arguments> testInvalidInputs()
@@ -88,7 +87,7 @@ public class WebhookRetrieveActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookById(any(), any());
     }
 
     @ValueSource(strings = {
@@ -100,14 +99,14 @@ public class WebhookRetrieveActionTest extends RestActionTest
     void testValidInputs(String webhookId)
     {
         UUID id = UUID.fromString(webhookId);
-        User user = withStoredWebhook(id, withWebhook(id, USER_ID, "hook", null, "https://example.org/hook", 0, 0));
+        withStoredWebhook(id, withWebhook(id, USER_ID, "hook", null, "https://example.org/hook", 0, 0));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(webhookId)
                 .hasStatus(StatusReason.OK.code)
                 .whenHandled();
 
-        verify(user).retrieveWebhookById(id);
+        verify(api).retrieveWebhookById(USER_ID, id);
     }
 
     @Test
@@ -136,26 +135,11 @@ public class WebhookRetrieveActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(WEBHOOK_ID.toString())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownWebhook()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhook(user, WEBHOOK_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK)));
+        InteractionCallbackAction<Webhook> retrieval = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
+        when(api.retrieveWebhookById(USER_ID, WEBHOOK_ID)).thenReturn(retrieval);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(WEBHOOK_ID.toString())
@@ -175,7 +159,7 @@ public class WebhookRetrieveActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookById(any(), any());
     }
 
     @MethodSource
@@ -191,6 +175,6 @@ public class WebhookRetrieveActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookById(any(), any());
     }
 }

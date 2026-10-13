@@ -18,7 +18,6 @@ package com.github.reganjohn.iam.test.restaction.entitlements;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.entitlements.PermissionOverridePaginationActionImpl;
@@ -52,10 +51,8 @@ public class PermissionOverridePaginationActionTest extends RestActionTest
 
     private void withStoredEntitlements(PermissionOverride... entitlements)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withEntitlements(user, completed(Arrays.asList(entitlements)));
+        withEntitlements(USER_ID, completed(Arrays.asList(entitlements)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -95,10 +92,8 @@ public class PermissionOverridePaginationActionTest extends RestActionTest
     @Test
     void testEmpty()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withEntitlements(user, completed(Collections.emptyList()));
+        withEntitlements(USER_ID, completed(Collections.emptyList()));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .hasStatus(StatusReason.OK.code)
@@ -107,25 +102,10 @@ public class PermissionOverridePaginationActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testRetrievalFailure()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withEntitlements(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
+        withEntitlements(USER_ID, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .hasNoResponse()
@@ -143,7 +123,7 @@ public class PermissionOverridePaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlements(any());
     }
 
     @MethodSource
@@ -158,6 +138,6 @@ public class PermissionOverridePaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlements(any());
     }
 }

@@ -79,10 +79,8 @@ public class SessionEditActionTest extends RestActionTest
     {
         withProof(SignType.ED25519);
         Session session = withSession(SESSION_ID, USER_ID, userAgent, flags, "thumbprint");
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSession(user, SESSION_ID, completed(session));
+        withSession(USER_ID, SESSION_ID, completed(session));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
     }
 
     static Stream<Arguments> testInvalidInputs()
@@ -176,7 +174,7 @@ public class SessionEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @MethodSource
@@ -194,7 +192,7 @@ public class SessionEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @MethodSource
@@ -224,7 +222,7 @@ public class SessionEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @Test
@@ -296,29 +294,11 @@ public class SessionEditActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withProof(SignType.ED25519);
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(SESSION_ID.toString())
-                .withJsonBody(body("user_agent", "curl/8.0"))
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownSession()
     {
         withProof(SignType.ED25519);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSession(user, SESSION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
+        withSession(USER_ID, SESSION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(SESSION_ID.toString())
@@ -341,7 +321,7 @@ public class SessionEditActionTest extends RestActionTest
                 .hasFailureOfType(ProofAccessException.class)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @Test
@@ -357,7 +337,7 @@ public class SessionEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @MethodSource
@@ -375,7 +355,7 @@ public class SessionEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @Test

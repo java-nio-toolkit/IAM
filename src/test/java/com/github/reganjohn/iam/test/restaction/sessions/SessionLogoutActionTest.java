@@ -22,7 +22,6 @@ import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.sessions.SessionLogoutActionImpl;
@@ -87,12 +86,10 @@ public class SessionLogoutActionTest extends RestActionTest
         AccessEntryData entry = withProof(SignType.ED25519);
         UUID ownId = UUIDv7.nameUUIDFromBytes(entry.getPublic().getEncoded()).toUUID();
         Session own = withSession(ownId, USER_ID, "Mozilla/5.0", 0, "thumbprint");
-        User user = withUser(USER_ID, "alice", null, 0);
         List<Session> sessions = new ArrayList<>(others);
         sessions.add(0, own);
-        withSessions(user, completed(sessions));
+        withSessions(USER_ID, completed(sessions));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
         return ownId;
     }
 
@@ -154,20 +151,6 @@ public class SessionLogoutActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withProof(SignType.ED25519);
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     @SuppressWarnings("rawtypes")
     void testLogoutFailure()
     {
@@ -194,7 +177,7 @@ public class SessionLogoutActionTest extends RestActionTest
                 .hasFailureOfType(ProofAccessException.class)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessions(any());
     }
 
     @Test
@@ -208,7 +191,7 @@ public class SessionLogoutActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessions(any());
     }
 
     @MethodSource
@@ -224,6 +207,6 @@ public class SessionLogoutActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessions(any());
     }
 }

@@ -59,8 +59,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        api.retrieveUserById(userId)
-                .flatMap(User::retrieveSessions)
+        api.retrieveSessions(userId)
                 .flatMap(sessions -> retrieveData(userId, sessions))
                 .queue(successObj -> handleSuccess(context, successObj), context::fireExceptionCaught);
     }

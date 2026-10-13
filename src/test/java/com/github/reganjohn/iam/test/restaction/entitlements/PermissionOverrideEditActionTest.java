@@ -21,7 +21,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.entitlements.PermissionOverrideEditActionImpl;
@@ -75,10 +74,8 @@ public class PermissionOverrideEditActionTest extends RestActionTest
     private PermissionOverride withStoredEntitlement()
     {
         PermissionOverride entitlement = withEntitlement(USER_ID, APPLICATION_ID, OWNER_ID, 2, 0);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withEntitlement(user, APPLICATION_ID, completed(entitlement));
+        withEntitlement(USER_ID, APPLICATION_ID, completed(entitlement));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
         return entitlement;
     }
 
@@ -169,7 +166,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlementById(any(), any());
     }
 
     @MethodSource
@@ -186,7 +183,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlementById(any(), any());
     }
 
     @ValueSource(strings = {
@@ -228,27 +225,10 @@ public class PermissionOverrideEditActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
-                .withJsonBody(body("permissions", 1))
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownEntitlement()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withEntitlement(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT)));
+        withEntitlement(USER_ID, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(APPLICATION_ID.toString())
@@ -286,7 +266,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlementById(any(), any());
     }
 
     @MethodSource
@@ -303,7 +283,7 @@ public class PermissionOverrideEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlementById(any(), any());
     }
 
     @Test

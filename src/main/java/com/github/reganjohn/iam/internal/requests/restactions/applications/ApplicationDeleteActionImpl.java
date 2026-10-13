@@ -92,8 +92,7 @@ public class ApplicationDeleteActionImpl extends AbstractApplicationActionImpl i
     {
         UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveApplicationById(applicationId))
+        api.retrieveApplicationById(userId, applicationId)
                 .flatMap(Application::delete)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }

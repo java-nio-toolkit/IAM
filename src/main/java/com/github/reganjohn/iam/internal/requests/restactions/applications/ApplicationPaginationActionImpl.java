@@ -25,7 +25,6 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.ApplicationPaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -54,8 +53,7 @@ public class ApplicationPaginationActionImpl extends AbstractApplicationActionIm
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        api.retrieveUserById(userId)
-                .flatMap(User::retrieveApplications)
+        api.retrieveApplications(userId)
                 .map(this::fromData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }

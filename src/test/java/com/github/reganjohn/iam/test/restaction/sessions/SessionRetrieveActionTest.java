@@ -20,7 +20,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.sessions.SessionRetrieveActionImpl;
@@ -51,17 +50,14 @@ public class SessionRetrieveActionTest extends RestActionTest
         return new SessionRetrieveActionImpl(api);
     }
 
-    private User withStoredSession(String userAgent, long flags)
+    private void withStoredSession(String userAgent, long flags)
     {
         AccessEntryData entry = mock(AccessEntryData.class);
         when(entry.toData()).thenReturn(DataObject.empty().put("kty", "OKP").put("kid", "key-id"));
         Session session = withSession(SESSION_ID, USER_ID, userAgent, flags, "thumbprint");
         withAccessEntry(session, completed(entry));
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSession(user, SESSION_ID, completed(session));
+        withSession(USER_ID, SESSION_ID, completed(session));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
-        return user;
     }
 
     static Stream<Arguments> testInvalidInputs()
@@ -96,7 +92,7 @@ public class SessionRetrieveActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @ValueSource(strings = {
@@ -112,17 +108,15 @@ public class SessionRetrieveActionTest extends RestActionTest
         when(entry.toData()).thenReturn(DataObject.empty());
         Session session = withSession(id, USER_ID, null, 0, "thumbprint");
         withAccessEntry(session, completed(entry));
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSession(user, id, completed(session));
+        withSession(USER_ID, id, completed(session));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(sessionId)
                 .hasStatus(StatusReason.OK.code)
                 .whenHandled();
 
-        verify(user).retrieveSessionById(id);
+        verify(api).retrieveSessionById(USER_ID, id);
     }
 
     @Test
@@ -151,26 +145,10 @@ public class SessionRetrieveActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(SESSION_ID.toString())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownSession()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSession(user, SESSION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
+        withSession(USER_ID, SESSION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(SESSION_ID.toString())
@@ -190,7 +168,7 @@ public class SessionRetrieveActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @MethodSource
@@ -206,6 +184,6 @@ public class SessionRetrieveActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 }

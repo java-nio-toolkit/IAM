@@ -23,7 +23,6 @@ import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
@@ -61,8 +60,7 @@ public class SessionLogoutActionImpl extends AbstractSessionActionImpl implement
         UUID userId = retrieveSelfUserId(context);
         PublicKey publicKey = data.getEntryData().getPublic();
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(publicKey.getEncoded());
-        api.retrieveUserById(userId)
-                .flatMap(User::retrieveSessions)
+        api.retrieveSessions(userId)
                 .map(sessions -> createPlaceholder(sessionId.toUUID(), sessions))
                 .flatMap(this::logout)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);

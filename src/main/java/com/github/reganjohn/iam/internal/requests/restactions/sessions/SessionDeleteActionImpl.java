@@ -24,7 +24,6 @@ import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -95,8 +94,7 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
     {
         UUID userId = retrieveSelfUserId(context);
         UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
-        api.retrieveUserById(userId)
-                .flatMap(User::retrieveSessionCount)
+        api.retrieveSessionCount(userId)
                 .flatMap(count -> delete(userId, sessionId, count))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
@@ -108,14 +106,7 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
         if (count == 1)
             throw new ErrorResponseException(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION);
         else
-            return retrieveSessionById(userId, sessionId).flatMap(Session::delete);
-    }
-
-    @Nonnull
-    @CheckReturnValue
-    private InteractionCallbackAction<Session> retrieveSessionById(@Nonnull UUID userId, @Nonnull UUID sessionId)
-    {
-        return api.retrieveUserById(userId).flatMap(user -> user.retrieveSessionById(sessionId));
+            return api.retrieveSessionById(userId, sessionId).flatMap(Session::delete);
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

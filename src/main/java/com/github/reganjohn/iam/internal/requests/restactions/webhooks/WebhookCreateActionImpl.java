@@ -29,7 +29,6 @@ import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -199,8 +198,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
     {
         UUID userId = retrieveSelfUserId(context);
         WebhookCreateData webhook = fromData(userId, rawBody);
-        api.retrieveUserById(userId)
-                .flatMap(User::retrieveWebhookCount)
+        api.retrieveWebhookCount(userId)
                 .flatMap(count -> create(webhook, count))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }

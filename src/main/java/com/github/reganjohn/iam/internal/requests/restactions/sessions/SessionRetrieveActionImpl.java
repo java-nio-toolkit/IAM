@@ -94,8 +94,7 @@ public class SessionRetrieveActionImpl extends AbstractSessionActionImpl impleme
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID sessionId = UUID.fromString(params.get("session_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveSessionById(sessionId))
+        api.retrieveSessionById(userId, sessionId)
                 .flatMap(this::retrieveAccessData)
                 .queue(session -> handleSuccess(context, session), context::fireExceptionCaught);
     }

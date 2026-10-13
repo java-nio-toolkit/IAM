@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.test.restaction.applications;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -49,13 +48,10 @@ public class ApplicationDeleteActionTest extends RestActionTest
         return new ApplicationDeleteActionImpl(api);
     }
 
-    private User withStoredApplication(UUID applicationId, Application application)
+    private void withStoredApplication(UUID applicationId, Application application)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, applicationId, completed(application));
+        withApplication(USER_ID, applicationId, completed(application));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
-        return user;
     }
 
     static Stream<Arguments> testInvalidInputs()
@@ -90,7 +86,7 @@ public class ApplicationDeleteActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationById(any(), any());
     }
 
     @ValueSource(strings = {
@@ -102,14 +98,14 @@ public class ApplicationDeleteActionTest extends RestActionTest
     void testValidInputs(String applicationId)
     {
         UUID id = UUID.fromString(applicationId);
-        User user = withStoredApplication(id, withApplication(id, USER_ID, "app", null, null, "https://example.org", 0, "https://example.org/callback"));
+        withStoredApplication(id, withApplication(id, USER_ID, "app", null, null, "https://example.org", 0, "https://example.org/callback"));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(applicationId)
                 .hasStatus(StatusReason.NO_CONTENT.code)
                 .whenHandled();
 
-        verify(user).retrieveApplicationById(id);
+        verify(api).retrieveApplicationById(USER_ID, id);
     }
 
     @Test
@@ -131,26 +127,10 @@ public class ApplicationDeleteActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownApplication()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
+        withApplication(USER_ID, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(APPLICATION_ID.toString())
@@ -186,7 +166,7 @@ public class ApplicationDeleteActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationById(any(), any());
     }
 
     @MethodSource
@@ -202,6 +182,6 @@ public class ApplicationDeleteActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationById(any(), any());
     }
 }

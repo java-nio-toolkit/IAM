@@ -18,7 +18,6 @@ package com.github.reganjohn.iam.test.restaction.entitlements;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.reganjohn.iam.api.entities.PermissionOverride;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.entitlements.PermissionOverrideDeleteActionImpl;
@@ -50,13 +49,10 @@ public class PermissionOverrideDeleteActionTest extends RestActionTest
         return new PermissionOverrideDeleteActionImpl(api);
     }
 
-    private User withStoredEntitlement(UUID applicationId, PermissionOverride entitlement)
+    private void withStoredEntitlement(UUID applicationId, PermissionOverride entitlement)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withEntitlement(user, applicationId, completed(entitlement));
+        withEntitlement(USER_ID, applicationId, completed(entitlement));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
-        return user;
     }
 
     static Stream<Arguments> testInvalidInputs()
@@ -91,7 +87,7 @@ public class PermissionOverrideDeleteActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlementById(any(), any());
     }
 
     @ValueSource(strings = {
@@ -103,14 +99,14 @@ public class PermissionOverrideDeleteActionTest extends RestActionTest
     void testValidInputs(String applicationId)
     {
         UUID id = UUID.fromString(applicationId);
-        User user = withStoredEntitlement(id, withEntitlement(USER_ID, id, OWNER_ID, 0, 0));
+        withStoredEntitlement(id, withEntitlement(USER_ID, id, OWNER_ID, 0, 0));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(applicationId)
                 .hasStatus(StatusReason.NO_CONTENT.code)
                 .whenHandled();
 
-        verify(user).retrieveEntitlementById(id);
+        verify(api).retrieveEntitlementById(USER_ID, id);
     }
 
     @Test
@@ -132,26 +128,10 @@ public class PermissionOverrideDeleteActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownEntitlement()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withEntitlement(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT)));
+        withEntitlement(USER_ID, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(APPLICATION_ID.toString())
@@ -187,7 +167,7 @@ public class PermissionOverrideDeleteActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlementById(any(), any());
     }
 
     @MethodSource
@@ -203,6 +183,6 @@ public class PermissionOverrideDeleteActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveEntitlementById(any(), any());
     }
 }

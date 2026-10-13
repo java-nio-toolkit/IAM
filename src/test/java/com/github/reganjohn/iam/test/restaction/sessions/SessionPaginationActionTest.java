@@ -69,7 +69,7 @@ public class SessionPaginationActionTest extends RestActionTest
     private void withStoredSessions(AccessEntryArray entries, Session... sessions)
     {
         User user = withUser(USER_ID, "alice", null, 0);
-        withSessions(user, completed(Arrays.asList(sessions)));
+        withSessions(USER_ID, completed(Arrays.asList(sessions)));
         withAccessEntries(user, completed(entries));
         withAccess(USER_ID);
         withRetrieval(USER_ID, completed(user));
@@ -124,19 +124,6 @@ public class SessionPaginationActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testMissingAccess()
     {
         assertThatRequestTo(newAction())
@@ -145,7 +132,7 @@ public class SessionPaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessions(any());
     }
 
     @MethodSource
@@ -160,6 +147,6 @@ public class SessionPaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessions(any());
     }
 }

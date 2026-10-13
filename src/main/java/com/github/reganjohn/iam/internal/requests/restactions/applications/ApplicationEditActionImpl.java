@@ -251,8 +251,7 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
         UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveApplicationById(applicationId))
+        api.retrieveApplicationById(userId, applicationId)
                 .flatMap(application -> modify(application, fromData(application, rawBody)))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }

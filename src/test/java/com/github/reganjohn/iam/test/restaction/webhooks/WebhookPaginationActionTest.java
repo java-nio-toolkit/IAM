@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.test.restaction.webhooks;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -51,10 +50,8 @@ public class WebhookPaginationActionTest extends RestActionTest
 
     private void withStoredWebhooks(Webhook... webhooks)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhooks(user, completed(Arrays.asList(webhooks)));
+        withWebhooks(USER_ID, completed(Arrays.asList(webhooks)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -94,10 +91,8 @@ public class WebhookPaginationActionTest extends RestActionTest
     @Test
     void testEmpty()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhooks(user, completed(Collections.emptyList()));
+        withWebhooks(USER_ID, completed(Collections.emptyList()));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .hasStatus(StatusReason.OK.code)
@@ -106,25 +101,10 @@ public class WebhookPaginationActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testRetrievalFailure()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhooks(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
+        withWebhooks(USER_ID, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .hasNoResponse()
@@ -142,7 +122,7 @@ public class WebhookPaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhooks(any());
     }
 
     @MethodSource
@@ -157,6 +137,6 @@ public class WebhookPaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhooks(any());
     }
 }

@@ -98,8 +98,7 @@ public class PermissionOverrideRetrieveActionImpl extends AbstractApplicationAct
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(params.get("application_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveEntitlementById(applicationId))
+        api.retrieveEntitlementById(userId, applicationId)
                 .map(this::mapFromData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }

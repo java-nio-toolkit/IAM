@@ -21,7 +21,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
@@ -77,10 +76,8 @@ public class ApplicationCreateActionTest extends RestActionTest
 
     private void withStoredUser(int count)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplicationCount(user, completed(count));
+        withApplicationCount(USER_ID, completed(count));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
     }
 
     private static String valid(Object... extra)
@@ -217,7 +214,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationCount(any());
     }
 
     @ValueSource(strings = {"https://localhost", "https://127.0.0.1", "https://192.168.0.1"})
@@ -345,20 +342,6 @@ public class ApplicationCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withJsonBody(valid())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testCreateFailure()
     {
         withStoredUser(1);
@@ -383,7 +366,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationCount(any());
     }
 
     @MethodSource
@@ -399,7 +382,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationCount(any());
     }
 
     @Test

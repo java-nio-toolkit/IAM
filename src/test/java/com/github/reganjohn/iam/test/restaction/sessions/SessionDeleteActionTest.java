@@ -18,7 +18,6 @@ package com.github.reganjohn.iam.test.restaction.sessions;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.sessions.SessionDeleteActionImpl;
@@ -49,14 +48,11 @@ public class SessionDeleteActionTest extends RestActionTest
         return new SessionDeleteActionImpl(api);
     }
 
-    private User withStoredUser(UUID sessionId, Session session, int count)
+    private void withStoredUser(UUID sessionId, Session session, int count)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSession(user, sessionId, completed(session));
-        withSessionCount(user, completed(count));
+        withSession(USER_ID, sessionId, completed(session));
+        withSessionCount(USER_ID, completed(count));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
-        return user;
     }
 
     static Stream<Arguments> testInvalidInputs()
@@ -91,7 +87,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionCount(any());
     }
 
     @ValueSource(strings = {
@@ -103,14 +99,14 @@ public class SessionDeleteActionTest extends RestActionTest
     void testValidInputs(String sessionId)
     {
         UUID id = UUID.fromString(sessionId);
-        User user = withStoredUser(id, withSession(id, USER_ID, null, 0, "thumbprint"), 2);
+        withStoredUser(id, withSession(id, USER_ID, null, 0, "thumbprint"), 2);
 
         assertThatRequestTo(newAction())
                 .withRouteParams(sessionId)
                 .hasStatus(StatusReason.NO_CONTENT.code)
                 .whenHandled();
 
-        verify(user).retrieveSessionById(id);
+        verify(api).retrieveSessionById(USER_ID, id);
     }
 
     @Test
@@ -148,27 +144,11 @@ public class SessionDeleteActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(SESSION_ID.toString())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownSession()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSession(user, SESSION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
-        withSessionCount(user, completed(2));
+        withSession(USER_ID, SESSION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
+        withSessionCount(USER_ID, completed(2));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(SESSION_ID.toString())
@@ -204,7 +184,7 @@ public class SessionDeleteActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionCount(any());
     }
 
     @MethodSource
@@ -220,6 +200,6 @@ public class SessionDeleteActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionCount(any());
     }
 }

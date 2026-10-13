@@ -92,8 +92,7 @@ public class WebhookDeleteActionImpl extends AbstractWebhookActionImpl implement
     {
         UUID userId = retrieveSelfUserId(context);
         UUID webhookId = UUID.fromString(request.getRoute().getMajorParameters().get("webhook_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveWebhookById(webhookId))
+        api.retrieveWebhookById(userId, webhookId)
                 .flatMap(Webhook::delete)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }

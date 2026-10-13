@@ -262,9 +262,19 @@ public class RestActionTest extends IntegrationTest
         when(user.retrieveSessions()).thenReturn(result);
     }
 
-    protected void withSessionCount(User user, InteractionCallbackAction<Integer> result)
+    protected void withSession(UUID userId, UUID sessionId, InteractionCallbackAction<Session> result)
     {
-        when(user.retrieveSessionCount()).thenReturn(result);
+        when(api.retrieveSessionById(userId, sessionId)).thenReturn(result);
+    }
+
+    protected void withSessions(UUID userId, InteractionCallbackAction<List<Session>> result)
+    {
+        when(api.retrieveSessions(userId)).thenReturn(result);
+    }
+
+    protected void withSessionCount(UUID userId, InteractionCallbackAction<Integer> result)
+    {
+        when(api.retrieveSessionCount(userId)).thenReturn(result);
     }
 
     protected void withAccessEntries(User user, InteractionCallbackAction<AccessEntryArray> result)
@@ -303,19 +313,19 @@ public class RestActionTest extends IntegrationTest
         return webhook;
     }
 
-    protected void withWebhook(User user, UUID webhookId, InteractionCallbackAction<Webhook> result)
-    {
-        when(user.retrieveWebhookById(webhookId)).thenReturn(result);
-    }
-
     protected void withWebhooks(User user, InteractionCallbackAction<List<Webhook>> result)
     {
         when(user.retrieveWebhooks()).thenReturn(result);
     }
 
-    protected void withWebhookCount(User user, InteractionCallbackAction<Integer> result)
+    protected void withWebhooks(UUID userId, InteractionCallbackAction<List<Webhook>> result)
     {
-        when(user.retrieveWebhookCount()).thenReturn(result);
+        when(api.retrieveWebhooks(userId)).thenReturn(result);
+    }
+
+    protected void withWebhookCount(UUID userId, InteractionCallbackAction<Integer> result)
+    {
+        when(api.retrieveWebhookCount(userId)).thenReturn(result);
     }
 
     protected static Application withApplication(UUID applicationId, UUID ownerId, String name, String description, String iconId, String origin, long flags, String... redirectUris)
@@ -339,14 +349,19 @@ public class RestActionTest extends IntegrationTest
         when(user.retrieveApplicationById(applicationId)).thenReturn(result);
     }
 
-    protected void withApplications(User user, InteractionCallbackAction<List<Application>> result)
+    protected void withApplication(UUID userId, UUID applicationId, InteractionCallbackAction<Application> result)
     {
-        when(user.retrieveApplications()).thenReturn(result);
+        when(api.retrieveApplicationById(userId, applicationId)).thenReturn(result);
     }
 
-    protected void withApplicationCount(User user, InteractionCallbackAction<Integer> result)
+    protected void withApplications(UUID userId, InteractionCallbackAction<List<Application>> result)
     {
-        when(user.retrieveApplicationCount()).thenReturn(result);
+        when(api.retrieveApplications(userId)).thenReturn(result);
+    }
+
+    protected void withApplicationCount(UUID userId, InteractionCallbackAction<Integer> result)
+    {
+        when(api.retrieveApplicationCount(userId)).thenReturn(result);
     }
 
     protected static PermissionOverride withEntitlement(UUID userId, UUID applicationId, UUID ownerId, long permissions, long flags)
@@ -369,9 +384,14 @@ public class RestActionTest extends IntegrationTest
         when(user.retrieveEntitlementById(applicationId)).thenReturn(result);
     }
 
-    protected void withEntitlements(User user, InteractionCallbackAction<List<PermissionOverride>> result)
+    protected void withEntitlement(UUID userId, UUID applicationId, InteractionCallbackAction<PermissionOverride> result)
     {
-        when(user.retrieveEntitlements()).thenReturn(result);
+        when(api.retrieveEntitlementById(userId, applicationId)).thenReturn(result);
+    }
+
+    protected void withEntitlements(UUID userId, InteractionCallbackAction<List<PermissionOverride>> result)
+    {
+        when(api.retrieveEntitlements(userId)).thenReturn(result);
     }
 
     protected List<Object> withEventRecorder()

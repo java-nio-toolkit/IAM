@@ -97,8 +97,7 @@ public class ApplicationRetrieveActionImpl extends AbstractApplicationActionImpl
     {
         UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveApplicationById(applicationId))
+        api.retrieveApplicationById(userId, applicationId)
                 .map(this::fromData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }

@@ -21,7 +21,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationEditBuilder;
@@ -79,10 +78,8 @@ public class ApplicationEditActionTest extends RestActionTest
     private Application withStoredApplication(long flags)
     {
         Application application = withApplication(APPLICATION_ID, USER_ID, "app", "description", "icon-cid", ORIGIN, flags, CALLBACK);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, completed(application));
+        withApplication(USER_ID, APPLICATION_ID, completed(application));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
         return application;
     }
 
@@ -216,7 +213,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationById(any(), any());
     }
 
     @MethodSource
@@ -233,7 +230,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationById(any(), any());
     }
 
     @ValueSource(strings = {
@@ -356,27 +353,10 @@ public class ApplicationEditActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(APPLICATION_ID.toString())
-                .withJsonBody(body("name", "renamed"))
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownApplication()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplication(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
+        withApplication(USER_ID, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(APPLICATION_ID.toString())
@@ -414,7 +394,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationById(any(), any());
     }
 
     @MethodSource
@@ -431,7 +411,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplicationById(any(), any());
     }
 
     @Test

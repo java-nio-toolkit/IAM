@@ -17,7 +17,6 @@
 package com.github.reganjohn.iam.test.restaction.applications;
 
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -51,10 +50,8 @@ public class ApplicationPaginationActionTest extends RestActionTest
 
     private void withStoredApplications(Application... applications)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplications(user, completed(Arrays.asList(applications)));
+        withApplications(USER_ID, completed(Arrays.asList(applications)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -94,10 +91,8 @@ public class ApplicationPaginationActionTest extends RestActionTest
     @Test
     void testEmpty()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplications(user, completed(Collections.emptyList()));
+        withApplications(USER_ID, completed(Collections.emptyList()));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .hasStatus(StatusReason.OK.code)
@@ -106,25 +101,10 @@ public class ApplicationPaginationActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testRetrievalFailure()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withApplications(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
+        withApplications(USER_ID, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .hasNoResponse()
@@ -142,7 +122,7 @@ public class ApplicationPaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplications(any());
     }
 
     @MethodSource
@@ -157,6 +137,6 @@ public class ApplicationPaginationActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveApplications(any());
     }
 }

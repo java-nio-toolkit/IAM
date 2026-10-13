@@ -142,8 +142,7 @@ public class PermissionOverrideEditActionImpl extends AbstractApplicationActionI
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID userId = retrieveSelfUserId(context);
         UUID applicationId = UUID.fromString(params.get("application_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveEntitlementById(applicationId))
+        api.retrieveEntitlementById(userId, applicationId)
                 .flatMap(entitlement -> modify(entitlement, rawBody))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }

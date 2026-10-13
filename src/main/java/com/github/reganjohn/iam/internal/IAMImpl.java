@@ -41,7 +41,9 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.config.OriginAccessConfig;
 import com.github.adamorgan.jnt.internal.utils.tracker.SocketTracker;
 import com.github.reganjohn.iam.api.IAM;
+import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
@@ -91,6 +93,7 @@ import java.time.Clock;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -108,7 +111,7 @@ public class IAMImpl implements IAM
     private final GlobalAccessManager manager;
     private final SocketManager socketManager;
     private final EventLoopGroup socketPool = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
-    private final JDT addressController;
+    private final JDT jdt;
     private final String baseUri;
     private final AccessSignatureManagerImpl accessSignatureManager = new AccessSignatureManagerImpl();
     private final SocketTracker tracker = new SocketTracker(Metrics.globalRegistry, "unknown");
@@ -177,7 +180,7 @@ public class IAMImpl implements IAM
                 .setConnectTimeout(4, TimeUnit.SECONDS)
                 .setKeepAlive(true)
                 .setEventLoopGroup(socketPool)
-                .setAddressController(addressController)
+                .setAddressController(jdt)
                 .build();
     }
 
@@ -187,13 +190,13 @@ public class IAMImpl implements IAM
         this.baseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
         this.jca = buildInstance().awaitReady();
         this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, Arrays.asList("http://localhost:3000", "http://localhost:8080"));
-        this.addressController = JDTBuilder.create(socketPool.next())
+        this.jdt = JDTBuilder.create(socketPool.next())
                 .setDatagramChannelType(NioDatagramChannel.class)
                 .build();
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
                 .setIdentifierString("IAM")
-                .setAddressController(addressController)
+                .setAddressController(jdt)
                 .setEventLoopGroup(socketPool)
                 .addEventListeners(new SocketTrackerManagerImpl(tracker))
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
@@ -347,6 +350,38 @@ public class IAMImpl implements IAM
 
     @Nonnull
     @CheckReturnValue
+    public InteractionCallbackAction<List<Session>> retrieveSessions(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<List<Session>> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess(array.isEmpty() ? Collections.emptyList() : getEntityBuilder().createSessions(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Integer> retrieveSessionCount(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT flags FROM users.sessions WHERE user_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess((int) EntityBuilder.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
     public InteractionCallbackAction<Webhook> retrieveWebhookById(@Nonnull UUID userId, @Nonnull UUID webhookId)
     {
         Checks.notNull(userId, "User ID");
@@ -366,6 +401,129 @@ public class IAMImpl implements IAM
     }
 
     @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<Webhook>> retrieveWebhooks(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<List<Webhook>> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess(array.isEmpty() ? Collections.emptyList() : getEntityBuilder().createWebhooks(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Integer> retrieveWebhookCount(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT flags FROM users.webhooks WHERE owner_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess((int) EntityBuilder.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID userId, @Nonnull UUID applicationId)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Application> request, @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
+                    request.onSuccess(getEntityBuilder().createApplication(array.getObject(0)));
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_APPLICATION));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<Application>> retrieveApplications(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<List<Application>> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess(array.isEmpty() ? Collections.emptyList() : getEntityBuilder().createApplications(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Integer> retrieveApplicationCount(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT flags FROM integrations.applications WHERE owner_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess((int) EntityBuilder.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<PermissionOverride> retrieveEntitlementById(@Nonnull UUID userId, @Nonnull UUID applicationId)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(applicationId, "Application ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.entitlements WHERE user_id = ? AND application_id = ?", Arrays.asList(userId, applicationId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<PermissionOverride> request, @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
+                    request.onSuccess(getEntityBuilder().createPermissionOverride(array.getObject(0)));
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<List<PermissionOverride>> retrieveEntitlements(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.entitlements WHERE user_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<List<PermissionOverride>> request, @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty())
+                    request.onSuccess(getEntityBuilder().createPermissionOverrides(array));
+                else
+                    request.onSuccess(Collections.emptyList());
+            }
+        };
+    }
+
+    @Nonnull
     public String getBaseUri()
     {
         return baseUri;
@@ -380,7 +538,7 @@ public class IAMImpl implements IAM
     @Nonnull
     public JDT getJDT()
     {
-        return addressController;
+        return jdt;
     }
 
     public void shutdown()

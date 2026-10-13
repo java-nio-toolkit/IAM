@@ -174,8 +174,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         try (AccessContextData contextData = data.getContext(AccessContextType.SHA_256))
         {
             UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
-            api.retrieveUserById(userId)
-                    .flatMap(user -> user.retrieveSessionById(sessionId))
+            api.retrieveSessionById(userId, sessionId)
                     .flatMap(session -> modify(session, fromData(session, rawBody, data, contextData.digest())))
                     .queue(success -> handleSuccess(context), context::fireExceptionCaught);
         }

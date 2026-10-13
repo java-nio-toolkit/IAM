@@ -30,7 +30,6 @@ import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.Application;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -256,8 +255,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody)
     {
         UUID userId = retrieveSelfUserId(context);
-        api.retrieveUserById(userId)
-                .flatMap(User::retrieveApplicationCount)
+        api.retrieveApplicationCount(userId)
                 .map(count -> fromData(rawBody, userId, count))
                 .flatMap(this::create)
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);

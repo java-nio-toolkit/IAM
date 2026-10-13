@@ -23,7 +23,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookPaginationAction;
@@ -53,8 +52,7 @@ public class WebhookPaginationActionImpl extends AbstractWebhookActionImpl imple
 
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull UUID userId)
     {
-        api.retrieveUserById(userId)
-                .flatMap(User::retrieveWebhooks)
+        api.retrieveWebhooks(userId)
                 .map(this::fromData)
                 .queue(json -> handleSuccess(context, json), context::fireExceptionCaught);
     }
