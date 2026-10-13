@@ -23,11 +23,11 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.sessions.SessionPaginationActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -68,11 +69,11 @@ public class SessionPaginationActionTest extends RestActionTest
 
     private void withStoredSessions(AccessEntryArray entries, Session... sessions)
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSessions(USER_ID, completed(Arrays.asList(sessions)));
-        withAccessEntries(user, completed(entries));
+        InteractionCallbackAction<List<Session>> stored = completed(Arrays.asList(sessions));
+        InteractionCallbackAction<AccessEntryArray> access = completed(entries);
+        withSessions(USER_ID, stored);
+        withAccessEntries(USER_ID, access);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
     }
 
     static Stream<Arguments> testInvalidSubject()

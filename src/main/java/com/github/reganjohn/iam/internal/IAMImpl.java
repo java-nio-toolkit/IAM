@@ -29,7 +29,9 @@ import com.github.adamorgan.jnt.api.managers.SignatureObjectManager;
 import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.socket.DefaultSocketManagerBuilder;
 import com.github.adamorgan.jnt.api.socket.SocketManager;
+import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.SignType;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.internal.JNTImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicRequestSendHandlerImpl;
@@ -344,6 +346,25 @@ public class IAMImpl implements IAM
                     request.onSuccess(getEntityBuilder().createSession(array.getObject(0)));
                 else
                     request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<AccessEntryArray> retrieveAccess(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.public_keys WHERE user_id = ?", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<AccessEntryArray> request, @Nonnull BufferArray array) throws Exception
+            {
+                if (array.isEmpty())
+                    request.onSuccess(AccessUtil.EMPTY_SET);
+                else
+                    request.onSuccess(getEntityBuilder().createAccessEntries(array));
             }
         };
     }

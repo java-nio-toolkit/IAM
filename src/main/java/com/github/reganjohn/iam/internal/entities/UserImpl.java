@@ -16,7 +16,6 @@
 
 package com.github.reganjohn.iam.internal.entities;
 
-import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.utils.Checks;
@@ -36,7 +35,6 @@ import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -89,19 +87,7 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<AccessEntryArray> retrieveAccess()
     {
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.public_keys WHERE user_id = ?", Collections.singletonList(userId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<AccessEntryArray> interaction,
-                                      @Nonnull BufferArray array) throws Exception
-            {
-                if (array.isEmpty())
-                    interaction.onSuccess(AccessUtil.EMPTY_SET);
-                else
-                    interaction.onSuccess(getIAM().getEntityBuilder().createAccessEntries(array));
-            }
-        };
+        return api.retrieveAccess(userId);
     }
 
     @Nonnull

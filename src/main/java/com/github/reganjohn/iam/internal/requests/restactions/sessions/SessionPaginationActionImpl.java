@@ -28,7 +28,6 @@ import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionPaginationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -91,9 +90,7 @@ public class SessionPaginationActionImpl extends AbstractSessionActionImpl imple
     private InteractionCallbackAction<AccessEntryArray> retrieveAccessData(@Nonnull UUID userId,
                                                                            @Nonnull List<Session> sessions)
     {
-        return api.retrieveUserById(userId)
-                .flatMap(User::retrieveAccess)
-                .map(access -> filter(sessions, access));
+        return api.retrieveAccess(userId).map(access -> filter(sessions, access));
     }
 
     @Nonnull

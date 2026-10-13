@@ -282,6 +282,11 @@ public class RestActionTest extends IntegrationTest
         when(user.retrieveAccess()).thenReturn(result);
     }
 
+    protected void withAccessEntries(UUID userId, InteractionCallbackAction<AccessEntryArray> result)
+    {
+        when(api.retrieveAccess(userId)).thenReturn(result);
+    }
+
     protected void withAccessEntry(Session session, InteractionCallbackAction<AccessEntryData> result)
     {
         when(session.retrieveAccess()).thenReturn(result);
