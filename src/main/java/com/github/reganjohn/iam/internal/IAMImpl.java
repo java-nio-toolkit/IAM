@@ -207,7 +207,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new CacheObjectManagerImpl())
                 .addEventListeners(new CookieObjectManagerImpl())
 
-                .addEventListeners(new ContentSecurityOverrideManagerImpl())
+                .addEventListeners(new ContentSecurityOverrideManagerImpl(manager.getAudiences().get(0)))
 
                 .addEventListeners(new ProofObjectManagerImpl(Clock.systemUTC(), getNonceSecret(), 60, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, true))
                 .addEventListeners(new ProofOverrideManagerImpl())

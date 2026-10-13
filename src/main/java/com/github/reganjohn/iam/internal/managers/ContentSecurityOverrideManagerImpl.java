@@ -43,6 +43,12 @@ public class ContentSecurityOverrideManagerImpl extends AbstractInteractionObjec
             InteractionPermission.FULLSCREEN);
 
     private final Map<String, String> headers = new ConcurrentHashMap<>();
+    private final String endpoint;
+
+    public ContentSecurityOverrideManagerImpl(@Nonnull String endpoint)
+    {
+        this.endpoint = endpoint;
+    }
 
     @Override
     public void handleResponse(@Nonnull ChannelHandlerContext context, @Nullable Request request, @Nonnull Response response)
@@ -60,21 +66,21 @@ public class ContentSecurityOverrideManagerImpl extends AbstractInteractionObjec
 
     @Nonnull
     @Unmodifiable
-    private static Map<String, String> mapFromData()
+    private Map<String, String> mapFromData()
     {
         return getDefault();
     }
 
     @Nonnull
     @Unmodifiable
-    private static Map<String, String> getDefault()
+    private Map<String, String> getDefault()
     {
         return new ContentSecurityBuilder()
                 .setContentSecurityPolicy(getContentPolicy())
                 .setTimeOutEnd(365, TimeUnit.DAYS, ContentSecurityContext.Type.PRELOAD)
                 .setReferrerPolicy(ReferrerPolicy.STRICT_CROSS)
                 .setHideContentTypeOption(true)
-                .addInteractionEndpointUrl("default", "https://iam.localhost.com")
+                .addInteractionEndpointUrl("default", endpoint)
                 .setInteractionContext(InteractionContextType.NONE, "default")
                 .setInteractionContent(InteractionContentType.REQUIRE, "default")
                 .setInteractionResource(InteractionResourceType.SAME_ORIGIN)
