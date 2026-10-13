@@ -220,7 +220,6 @@ public class ApplicationInteractionVerifyClientTest extends RestActionTest
         assertThat(outbound).isInstanceOf(Request.class);
         Request request = (Request) outbound;
         assertThat(request.getRoute().getCompiledRoute()).isEqualTo(".well-known/jwks.json");
-        assertThat(request.getHeaders().get("Forwarded")).containsExactly("proto=http");
     }
 
     @Test

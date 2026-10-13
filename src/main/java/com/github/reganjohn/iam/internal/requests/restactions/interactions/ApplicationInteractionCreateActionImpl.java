@@ -74,7 +74,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -639,10 +638,8 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         public void handlerAdded(@Nonnull ChannelHandlerContext context)
         {
             this.deadline = context.executor().schedule(() -> onTimeout(context), RETRIEVE_ACCESS_TIMEOUT, TimeUnit.SECONDS);
-            CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
-            headers.put("Forwarded", Collections.singletonList("proto=http"));
             List<ReceivedCookie> cookies = Collections.emptyList();
-            context.writeAndFlush(new Request(context, this, route.compile(), headers, null, cookies));
+            context.writeAndFlush(new Request(context, this, route.compile(), new CaseInsensitiveMap<>(), null, cookies));
         }
 
         @Override
