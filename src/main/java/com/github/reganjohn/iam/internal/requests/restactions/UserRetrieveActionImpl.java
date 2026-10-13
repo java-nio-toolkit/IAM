@@ -32,7 +32,7 @@ import com.github.reganjohn.iam.api.requests.restactions.UserRetrieveAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
 import java.util.ArrayList;

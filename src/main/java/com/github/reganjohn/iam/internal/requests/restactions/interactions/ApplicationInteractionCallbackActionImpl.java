@@ -61,7 +61,7 @@ import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.internal.ConstantTimeUtils;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -197,7 +197,7 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
     @Nonnull
     private String retrieveAccessToken(@Nonnull Request request)
     {
-        String authorization = Helpers.get(request.getHeaders(), "Authorization");
+        String authorization = request.getHeaders().getFirst("Authorization");
         String[] parts = Helpers.nonEmpty(authorization) ? authorization.split(" ") : new String[0];
         if (parts.length != 2 || !parts[0].equalsIgnoreCase("GNAP") || parts[1].isEmpty())
             throw new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN);

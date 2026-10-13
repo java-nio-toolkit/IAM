@@ -34,7 +34,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.collections4.MultiValuedMap;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.apache.commons.collections4.multimap.AbstractMultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 

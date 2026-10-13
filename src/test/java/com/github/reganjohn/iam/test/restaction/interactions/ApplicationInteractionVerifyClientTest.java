@@ -40,7 +40,7 @@ import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.embedded.EmbeddedChannel;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

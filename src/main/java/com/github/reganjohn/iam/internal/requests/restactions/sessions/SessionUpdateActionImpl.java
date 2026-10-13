@@ -50,7 +50,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import org.apache.commons.codec.digest.DigestUtils;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -107,7 +107,7 @@ public class SessionUpdateActionImpl extends AbstractSessionActionImpl implement
     {
         if (Helpers.nonEmpty(errors))
             throw new ErrorResponseException(ErrorResponse.INVALID_FORM_BODY, errors);
-        String authorization = Helpers.get(request.getHeaders(), "Authorization");
+        String authorization = request.getHeaders().getFirst("Authorization");
         String[] parts = Helpers.nonEmpty(authorization) ? authorization.split(" ") : new String[0];
         if (parts.length != 2)
             throw new ErrorResponseException(ErrorResponse.UNAUTHORIZED);

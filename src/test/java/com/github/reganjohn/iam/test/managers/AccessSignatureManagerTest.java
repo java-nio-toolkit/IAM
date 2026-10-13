@@ -38,7 +38,7 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.internal.managers.AccessSignatureManagerImpl;
 import com.github.reganjohn.iam.test.IntegrationTest;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -52,7 +52,6 @@ import java.security.Security;
 import java.security.Signature;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -131,7 +130,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
                 .setMode(SignType.ED25519.getName())
                 .setTag("jnt")
                 .build();
-        CaseInsensitiveMap<String, Collection<String>> headers = headers();
+        CaseInsensitiveMap<String, String> headers = headers();
         headers.put("Signature-Input", Collections.singletonList(content.toString()));
         headers.put("Signature", Collections.singletonList(content.sign()));
         return new Request(context, route, headers);
@@ -144,7 +143,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
         Signature signature = Signature.getInstance("Ed25519", "BC");
         signature.initSign(signer.getPrivate());
         signature.update(base.getBytes(StandardCharsets.US_ASCII));
-        CaseInsensitiveMap<String, Collection<String>> headers = headers();
+        CaseInsensitiveMap<String, String> headers = headers();
         headers.put("Authorization", Collections.singletonList(authorization));
         headers.put("Signature-Input", Collections.singletonList("sig1=" + params));
         headers.put("Signature", Collections.singletonList("sig1=:" + Base64.getEncoder().encodeToString(signature.sign()) + ":"));
@@ -152,9 +151,9 @@ public class AccessSignatureManagerTest extends IntegrationTest
     }
 
     @Nonnull
-    private static CaseInsensitiveMap<String, Collection<String>> headers()
+    private static CaseInsensitiveMap<String, String> headers()
     {
-        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
         headers.put("Host", Collections.singletonList(AUTHORITY));
         return headers;
     }

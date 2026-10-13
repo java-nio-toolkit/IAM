@@ -56,7 +56,7 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImp
 import com.reganjohn.jdt.api.JDTBuilder;
 import io.netty.channel.ChannelHandler;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -64,7 +64,6 @@ import org.mockito.MockedStatic;
 
 import java.security.KeyPairGenerator;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -272,7 +271,7 @@ public class IAMImplTest extends IntegrationTest
             withSessionRequest();
             channel.pipeline().addLast(handlers);
             clearInvocations(jca);
-            CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+            CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
             headers.put("Host", Collections.singletonList("iam.example"));
             headers.put("Authorization", Collections.singletonList("DPoP " + TOKEN));
             Request request = new Request(context, Routes.Self.DELETE_SELF.compile(), headers);

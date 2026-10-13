@@ -34,7 +34,7 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

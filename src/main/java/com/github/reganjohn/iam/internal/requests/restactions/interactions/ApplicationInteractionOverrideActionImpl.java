@@ -47,7 +47,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
 import com.github.reganjohn.iam.internal.utils.ApplicationUtil;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
 import javax.annotation.CheckReturnValue;
@@ -192,7 +192,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
 
     private static boolean isJson(@Nonnull Request request)
     {
-        String accept = Helpers.get(request.getHeaders(), "Accept");
+        String accept = request.getHeaders().getFirst("Accept");
         return accept != null && accept.contains("application/json");
     }
 
@@ -213,7 +213,7 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     @Nonnull
     private Response createRedirectResponse(@Nonnull ChannelHandlerContext context, @Nonnull String location)
     {
-        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
         headers.put("Location", Collections.singletonList(location));
         return new Response(context, StatusReason.SEE_OTHER, headers);
     }

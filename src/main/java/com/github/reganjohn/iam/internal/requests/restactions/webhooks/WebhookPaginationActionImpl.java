@@ -29,7 +29,7 @@ import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookPaginat
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractWebhookActionImpl;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.Nonnull;
 import java.util.List;

@@ -34,7 +34,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.CharsetUtil;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.jetbrains.annotations.Contract;
 import org.mockito.ThrowingConsumer;
 
@@ -42,7 +42,6 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -64,7 +63,7 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     private final ChannelHandlerContext context;
     private final Runnable onHandled;
     private final List<ThrowingConsumer<Outcome>> assertions = new ArrayList<>();
-    private final CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+    private final CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
     private final List<ByteBuf> components = new ArrayList<>();
     private RequestBody body;
     private String[] routeParams = new String[0];

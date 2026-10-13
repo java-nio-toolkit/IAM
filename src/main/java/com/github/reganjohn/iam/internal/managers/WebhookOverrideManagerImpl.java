@@ -44,14 +44,13 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundInvoker;
 import io.netty.util.concurrent.FutureListener;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.net.InetAddress;
 import java.net.URI;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -200,7 +199,7 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
         {
             LOG.debug("Sending webhook request on route {}", route.getRoute());
             BufferedRequestBody body = new BufferedRequestBody(MEDIA_TYPE_JSON, rawData.toBinary(), true);
-            CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+            CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
             headers.put("Host", Collections.singletonList(IOUtil.getHost(context.channel().remoteAddress())));
             this.request = new Request(context, this, route.compile(), headers, body, Collections.emptyList());
             context.writeAndFlush(request).addListener(future ->

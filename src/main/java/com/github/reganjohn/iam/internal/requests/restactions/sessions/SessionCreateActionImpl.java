@@ -57,7 +57,7 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImp
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -427,7 +427,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublic().getEncoded());
         String subject = data.getSubject();
-        String userAgent = Helpers.get(request.getHeaders(), "User-Agent");
+        String userAgent = request.getHeaders().getFirst("User-Agent");
         String thumbprint = context.digest();
         UUID userId = UUID.fromString(subject);
         return new SessionCreateBuilder()

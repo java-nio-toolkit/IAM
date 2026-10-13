@@ -56,7 +56,7 @@ import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImp
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -244,7 +244,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         return new SessionCreateBuilder()
                 .setUserId(userId)
                 .setSessionId(UUIDv7.nameUUIDFromBytes(access.getPublic().getEncoded()).toUUID())
-                .setUserAgent(Helpers.get(request.getHeaders(), "User-Agent"))
+                .setUserAgent(request.getHeaders().getFirst("User-Agent"))
                 .setAccessEntry(access)
                 .setSessionFlags(sessionData.getLong("flags", 0) & ~Session.SessionFlag.SYSTEM)
                 .setThumbprint(context.digest())

@@ -38,7 +38,7 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
@@ -49,7 +49,6 @@ import java.net.SocketTimeoutException;
 import java.nio.channels.ClosedChannelException;
 import java.security.GeneralSecurityException;
 import java.security.SignatureException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.regex.Pattern;
@@ -262,14 +261,14 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 
     private void handleOverloadFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error)
     {
-        CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+        CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
         if (retryAfter > 0)
             headers.put(RestRateLimiter.RETRY_AFTER_HEADER, Collections.singletonList(String.valueOf(retryAfter)));
         handleProtocolFailure(context, error, StatusReason.SERVICE_UNAVAILABLE, headers);
     }
 
     private void handleProtocolFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error, @Nonnull StatusReason reason,
-                                       @Nonnull CaseInsensitiveMap<String, Collection<String>> headers)
+                                       @Nonnull CaseInsensitiveMap<String, String> headers)
     {
         ErrorResponseException errorResponse = new ErrorResponseException(0, error.getMessage());
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
