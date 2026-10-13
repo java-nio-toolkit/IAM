@@ -28,6 +28,7 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.channel.ChannelHandlerContext;
@@ -53,6 +54,15 @@ public class SessionCryptoManagerImpl extends ProofCryptoManagerImpl
         ProofObjectData proof = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
         if (data == null || proof == null || !MiscUtil.isUUID(data.getSubject()))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+        else if (request.getRoute().getBaseRoute() == Routes.Session.ADD_SESSION)
+            super.handleSuccess(context, request);
+        else
+            handleSession(context, request, data, proof);
+    }
+
+    private void handleSession(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                               @Nonnull AccessObjectData data, @Nonnull ProofObjectData proof)
+    {
         UUID userId = UUID.fromString(data.getSubject());
         UUID sessionId = UUIDv7.nameUUIDFromBytes(proof.getEntryData().getPublic().getEncoded()).toUUID();
         api.retrieveUserById(userId)

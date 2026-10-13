@@ -25,9 +25,11 @@ import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
+import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.internal.managers.SessionCryptoManagerImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -47,6 +49,12 @@ public class SessionCryptoManagerTest extends RestActionTest
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
 
     private final Request request = mock(Request.class);
+
+    @BeforeEach
+    void withRoute()
+    {
+        when(request.getRoute()).thenReturn(Routes.Self.GET_SELF.compile());
+    }
 
     private void withToken(String subject, String thumbprint)
     {
@@ -94,6 +102,19 @@ public class SessionCryptoManagerTest extends RestActionTest
 
         assertThat(handle()).isNull();
         assertThat((Object) channel.readInbound()).isSameAs(request);
+    }
+
+    @Test
+    void testCreateSession()
+    {
+        when(request.getRoute()).thenReturn(Routes.Session.ADD_SESSION.compile());
+        withToken(USER_ID.toString(), THUMBPRINT);
+        withProof(SignType.ES256);
+
+        assertThat(handle()).isNull();
+        assertThat((Object) channel.readInbound()).isSameAs(request);
+        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @Test
