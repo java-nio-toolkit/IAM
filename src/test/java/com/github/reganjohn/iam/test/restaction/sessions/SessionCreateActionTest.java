@@ -66,6 +66,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -119,7 +120,7 @@ public class SessionCreateActionTest extends RestActionTest
 
     private static void whenHandled(RestActionAssertions assertions)
     {
-        try (MockedStatic<EntityBuilder> builder = mockStatic(EntityBuilder.class))
+        try (MockedStatic<EntityBuilder> builder = mockStatic(EntityBuilder.class, CALLS_REAL_METHODS))
         {
             withIssuedObject(builder, USER_ID.toString());
 

@@ -43,6 +43,7 @@ import javax.annotation.Nullable;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PublicKey;
+import java.security.interfaces.RSAKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.time.OffsetDateTime;
 import java.util.*;
@@ -173,7 +174,7 @@ public class EntityBuilder extends AbstractEntityBuilder
         if (usage != null)
             rawData.put("use", usage);
         rawEntryData.putAll(rawData);
-        return createAccessEntry(id, signType, rawEntryData);
+        return AbstractEntityBuilder.createAccessEntry(id, signType, rawEntryData);
     }
 
     @Nonnull
@@ -274,6 +275,30 @@ public class EntityBuilder extends AbstractEntityBuilder
         boolean denied = data.getBoolean("denied", false);
         return new ApplicationCallbackResponseImpl(api, userId, ownerId, applicationId, interactionId, rawPermissions,
                 reference, continueHash, accessRaw, thumbprint, label, denied);
+    }
+
+    @Nonnull
+    public static AccessEntryData createAccessEntry(@Nonnull DataObject json) throws Exception
+    {
+        return checkAccessEntry(AbstractEntityBuilder.createAccessEntry(json));
+    }
+
+    @Nonnull
+    public static AccessEntryData createAccessEntry(@Nullable String kid, @Nonnull SignType signType, @Nonnull DataObject json) throws Exception
+    {
+        return checkAccessEntry(AbstractEntityBuilder.createAccessEntry(kid, signType, json));
+    }
+
+    @Nonnull
+    private static AccessEntryData checkAccessEntry(@Nonnull AccessEntryData data)
+    {
+        if (data.getUsage() == AccessEntryTarget.ENC)
+            throw new IllegalArgumentException("Cannot use an encrypt access for sign.");
+        else if (data.getType() == AccessEntryType.RSA && ((RSAKey) data.getPublic()).getModulus().bitLength() < data.getMode().getRequiredLength())
+            throw new IllegalArgumentException(
+                    Helpers.format("The RSA access size for %s must be higher or equal to %d bits.", data.getMode().getName(), data.getMode().getRequiredLength()));
+        else
+            return data;
     }
 
     @Nonnull

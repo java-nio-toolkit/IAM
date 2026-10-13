@@ -26,8 +26,6 @@ import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryTarget;
-import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.managers.ProofSignatureManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.CallbackContext;
@@ -44,7 +42,6 @@ import io.netty.util.AttributeKey;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.security.KeyPair;
-import java.security.interfaces.RSAKey;
 
 public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implements AccessSignatureManager
 {
@@ -119,24 +116,12 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
                     .put(ProofObjectManager.ALG, raw.getString(ProofObjectManager.ALG))
                     .put(ProofObjectManager.KEY, raw)
                     .toData();
-            return createAccessEntry(EntityBuilder.createAccessEntry(rawData));
+            return EntityBuilder.createAccessEntry(rawData);
         }
         catch (Exception ex)
         {
             throw new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.INVALID_TOKEN);
         }
-    }
-
-    @Nonnull
-    private AccessEntryData createAccessEntry(@Nonnull AccessEntryData data)
-    {
-        if (data.getUsage() == AccessEntryTarget.ENC)
-            throw new IllegalArgumentException("Cannot use an encrypt access for sign.");
-        else if (data.getType() == AccessEntryType.RSA && ((RSAKey) data.getPublic()).getModulus().bitLength() < data.getMode().getRequiredLength())
-            throw new IllegalArgumentException(
-                    Helpers.format("The RSA access size for %s must be higher or equal to %d bits.", data.getMode().getName(), data.getMode().getRequiredLength()));
-        else
-            return data;
     }
 
     @Override

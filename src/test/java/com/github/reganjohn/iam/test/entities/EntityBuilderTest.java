@@ -56,6 +56,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -221,6 +222,29 @@ public class EntityBuilderTest
 
         assertThat(entry.getUniqueId()).isEqualTo("key-id");
         assertThat(entry.getPublic().getEncoded()).isEqualTo(pair.getPublic().getEncoded());
+    }
+
+    @Test
+    void testWeakRsaAccessEntry() throws Exception
+    {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA", "BC");
+        generator.initialize(1024);
+        DataObject jwk = EntityBuilder.createAccessSecretData(SignType.RS256.getType(), generator.generateKeyPair(), true)
+                .put("kty", SignType.RS256.getTypeRaw());
+
+        assertThatIllegalArgumentException().isThrownBy(() -> EntityBuilder.createAccessEntry(null, SignType.RS256, jwk));
+        assertThatIllegalArgumentException().isThrownBy(() -> EntityBuilder.createAccessEntry(DataObject.empty().put("alg", SignType.RS256.getName()).put("jwk", jwk).toData()));
+    }
+
+    @Test
+    void testEncryptionAccessEntry() throws Exception
+    {
+        DataObject jwk = EntityBuilder.createAccessSecretData(SignType.ED25519.getType(), newPair(SignType.ED25519), true)
+                .put("kty", SignType.ED25519.getTypeRaw())
+                .put("use", "enc");
+
+        assertThatIllegalArgumentException().isThrownBy(() -> EntityBuilder.createAccessEntry(null, SignType.ED25519, jwk));
+        assertThatIllegalArgumentException().isThrownBy(() -> EntityBuilder.createAccessEntry(DataObject.empty().put("alg", SignType.ED25519.getName()).put("jwk", jwk).toData()));
     }
 
     private static KeyPair newPair(SignType type) throws Exception

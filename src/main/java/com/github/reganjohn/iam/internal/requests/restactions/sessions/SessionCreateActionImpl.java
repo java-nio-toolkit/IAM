@@ -30,7 +30,6 @@ import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
-import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
@@ -386,7 +385,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
         ProofObjectData proof = retrieveSelfProof(context);
         AccessEntryManager manager = context.channel().attr(AccessEntryManagerImpl.IDENTIFIER).get();
         AccessEntryManagerImpl.AccessEntrySnapshot snapshot = manager.getCurrentOrder();
-        AccessEntryData entryData = AbstractEntityBuilder.createAccessEntry(id, type, rawBody);
+        AccessEntryData entryData = EntityBuilder.createAccessEntry(id, type, rawBody);
         verify(context, request, entryData);
         try (AccessContextData contextData = entryData.getContext(AccessContextType.SHA_256);
              AccessContextData proofData = proof.getContext(AccessContextType.SHA_256))
