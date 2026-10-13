@@ -16,6 +16,10 @@
 
 package com.github.reganjohn.iam.test.managers;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -29,8 +33,10 @@ import com.github.reganjohn.iam.internal.managers.ErrorObjectManagerImpl;
 import com.github.reganjohn.iam.test.IntegrationTest;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.security.DigestException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -134,6 +140,75 @@ public class ErrorObjectManagerTest extends IntegrationTest
         new ErrorObjectManagerImpl(true).exceptionCaught(context, new IllegalStateException("x"));
 
         assertThat((Object) channel.readOutbound()).isNotNull();
+    }
+
+    private List<ILoggingEvent> capture(Throwable error) throws Exception
+    {
+        Logger logger = (Logger) ErrorObjectManagerImpl.LOG;
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        try
+        {
+            new ErrorObjectManagerImpl(true).exceptionCaught(context, error);
+        }
+        finally
+        {
+            logger.detachAppender(appender);
+        }
+        return appender.list;
+    }
+
+    private void assertClosedQuietly(Throwable error) throws Exception
+    {
+        assertThat(capture(error)).noneMatch(event -> event.getLevel() == Level.ERROR);
+        assertThat((Object) channel.readOutbound()).isNull();
+        assertThat(channel.isActive()).isFalse();
+    }
+
+    @Test
+    void testConnectionReset() throws Exception
+    {
+        assertClosedQuietly(new IOException("Connection reset by peer"));
+    }
+
+    @Test
+    void testBrokenPipe() throws Exception
+    {
+        assertClosedQuietly(new IOException("Broken pipe"));
+    }
+
+    @Test
+    void testSocketReadFailure() throws Exception
+    {
+        IOException error = new IOException();
+        error.setStackTrace(new StackTraceElement[]{new StackTraceElement("sun.nio.ch.SocketChannelImpl", "read", null, -1)});
+
+        assertClosedQuietly(error);
+    }
+
+    @Test
+    void testClosedChannel() throws Exception
+    {
+        channel.close();
+
+        assertClosedQuietly(new ClosedChannelException());
+    }
+
+    @Test
+    void testClosedChannelOfServer() throws Exception
+    {
+        assertThat(capture(new ClosedChannelException())).anyMatch(event -> event.getLevel() == Level.ERROR);
+        assertThat(((Response) channel.outboundMessages().peek()).code).isEqualTo(500);
+        assertThat(channel.isActive()).isTrue();
+    }
+
+    @Test
+    void testServerFailure() throws Exception
+    {
+        assertThat(capture(new IOException("secret detail"))).anyMatch(event -> event.getLevel() == Level.ERROR);
+        assertThat(((Response) channel.outboundMessages().peek()).code).isEqualTo(500);
+        assertThat(channel.isActive()).isTrue();
     }
 
     @Test

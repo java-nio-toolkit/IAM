@@ -42,20 +42,25 @@ import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
+import java.nio.channels.ClosedChannelException;
 import java.security.GeneralSecurityException;
 import java.security.SignatureException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.regex.Pattern;
 
 public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 {
     public static final Logger LOG = JNTLogger.getLog(ErrorObjectManagerImpl.class);
 
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json; charset=utf-8");
+    private static final Pattern IGNORABLE_ERROR_MESSAGE = Pattern.compile(
+            "^.*(?:connection.*(?:reset|closed|abort|broken)|broken.*pipe).*$", Pattern.CASE_INSENSITIVE);
 
     private final boolean printStackTrace;
     private final long retryAfter;
@@ -111,8 +116,33 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
             handleFailure(context, 0, error.getMessage(), StatusReason.BAD_REQUEST);
         else if (error instanceof UnsupportedOperationException)
             handleFailure(context, 0, error.getMessage(), StatusReason.BAD_REQUEST);
+        else if (isClientFailure(context, error))
+            handleClientFailure(context, error);
         else
             handleServerFailure(context, error);
+    }
+
+    private static boolean isClientFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error)
+    {
+        if (error instanceof ClosedChannelException)
+            return !context.channel().isActive();
+        else if (!(error instanceof IOException))
+            return false;
+        else if (error.getMessage() != null && IGNORABLE_ERROR_MESSAGE.matcher(error.getMessage()).matches())
+            return true;
+        for (StackTraceElement element : error.getStackTrace())
+        {
+            String className = element.getClassName();
+            if (!className.startsWith("io.netty.") && "read".equals(element.getMethodName()) && className.contains("SocketChannel"))
+                return true;
+        }
+        return false;
+    }
+
+    private void handleClientFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error)
+    {
+        LOG.debug("Oops! We've encountered an server error! Not good!", error);
+        context.close();
     }
 
     private void handleServerFailure(@Nonnull ChannelHandlerContext context, @Nonnull Throwable error)
