@@ -131,6 +131,7 @@ public class UserImplTest extends RestActionTest
     void testWebhookById() throws Exception
     {
         withJCA();
+        when(api.retrieveWebhookById(any(), any())).thenCallRealMethod();
         UUID webhookId = UUID.randomUUID();
         BufferArray rows = newRows(0);
         Webhook webhook = mock(Webhook.class);
@@ -150,6 +151,7 @@ public class UserImplTest extends RestActionTest
     void testDeletedWebhookById() throws Exception
     {
         withJCA();
+        when(api.retrieveWebhookById(any(), any())).thenCallRealMethod();
 
         assertFails((InteractionContextActionImpl<Webhook>) new UserImpl(api, USER_ID, "alice", null, 0).retrieveWebhookById(UUID.randomUUID()),
                 newRows(1L << 34), ErrorResponse.UNKNOWN_WEBHOOK);
@@ -160,6 +162,7 @@ public class UserImplTest extends RestActionTest
     void testMissingWebhookById() throws Exception
     {
         withJCA();
+        when(api.retrieveWebhookById(any(), any())).thenCallRealMethod();
         BufferArray rows = mock(BufferArray.class);
         when(rows.isEmpty()).thenReturn(true);
 

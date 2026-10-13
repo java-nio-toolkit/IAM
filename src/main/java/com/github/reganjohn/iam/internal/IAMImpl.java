@@ -44,6 +44,7 @@ import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
+import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.managers.AccessSignatureManager;
@@ -340,6 +341,26 @@ public class IAMImpl implements IAM
                     request.onSuccess(getEntityBuilder().createSession(array.getObject(0)));
                 else
                     request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Webhook> retrieveWebhookById(@Nonnull UUID userId, @Nonnull UUID webhookId)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(webhookId, "Webhook ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.webhooks WHERE owner_id = ? AND webhook_id = ?", Arrays.asList(userId, webhookId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Webhook> request, @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
+                    request.onSuccess(getEntityBuilder().createWebhook(array.getObject(0)));
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
             }
         };
     }

@@ -166,20 +166,7 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Webhook> retrieveWebhookById(@Nonnull UUID webhookId)
     {
-        Checks.notNull(webhookId, "Webhook ID");
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.webhooks WHERE owner_id = ? AND webhook_id = ?", Arrays.asList(userId, webhookId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<Webhook> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createWebhook(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
-            }
-        };
+        return api.retrieveWebhookById(userId, webhookId);
     }
 
     @Nonnull

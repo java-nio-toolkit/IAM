@@ -20,13 +20,13 @@ import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.requests.restactions.webhooks.WebhookEditActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
@@ -67,10 +67,9 @@ public class WebhookEditActionTest extends RestActionTest
     private Webhook withStoredWebhook()
     {
         Webhook webhook = withWebhook(WEBHOOK_ID, USER_ID, "hook", "avatar-cid", URL, 3, 0);
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhook(user, WEBHOOK_ID, completed(webhook));
+        InteractionCallbackAction<Webhook> retrieval = completed(webhook);
+        when(api.retrieveWebhookById(USER_ID, WEBHOOK_ID)).thenReturn(retrieval);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
         return webhook;
     }
 
@@ -175,7 +174,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookById(any(), any());
     }
 
     @MethodSource
@@ -192,7 +191,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .hasNoResponse()
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookById(any(), any());
     }
 
     @ValueSource(strings = {
@@ -252,27 +251,11 @@ public class WebhookEditActionTest extends RestActionTest
     }
 
     @Test
-    void testUnknownUser()
-    {
-        withAccess(USER_ID);
-        withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
-
-        assertThatRequestTo(newAction())
-                .withRouteParams(WEBHOOK_ID.toString())
-                .withJsonBody(body("name", "renamed"))
-                .hasNoResponse()
-                .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.UNKNOWN_USER)
-                .whenHandled();
-    }
-
-    @Test
     void testUnknownWebhook()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withWebhook(user, WEBHOOK_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK)));
+        InteractionCallbackAction<Webhook> retrieval = failed(new ErrorResponseException(ErrorResponse.UNKNOWN_WEBHOOK));
+        when(api.retrieveWebhookById(USER_ID, WEBHOOK_ID)).thenReturn(retrieval);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(user));
 
         assertThatRequestTo(newAction())
                 .withRouteParams(WEBHOOK_ID.toString())
@@ -310,7 +293,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.MISSING_ACCESS)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookById(any(), any());
     }
 
     @MethodSource
@@ -327,7 +310,7 @@ public class WebhookEditActionTest extends RestActionTest
                 .hasFailure(ErrorResponse.INVALID_TOKEN)
                 .whenHandled();
 
-        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveWebhookById(any(), any());
     }
 
     @Test

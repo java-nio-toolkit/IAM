@@ -232,9 +232,8 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID userId = retrieveSelfUserId(context);
         UUID webhookId = UUID.fromString(params.get("webhook_id"));
-        api.retrieveUserById(userId)
-                .flatMap(user -> user.retrieveWebhookById(webhookId))
-                .flatMap(entitlement -> modify(entitlement, rawBody))
+        api.retrieveWebhookById(userId, webhookId)
+                .flatMap(webhook -> modify(webhook, rawBody))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
