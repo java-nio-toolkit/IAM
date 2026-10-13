@@ -66,7 +66,7 @@ public class TokenVerifyManagerImpl extends ProofCryptoManagerImpl
         UUID userId = UUID.fromString(data.getSubject());
         UUID sessionId = UUIDv7.nameUUIDFromBytes(proof.getEntryData().getPublic().getEncoded()).toUUID();
         api.retrieveUserById(userId)
-                .and(retrieveSessions(userId, sessionId), (user, sessions) -> sessions)
+                .flatMap(user -> retrieveSessions(userId, sessionId))
                 .queue(sessions -> handleSuccess(context, request, data, sessions), context::fireExceptionCaught);
     }
 
