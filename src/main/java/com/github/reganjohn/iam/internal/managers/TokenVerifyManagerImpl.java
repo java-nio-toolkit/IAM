@@ -38,11 +38,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-public class SessionCryptoManagerImpl extends ProofCryptoManagerImpl
+public class TokenVerifyManagerImpl extends ProofCryptoManagerImpl
 {
     private final IAMImpl api;
 
-    public SessionCryptoManagerImpl(@Nonnull IAMImpl api)
+    public TokenVerifyManagerImpl(@Nonnull IAMImpl api)
     {
         this.api = api;
     }

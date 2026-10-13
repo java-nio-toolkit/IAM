@@ -43,7 +43,7 @@ import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.entities.SessionImpl;
 import com.github.reganjohn.iam.internal.managers.AccessSignatureManagerImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
-import com.github.reganjohn.iam.internal.managers.SessionCryptoManagerImpl;
+import com.github.reganjohn.iam.internal.managers.TokenVerifyManagerImpl;
 import com.reganjohn.c4j.api.JCA;
 import com.reganjohn.c4j.api.JCABuilder;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
@@ -267,7 +267,7 @@ public class IAMImplTest extends IntegrationTest
             ArgumentCaptor<Object> listeners = ArgumentCaptor.forClass(Object.class);
             verify(builder, atLeastOnce()).addEventListeners(listeners.capture());
             ChannelHandler[] handlers = listeners.getAllValues().stream()
-                    .filter(listener -> listener instanceof AccessSignatureManagerImpl || listener instanceof SessionCryptoManagerImpl)
+                    .filter(listener -> listener instanceof AccessSignatureManagerImpl || listener instanceof TokenVerifyManagerImpl)
                     .toArray(ChannelHandler[]::new);
             withSessionRequest();
             channel.pipeline().addLast(handlers);

@@ -26,7 +26,7 @@ import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
-import com.github.reganjohn.iam.internal.managers.SessionCryptoManagerImpl;
+import com.github.reganjohn.iam.internal.managers.TokenVerifyManagerImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,7 +44,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class SessionCryptoManagerTest extends RestActionTest
+public class TokenVerifyManagerTest extends RestActionTest
 {
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
 
@@ -84,7 +84,7 @@ public class SessionCryptoManagerTest extends RestActionTest
 
     private Throwable handle()
     {
-        Throwable thrown = catchThrowable(() -> new SessionCryptoManagerImpl(api).handleSuccess(context, request));
+        Throwable thrown = catchThrowable(() -> new TokenVerifyManagerImpl(api).handleSuccess(context, request));
         return thrown != null ? thrown : catchThrowable(channel::checkException);
     }
 

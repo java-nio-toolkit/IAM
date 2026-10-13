@@ -207,7 +207,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new ProofObjectManagerImpl(Clock.systemUTC(), getNonceSecret(), 60, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, true))
                 .addEventListeners(new ProofOverrideManagerImpl())
                 .addEventListeners(accessSignatureManager)
-                .addEventListeners(new SessionCryptoManagerImpl(this))
+                .addEventListeners(new TokenVerifyManagerImpl(this))
                 .addEventListeners(new SubjectRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user", 1024))
                 .addEventListeners(manager)
 
