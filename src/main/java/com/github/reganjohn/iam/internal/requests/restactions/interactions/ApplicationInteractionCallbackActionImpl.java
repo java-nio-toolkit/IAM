@@ -207,18 +207,10 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
 
     private void handleException(@Nonnull ChannelHandlerContext context, @Nonnull Throwable failure)
     {
-        if (failure instanceof ErrorResponseException)
-            handleErrorResponse(context, (ErrorResponseException) failure);
-        else
-            context.fireExceptionCaught(failure);
-    }
-
-    private void handleErrorResponse(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException ex)
-    {
-        if (ex.getErrorCode() == ErrorResponse.UNKNOWN_INTERACTION.getCode())
+        if (ErrorResponse.UNKNOWN_INTERACTION.test(failure))
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CONTINUATION, ErrorResponse.UNKNOWN_TOKEN));
         else
-            context.fireExceptionCaught(ex);
+            context.fireExceptionCaught(failure);
     }
 
     private void verify(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
