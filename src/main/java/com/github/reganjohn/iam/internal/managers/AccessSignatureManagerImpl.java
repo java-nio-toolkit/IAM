@@ -21,6 +21,7 @@ import com.github.adamorgan.jnt.api.exceptions.MissingAttributeException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
 import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
@@ -160,6 +161,18 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
     private void cleanup(@Nonnull ChannelHandlerContext context)
     {
         context.channel().attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(null);
+    }
+
+    @Override
+    protected boolean acceptOutboundMessage(@Nonnull ChannelHandlerContext context, Response response)
+    {
+        Route.CompiledRoute route = response.getRoute();
+        return (route == null || !isPublic(route.getBaseRoute())) && super.acceptOutboundMessage(context, response);
+    }
+
+    private boolean isPublic(@Nonnull Route route)
+    {
+        return Routes.Health.GET_HEALTH.equals(route) || Routes.AccessEntries.GET_ACCESS_ENTRIES.equals(route);
     }
 
     private boolean acceptInboundMessage(@Nonnull Route route)

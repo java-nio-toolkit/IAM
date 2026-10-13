@@ -24,7 +24,9 @@ import com.github.adamorgan.jnt.api.interactions.middle.digest.ContentAssertionR
 import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.requests.Method;
 import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.Route;
+import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
@@ -58,7 +60,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class AccessSignatureManagerTest extends IntegrationTest
@@ -72,6 +76,8 @@ public class AccessSignatureManagerTest extends IntegrationTest
 
     private KeyPair pair;
 
+    private AccessEntryManager entries;
+
     @BeforeEach
     void withAccessRaw() throws Exception
     {
@@ -81,7 +87,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
             Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
         pair = newPair();
         channel.attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(entryOf(pair));
-        AccessEntryManager entries = mock(AccessEntryManager.class);
+        entries = mock(AccessEntryManager.class);
         when(entries.getAudiences()).thenReturn(Collections.singletonList("https://" + AUTHORITY));
         channel.attr(AccessEntryManagerImpl.IDENTIFIER).set(entries);
     }
@@ -402,6 +408,38 @@ public class AccessSignatureManagerTest extends IntegrationTest
         channel.writeInbound(request);
 
         assertThat((Object) channel.readInbound()).isSameAs(request);
+    }
+
+    private void writeResponse(Route.CompiledRoute route)
+    {
+        channel.attr(Request.IDENTIFIER).set(new Request(context, route, headers()));
+        Response response = new Response(context, StatusReason.OK);
+
+        channel.writeOutbound(response);
+
+        assertThat((Object) channel.readOutbound()).isSameAs(response);
+        assertThat(response.getHeaders()).doesNotContainKeys("Signature", "Signature-Input");
+    }
+
+    @Test
+    void testPublicResponsesAreNotSigned()
+    {
+        withPipeline();
+
+        writeResponse(Routes.Health.GET_HEALTH.compile());
+        writeResponse(Routes.AccessEntries.GET_ACCESS_ENTRIES.compile());
+
+        verify(entries, never()).getCurrentOrder();
+    }
+
+    @Test
+    void testOtherResponsesAreSigned()
+    {
+        withPipeline();
+
+        writeResponse(Routes.Self.GET_SELF.compile());
+
+        verify(entries).getCurrentOrder();
     }
 
     @Test

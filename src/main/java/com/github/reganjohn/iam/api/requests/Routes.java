@@ -22,6 +22,11 @@ import static com.github.adamorgan.jnt.api.requests.Method.*;
 
 public class Routes
 {
+    public static class AccessEntries
+    {
+        public static final Route GET_ACCESS_ENTRIES = new Route(GET, ".well-known/jwks.json", true);
+    }
+
     public static class Applications
     {
         public static final Route CREATE_APPLICATION = new Route(POST, "applications");
