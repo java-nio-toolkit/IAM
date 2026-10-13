@@ -75,12 +75,7 @@ public class SessionCryptoManagerImpl extends ProofCryptoManagerImpl
     {
         return api.retrieveSessionById(userId, sessionId)
                 .map(Collections::singletonList)
-                .onErrorMap(this::isUnknownSession, ex -> Collections.emptyList());
-    }
-
-    private boolean isUnknownSession(@Nonnull Throwable ex)
-    {
-        return ex instanceof ErrorResponseException && ((ErrorResponseException) ex).getErrorCode() == ErrorResponse.UNKNOWN_SESSION.getCode();
+                .onErrorMap(ErrorResponse.UNKNOWN_SESSION::test, ex -> Collections.emptyList());
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

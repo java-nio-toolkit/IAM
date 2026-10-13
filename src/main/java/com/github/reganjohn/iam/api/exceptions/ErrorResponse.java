@@ -75,6 +75,11 @@ public enum ErrorResponse
         return meaning;
     }
 
+    public boolean test(Throwable throwable)
+    {
+        return throwable instanceof ErrorResponseException && ((ErrorResponseException) throwable).getErrorCode() == code;
+    }
+
     @Override
     public String toString()
     {
