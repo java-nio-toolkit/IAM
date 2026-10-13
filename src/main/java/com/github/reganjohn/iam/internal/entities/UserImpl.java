@@ -128,20 +128,7 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Session> retrieveSessionById(@Nonnull UUID sessionId)
     {
-        Checks.notNull(sessionId, "Session ID");
-        return new InteractionContextActionImpl<>(api.getJCA(), "SELECT * FROM users.sessions WHERE user_id = ? AND session_id = ?", Arrays.asList(userId, sessionId))
-        {
-            @Override
-            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
-                                      @Nonnull InteractionImpl<Session> interaction,
-                                      @Nonnull BufferArray array)
-            {
-                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
-                    interaction.onSuccess(getIAM().getEntityBuilder().createSession(array.getObject(0)));
-                else
-                    interaction.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
-            }
-        };
+        return api.retrieveSessionById(userId, sessionId);
     }
 
     @Nonnull

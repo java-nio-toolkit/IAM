@@ -59,8 +59,10 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -188,6 +190,9 @@ public class RestActionTest extends IntegrationTest
             }
         });
         when(action.flatMap(any(Function.class))).thenAnswer(invocation -> ((Function<T, InteractionCallbackAction<Object>>) invocation.getArgument(0)).apply(value));
+        when(action.and(any(), any())).thenAnswer(invocation -> ((InteractionCallbackAction<Object>) invocation.getArgument(0))
+                .map(other -> ((BiFunction<T, Object, Object>) invocation.getArgument(1)).apply(value, other)));
+        when(action.onErrorMap(any(), any())).thenReturn(action);
         return action;
     }
 
@@ -203,6 +208,10 @@ public class RestActionTest extends IntegrationTest
         when(action.map(any())).thenAnswer(invocation -> failed(failure));
         when(action.onSuccess(any())).thenAnswer(invocation -> failed(failure));
         when(action.flatMap(any(Function.class))).thenAnswer(invocation -> failed(failure));
+        when(action.and(any(), any())).thenAnswer(invocation -> failed(failure));
+        when(action.onErrorMap(any(), any())).thenAnswer(invocation -> ((Predicate<Throwable>) invocation.getArgument(0)).test(failure)
+                ? completed(((Function<Throwable, Object>) invocation.getArgument(1)).apply(failure))
+                : action);
         return action;
     }
     protected void withRetrieval(UUID id, InteractionCallbackAction<User> retrieval)

@@ -18,18 +18,22 @@ package com.github.reganjohn.iam.internal.managers;
 
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
+import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofCryptoManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.Nonnull;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,11 +50,27 @@ public class SessionCryptoManagerImpl extends ProofCryptoManagerImpl
     public void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull Request request)
     {
         AccessObjectData data = context.channel().attr(AccessOverrideManagerImpl.CONTEXT).get();
-        if (data == null || !MiscUtil.isUUID(data.getSubject()))
+        ProofObjectData proof = context.channel().attr(ProofObjectManagerImpl.CONTEXT).get();
+        if (data == null || proof == null || !MiscUtil.isUUID(data.getSubject()))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
-        api.retrieveUserById(UUID.fromString(data.getSubject()))
-                .flatMap(User::retrieveSessions)
+        UUID userId = UUID.fromString(data.getSubject());
+        UUID sessionId = UUIDv7.nameUUIDFromBytes(proof.getEntryData().getPublic().getEncoded()).toUUID();
+        api.retrieveUserById(userId)
+                .and(retrieveSessions(userId, sessionId), (user, sessions) -> sessions)
                 .queue(sessions -> handleSuccess(context, request, data, sessions), context::fireExceptionCaught);
+    }
+
+    @Nonnull
+    private InteractionCallbackAction<List<Session>> retrieveSessions(@Nonnull UUID userId, @Nonnull UUID sessionId)
+    {
+        return api.retrieveSessionById(userId, sessionId)
+                .map(Collections::singletonList)
+                .onErrorMap(this::isUnknownSession, ex -> Collections.emptyList());
+    }
+
+    private boolean isUnknownSession(@Nonnull Throwable ex)
+    {
+        return ex instanceof ErrorResponseException && ((ErrorResponseException) ex).getErrorCode() == ErrorResponse.UNKNOWN_SESSION.getCode();
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

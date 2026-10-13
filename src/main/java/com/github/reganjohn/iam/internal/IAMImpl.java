@@ -42,6 +42,7 @@ import com.github.adamorgan.jnt.internal.utils.config.OriginAccessConfig;
 import com.github.adamorgan.jnt.internal.utils.tracker.SocketTracker;
 import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
+import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -87,6 +88,7 @@ import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
 import java.security.Security;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.UUID;
@@ -320,6 +322,26 @@ public class IAMImpl implements IAM
                     request.onSuccess(entityBuilder.createUser(array.getObject(0)));
                 else
                     request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_USER));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Session> retrieveSessionById(@Nonnull UUID userId, @Nonnull UUID sessionId)
+    {
+        Checks.notNull(userId, "User ID");
+        Checks.notNull(sessionId, "Session ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.sessions WHERE user_id = ? AND session_id = ?", Arrays.asList(userId, sessionId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Session> request, @Nonnull BufferArray array)
+            {
+                if (!array.isEmpty() && !EntityBuilder.isDelete(array))
+                    request.onSuccess(getEntityBuilder().createSession(array.getObject(0)));
+                else
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION));
             }
         };
     }

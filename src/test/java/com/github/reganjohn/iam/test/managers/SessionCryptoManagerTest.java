@@ -17,19 +17,21 @@
 package com.github.reganjohn.iam.test.managers;
 
 import com.github.adamorgan.jnt.api.requests.Request;
+import com.github.adamorgan.jnt.api.utils.SignType;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
+import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.reganjohn.iam.api.entities.Session;
-import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.internal.managers.SessionCryptoManagerImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
+import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.Arrays;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,7 +45,6 @@ import static org.mockito.Mockito.when;
 public class SessionCryptoManagerTest extends RestActionTest
 {
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
-    private static final UUID SESSION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
 
     private final Request request = mock(Request.class);
 
@@ -55,11 +56,22 @@ public class SessionCryptoManagerTest extends RestActionTest
         channel.attr(AccessOverrideManagerImpl.CONTEXT).set(access);
     }
 
-    private void withStoredSessions(Session... sessions)
+    private UUID withSessionId()
     {
-        User user = withUser(USER_ID, "alice", null, 0);
-        withSessions(user, completed(Arrays.asList(sessions)));
-        withRetrieval(USER_ID, completed(user));
+        AccessEntryData entry = withProof(SignType.ES256);
+        return UUIDv7.nameUUIDFromBytes(entry.getPublic().getEncoded()).toUUID();
+    }
+
+    private void withStoredSession(InteractionCallbackAction<Session> session)
+    {
+        UUID sessionId = withSessionId();
+        when(api.retrieveSessionById(USER_ID, sessionId)).thenReturn(session);
+        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", null, 0)));
+    }
+
+    private void withStoredSession(String thumbprint)
+    {
+        withStoredSession(completed(withSession(UUID.randomUUID(), USER_ID, "agent", 0, thumbprint)));
     }
 
     private Throwable handle()
@@ -68,17 +80,17 @@ public class SessionCryptoManagerTest extends RestActionTest
         return thrown != null ? thrown : catchThrowable(channel::checkException);
     }
 
-    private static void assertInvalidToken(Throwable failure)
+    private static void assertError(Throwable failure, ErrorResponse expected)
     {
         assertThat(failure).isInstanceOf(ErrorResponseException.class);
-        assertThat(((ErrorResponseException) failure).getErrorCode()).isEqualTo(ErrorResponse.INVALID_TOKEN.getCode());
+        assertThat(((ErrorResponseException) failure).getErrorCode()).isEqualTo(expected.getCode());
     }
 
     @Test
     void testLiveSession()
     {
         withToken(USER_ID.toString(), THUMBPRINT);
-        withStoredSessions(withSession(UUID.randomUUID(), USER_ID, "agent", 0, "other"), withSession(SESSION_ID, USER_ID, "agent", 0, THUMBPRINT));
+        withStoredSession(THUMBPRINT);
 
         assertThat(handle()).isNull();
         assertThat((Object) channel.readInbound()).isSameAs(request);
@@ -88,19 +100,19 @@ public class SessionCryptoManagerTest extends RestActionTest
     void testRevokedSession()
     {
         withToken(USER_ID.toString(), THUMBPRINT);
-        withStoredSessions(withSession(SESSION_ID, USER_ID, "agent", 0, "other"));
+        withStoredSession(failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
 
-        assertInvalidToken(handle());
+        assertError(handle(), ErrorResponse.INVALID_TOKEN);
         assertThat((Object) channel.readInbound()).isNull();
     }
 
     @Test
-    void testWithoutSessions()
+    void testOtherThumbprint()
     {
         withToken(USER_ID.toString(), THUMBPRINT);
-        withStoredSessions();
+        withStoredSession("other");
 
-        assertInvalidToken(handle());
+        assertError(handle(), ErrorResponse.INVALID_TOKEN);
         assertThat((Object) channel.readInbound()).isNull();
     }
 
@@ -108,9 +120,20 @@ public class SessionCryptoManagerTest extends RestActionTest
     void testWithoutThumbprint()
     {
         withToken(USER_ID.toString(), null);
-        withStoredSessions(withSession(SESSION_ID, USER_ID, "agent", 0, THUMBPRINT));
+        withStoredSession(THUMBPRINT);
 
-        assertInvalidToken(handle());
+        assertError(handle(), ErrorResponse.INVALID_TOKEN);
+        assertThat((Object) channel.readInbound()).isNull();
+    }
+
+    @Test
+    void testSessionFailure()
+    {
+        IllegalStateException failure = new IllegalStateException();
+        withToken(USER_ID.toString(), THUMBPRINT);
+        withStoredSession(failed(failure));
+
+        assertThat(handle()).isSameAs(failure);
         assertThat((Object) channel.readInbound()).isNull();
     }
 
@@ -118,12 +141,10 @@ public class SessionCryptoManagerTest extends RestActionTest
     void testUnknownUser()
     {
         withToken(USER_ID.toString(), THUMBPRINT);
+        withStoredSession(failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
         withRetrieval(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
 
-        Throwable failure = handle();
-
-        assertThat(failure).isInstanceOf(ErrorResponseException.class);
-        assertThat(((ErrorResponseException) failure).getErrorCode()).isEqualTo(ErrorResponse.UNKNOWN_USER.getCode());
+        assertError(handle(), ErrorResponse.UNKNOWN_USER);
         assertThat((Object) channel.readInbound()).isNull();
     }
 
@@ -132,15 +153,29 @@ public class SessionCryptoManagerTest extends RestActionTest
     void testInvalidSubject(String subject)
     {
         withToken(subject, THUMBPRINT);
+        withProof(SignType.ES256);
 
-        assertInvalidToken(handle());
+        assertError(handle(), ErrorResponse.INVALID_TOKEN);
         verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
+    }
+
+    @Test
+    void testMissingProof()
+    {
+        withToken(USER_ID.toString(), THUMBPRINT);
+
+        assertError(handle(), ErrorResponse.INVALID_TOKEN);
+        verify(api, never()).retrieveUserById(any());
+        verify(api, never()).retrieveSessionById(any(), any());
     }
 
     @Test
     void testMissingAccess()
     {
-        assertInvalidToken(handle());
+        withProof(SignType.ES256);
+
+        assertError(handle(), ErrorResponse.INVALID_TOKEN);
         verify(api, never()).retrieveUserById(any());
     }
 }
