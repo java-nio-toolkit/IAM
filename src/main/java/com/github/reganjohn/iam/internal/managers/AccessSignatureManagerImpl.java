@@ -29,6 +29,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryTarget;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryType;
 import com.github.adamorgan.jnt.internal.managers.ProofSignatureManagerImpl;
+import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
@@ -167,12 +168,7 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
     protected boolean acceptOutboundMessage(@Nonnull ChannelHandlerContext context, Response response)
     {
         Route.CompiledRoute route = response.getRoute();
-        return (route == null || !isPublic(route.getBaseRoute())) && super.acceptOutboundMessage(context, response);
-    }
-
-    private boolean isPublic(@Nonnull Route route)
-    {
-        return Routes.Health.GET_HEALTH.equals(route) || Routes.AccessEntries.GET_ACCESS_ENTRIES.equals(route);
+        return (route == null || !AccessEntryActionImpl.BASE_ROUTE.equals(route.getBaseRoute())) && super.acceptOutboundMessage(context, response);
     }
 
     private boolean acceptInboundMessage(@Nonnull Route route)

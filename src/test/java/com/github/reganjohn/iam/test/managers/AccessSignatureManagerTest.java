@@ -32,6 +32,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
+import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
@@ -422,12 +423,11 @@ public class AccessSignatureManagerTest extends IntegrationTest
     }
 
     @Test
-    void testPublicResponsesAreNotSigned()
+    void testAccessEntriesAreNotSigned()
     {
         withPipeline();
 
-        writeResponse(Routes.Health.GET_HEALTH.compile());
-        writeResponse(Routes.AccessEntries.GET_ACCESS_ENTRIES.compile());
+        writeResponse(AccessEntryActionImpl.BASE_ROUTE.compile());
 
         verify(entries, never()).getCurrentOrder();
     }

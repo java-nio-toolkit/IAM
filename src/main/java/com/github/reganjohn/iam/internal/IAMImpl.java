@@ -49,7 +49,6 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.managers.AccessSignatureManager;
 import com.github.reganjohn.iam.api.managers.GlobalAccessManager;
 import com.github.reganjohn.iam.internal.managers.*;
-import com.github.reganjohn.iam.internal.requests.restactions.HealthRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.UserRetrieveActionImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.applications.*;
 import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionCreateActionImpl;
@@ -222,7 +221,6 @@ public class IAMImpl implements IAM
 
                 .addEventListeners(new PermOverrideManagerImpl())
 
-                .addEventListenerProvider(() -> new HealthRetrieveActionImpl(this))
                 .addEventListenerProvider(() -> new UserRetrieveActionImpl(this))
 
                 .addEventListenerProvider(() -> new SelfUserCreateActionImpl(this))

@@ -22,11 +22,6 @@ import static com.github.adamorgan.jnt.api.requests.Method.*;
 
 public class Routes
 {
-    public static class AccessEntries
-    {
-        public static final Route GET_ACCESS_ENTRIES = new Route(GET, ".well-known/jwks.json", true);
-    }
-
     public static class Applications
     {
         public static final Route CREATE_APPLICATION = new Route(POST, "applications");
@@ -43,11 +38,6 @@ public class Routes
         public static final Route EDIT_ENTITLEMENT = new Route(PATCH, "users/@me/applications/{application_id}");
         public static final Route UPDATE_ENTITLEMENT_ACCESS = new Route(PUT, "users/@me/applications/{application_id}", true);
         public static final Route DELETE_ENTITLEMENT = new Route(DELETE, "users/@me/applications/{application_id}");
-    }
-
-    public static class Health
-    {
-        public static final Route GET_HEALTH = new Route(GET, "health", true);
     }
 
     public static class Interactions
