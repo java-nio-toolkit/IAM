@@ -189,7 +189,7 @@ public class IAMImpl implements IAM
         Checks.notEmpty(baseUri, "Base URI");
         this.baseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
         this.jca = buildInstance().awaitReady();
-        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, Arrays.asList("http://localhost:3000", "http://localhost:8080"));
+        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, Arrays.asList("http://localhost:8080", "http://localhost:3000"));
         this.jdt = JDTBuilder.create(socketPool.next())
                 .setDatagramChannelType(NioDatagramChannel.class)
                 .build();
