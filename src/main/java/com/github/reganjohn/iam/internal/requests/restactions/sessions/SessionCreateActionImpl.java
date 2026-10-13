@@ -109,7 +109,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required.");
         else if (!rawData.hasKey(ProofObjectManager.KTY, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.KTY));
-        else if (!Helpers.contains(getTypes(), rawData.getString(ProofObjectManager.KTY), true))
+        else if (!Helpers.contains(getTypes(), rawData.getString(ProofObjectManager.KTY), false))
             throw createParsingException(getTypes());
     }
 

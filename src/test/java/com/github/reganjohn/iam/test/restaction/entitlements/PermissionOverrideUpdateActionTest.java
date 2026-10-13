@@ -305,13 +305,13 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
     {
         withAccessProof("proof-thumbprint", hashOf(TOKEN));
         withManager(true);
-        withStoredEntitlement();
         AccessObjectData access = accessObject(USER_ID.toString(), DataObject.empty().put(JKT, THUMBPRINT), null);
 
         whenHandled(assertThatUpdating()
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailure(ErrorResponse.ONLY_APPLICATION_ALLOWED), access);
+        verify(api, never()).retrieveUserById(any());
     }
 
     @MethodSource

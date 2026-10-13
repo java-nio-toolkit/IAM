@@ -21,9 +21,12 @@ import com.github.adamorgan.jnt.internal.utils.config.RestConfig;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractOverrideActionImpl;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
+import com.reganjohn.jdt.api.JDT;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.embedded.EmbeddedChannel;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.ImmediateEventExecutor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -31,8 +34,11 @@ import org.mockito.Mock;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.openMocks;
 
@@ -46,6 +52,9 @@ public class IntegrationTest extends AbstractSnapshotTest
 
     @Mock
     protected JNTImpl jnt;
+
+    @Mock
+    protected JDT jdt;
 
     protected EmbeddedChannel channel;
     protected ChannelHandlerContext context;
@@ -64,11 +73,26 @@ public class IntegrationTest extends AbstractSnapshotTest
         when(api.getJNT()).thenReturn(jnt);
         when(jnt.getIdentifierString()).thenReturn(JNT_IDENTIFIER);
         when(jnt.getRestConfig()).thenReturn(RestConfig.getDefault());
+        when(api.getJDT()).thenReturn(jdt);
+        when(jdt.retrieve(anyString())).thenAnswer(invocation -> retrieve(invocation.getArgument(0)));
 
         ChannelInboundHandlerAdapter probe = new ChannelInboundHandlerAdapter();
         channel = new EmbeddedChannel(probe);
         context = channel.pipeline().context(probe);
         channel.attr(JNTImpl.IDENTIFIER).set(jnt);
+    }
+
+    @Nonnull
+    private static Future<InetAddress> retrieve(@Nonnull String host)
+    {
+        try
+        {
+            return ImmediateEventExecutor.INSTANCE.newSucceededFuture(InetAddress.getByName(host));
+        }
+        catch (UnknownHostException ex)
+        {
+            return ImmediateEventExecutor.INSTANCE.newFailedFuture(ex);
+        }
     }
 
     @AfterEach

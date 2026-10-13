@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.test.managers;
 
+import com.github.adamorgan.jnt.api.ConnectionType;
 import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.exceptions.MissingAttributeException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
@@ -326,7 +327,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
     {
         Request request = signed(createRoute(), pair, System.currentTimeMillis() / 1000 - 3600);
 
-        assertThatThrownBy(() -> manager.verify(context, request)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> manager.verify(context, request)).isInstanceOf(InvalidTokenException.class);
     }
 
     @Test
@@ -334,7 +335,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
     {
         Request request = signed(createRoute(), pair, System.currentTimeMillis() / 1000 + 3600);
 
-        assertThatThrownBy(() -> manager.verify(context, request)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> manager.verify(context, request)).isInstanceOf(InvalidTokenException.class);
     }
 
     @Test
@@ -374,6 +375,33 @@ public class AccessSignatureManagerTest extends IntegrationTest
 
         assertThatThrownBy(() -> manager.channelRead0(context, request)).isInstanceOf(ProofAccessException.class);
         assertThat((Object) channel.readInbound()).isNull();
+    }
+
+    private void withPipeline()
+    {
+        when(jnt.getConnectionType()).thenReturn(ConnectionType.SERVER);
+        channel.pipeline().addLast(manager);
+    }
+
+    @Test
+    void testPipelineRequiresSignature()
+    {
+        withPipeline();
+        Request request = new Request(context, Routes.Self.GET_SELF.compile(), headers());
+
+        assertThatThrownBy(() -> channel.writeInbound(request)).isInstanceOf(ProofAccessException.class);
+        assertThat((Object) channel.readInbound()).isNull();
+    }
+
+    @Test
+    void testPipelineForwardsClientRoutes()
+    {
+        withPipeline();
+        Request request = new Request(context, Routes.Session.ADD_SESSION.compile(), headers());
+
+        channel.writeInbound(request);
+
+        assertThat((Object) channel.readInbound()).isSameAs(request);
     }
 
     @Test

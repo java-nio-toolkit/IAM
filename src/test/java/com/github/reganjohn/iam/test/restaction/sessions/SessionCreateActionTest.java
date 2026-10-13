@@ -133,6 +133,7 @@ public class SessionCreateActionTest extends RestActionTest
                 arguments("missing_kty", body("use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kty=BASE_TYPE_REQUIRED"),
                 arguments("kty_not_string", body("kty", 5, "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kty=STRING_TYPE_COERCE"),
                 arguments("kty_unknown", body("kty", "XYZ", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kty=BASE_TYPE_CHOICES"),
+                arguments("kty_lowercase", body("kty", "okp", "use", "sig", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kty=BASE_TYPE_CHOICES"),
                 arguments("kty_symmetric", body("kty", "oct", "use", "sig", "kid", "k", "alg", "HS256", "k", "AAAA"), "kty=BASE_TYPE_CHOICES"),
                 arguments("missing_use", body("kty", "OKP", "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "use=BASE_TYPE_REQUIRED"),
                 arguments("use_not_string", body("kty", "OKP", "use", 5, "kid", "k", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "use=STRING_TYPE_COERCE"),

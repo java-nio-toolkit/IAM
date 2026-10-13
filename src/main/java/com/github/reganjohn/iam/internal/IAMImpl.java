@@ -72,8 +72,13 @@ import com.reganjohn.c4j.api.utils.Compression;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionContextActionImpl;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.logging.LoggingMeterRegistry;
+import com.reganjohn.jdt.api.JDT;
+import com.reganjohn.jdt.api.JDTBuilder;
+import io.micrometer.core.instrument.Metrics;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.MultiThreadIoEventLoopGroup;
+import io.netty.channel.nio.NioIoHandler;
+import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.util.ResourceLeakDetector;
 import io.netty.util.internal.EmptyArrays;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -84,7 +89,6 @@ import java.security.Security;
 import java.time.Clock;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -101,9 +105,11 @@ public class IAMImpl implements IAM
     private final JCA jca;
     private final GlobalAccessManager manager;
     private final SocketManager socketManager;
+    private final EventLoopGroup socketPool = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
+    private final JDT addressController;
     private final String baseUri;
     private final AccessSignatureManagerImpl accessSignatureManager = new AccessSignatureManagerImpl();
-    private final SocketTracker tracker = new SocketTracker(new LoggingMeterRegistry(), "unknown");
+    private final SocketTracker tracker = new SocketTracker(Metrics.globalRegistry, "unknown");
 
     private final EntityBuilder entityBuilder = new EntityBuilder(this);
 
@@ -158,6 +164,7 @@ public class IAMImpl implements IAM
     private SocketManager createWebhookManager()
     {
         return DefaultSocketManagerBuilder.create()
+                .setIdentifierString("IAM")
                 .addEventListenerProvider(ClassicRequestSendHandlerImpl::new)
                 .addEventListenerProvider(ClassicResponseReceiveHandlerImpl::new)
                 .addEventListenerProvider(() -> new ClassicIdleObjectManagerImpl(30, 30, 5))
@@ -167,6 +174,8 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(DigestObjectManagerImpl::new)
                 .setConnectTimeout(4, TimeUnit.SECONDS)
                 .setKeepAlive(true)
+                .setEventLoopGroup(socketPool)
+                .setAddressController(addressController)
                 .build();
     }
 
@@ -176,9 +185,14 @@ public class IAMImpl implements IAM
         this.baseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
         this.jca = buildInstance().awaitReady();
         this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, "https://localhost.com");
+        this.addressController = JDTBuilder.create(socketPool.next())
+                .setDatagramChannelType(NioDatagramChannel.class)
+                .build();
         this.socketManager = createWebhookManager();
         this.api = JNTBuilder.create(port)
                 .setIdentifierString("IAM")
+                .setAddressController(addressController)
+                .setEventLoopGroup(socketPool)
                 .addEventListeners(new SocketTrackerManagerImpl(tracker))
                 .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
                 .addEventListeners(new ClockObjectManagerImpl())
@@ -202,7 +216,6 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ContentEncodingManagerImpl::new)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
 
-                .addEventListeners(new WebhookOverrideManagerImpl(this))
                 .addEventListeners(new AccessEntryActionImpl())
 
                 .addEventListeners(new PermOverrideManagerImpl())
@@ -247,6 +260,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(() -> new WebhookEditActionImpl(this))
                 .addEventListenerProvider(() -> new WebhookDeleteActionImpl(this))
 
+                .addEventListeners(new WebhookOverrideManagerImpl(this))
                 .addEventListeners(new ErrorObjectManagerImpl(true, 10))
                 .build();
     }
@@ -322,8 +336,15 @@ public class IAMImpl implements IAM
         return ((JNTImpl) api).getIdentifierString();
     }
 
+    @Nonnull
+    public JDT getJDT()
+    {
+        return addressController;
+    }
+
     public void shutdown()
     {
+        getJDT().close();
         getJNT().shutdown();
         try
         {

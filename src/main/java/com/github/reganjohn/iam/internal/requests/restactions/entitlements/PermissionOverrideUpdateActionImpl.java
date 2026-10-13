@@ -138,6 +138,8 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
                                   @Nonnull AccessObjectData json, @Nonnull AccessContextData contextData)
     {
+        if (json.getActor() == null)
+            throw new ErrorResponseException(ErrorResponse.ONLY_APPLICATION_ALLOWED);
         UUID userId = UUID.fromString(json.getSubject());
         UUID applicationId = UUID.fromString(request.getRoute().getMajorParameters().get("application_id"));
         api.retrieveUserById(userId)
@@ -173,8 +175,6 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
         DataObject contextData = json.getContextData();
         if (contextData == null)
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
-        else if (json.getActor() == null)
-            throw new ErrorResponseException(ErrorResponse.ONLY_APPLICATION_ALLOWED);
         else if (!json.getActor().hasKey("sub", DataType.STRING))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
         else if (!MiscUtil.isUUID(json.getActor().getString("sub")))

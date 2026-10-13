@@ -162,13 +162,6 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
         context.channel().attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(null);
     }
 
-    @Override
-    protected boolean acceptInboundMessage(@Nonnull ChannelHandlerContext context,
-                                           @Nonnull Request request) throws Exception
-    {
-        return acceptInboundMessage(request.getRoute().getBaseRoute()) && super.acceptInboundMessage(context, request);
-    }
-
     private boolean acceptInboundMessage(@Nonnull Route route)
     {
         return route == Routes.Interactions.CREATE_APPLICATION_INTERACTION || route == Routes.Interactions.EXECUTE_APPLICATION_INTERACTION

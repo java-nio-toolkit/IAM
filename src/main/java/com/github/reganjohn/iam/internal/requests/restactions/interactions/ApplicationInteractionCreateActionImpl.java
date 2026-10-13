@@ -63,6 +63,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundInvoker;
 import io.netty.channel.ChannelPipeline;
+import io.netty.util.concurrent.FutureListener;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
@@ -442,19 +443,32 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                             long permissions, @Nullable String label, @Nonnull DataObject finish)
     {
         URI uri = URI.create(application.getOrigin());
-        int port = uri.getPort() == -1 ? 443 : uri.getPort();
-        InetAddress address = MiscUtil.resolveSafeAddress(uri.getHost());
-        if (address == null)
+        if (uri.getHost() == null)
             context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS));
         else
-            connect(context, data, rawAccess, application, ownerId, permissions, label, finish, address, port);
+            resolve(context, data, rawAccess, application, ownerId, uri, permissions, label, finish);
+    }
+
+    private void resolve(@Nonnull ChannelHandlerContext context, @Nonnull AccessEntryData data,
+                         @Nonnull DataObject rawAccess, @Nonnull Application application, @Nonnull UUID ownerId,
+                         @Nonnull URI uri, long permissions, @Nullable String label, @Nonnull DataObject finish)
+    {
+        MiscUtil.resolveSafeAddress(api.getJDT(), uri.getHost()).addListener((FutureListener<InetAddress>) future ->
+        {
+            InetAddress address = future.getNow();
+            if (address == null)
+                context.fireExceptionCaught(new InteractionResponseException(InteractionResponse.INVALID_CLIENT, ErrorResponse.UNKNOWN_ACCESS));
+            else
+                connect(context, data, rawAccess, application, ownerId, permissions, label, finish, address, uri);
+        });
     }
 
     private void connect(@Nonnull ChannelHandlerContext context, @Nonnull AccessEntryData data,
                          @Nonnull DataObject rawAccess, @Nonnull Application application, @Nonnull UUID ownerId,
                          long permissions, @Nullable String label, @Nonnull DataObject finish,
-                         @Nonnull InetAddress address, int port)
+                         @Nonnull InetAddress address, URI uri)
     {
+        int port = uri.getPort() == -1 ? 443 : uri.getPort();
         api.getSocketManager().connect(new InetSocketAddress(address, port)).addListener((ChannelFutureListener) connect ->
         {
             if (connect.isSuccess())
@@ -662,18 +676,16 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         @Override
         public void channelInactive(@Nonnull ChannelHandlerContext context) throws Exception
         {
-            onFailure(context);
-            super.channelInactive(context);
+            try (CallbackContext<ChannelHandlerContext> resource = new CallbackContext<>(context, super::channelInactive))
+            {
+                onFailure(context);
+            }
         }
 
         @Override
-        public void exceptionCaught(@Nonnull ChannelHandlerContext context,
-                                    @Nonnull Throwable failException) throws Exception
+        public void exceptionCaught(@Nonnull ChannelHandlerContext context, @Nonnull Throwable ex) throws Exception
         {
-            if (finished)
-                super.exceptionCaught(context, failException);
-            else
-                onFailure(context);
+            onFailure(context);
         }
 
         private void onTimeout(@Nonnull ChannelHandlerContext context)
