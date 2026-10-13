@@ -65,6 +65,7 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     private final Runnable onHandled;
     private final List<ThrowingConsumer<Outcome>> assertions = new ArrayList<>();
     private final CaseInsensitiveMap<String, Collection<String>> headers = new CaseInsensitiveMap<>();
+    private final List<ByteBuf> components = new ArrayList<>();
     private RequestBody body;
     private String[] routeParams = new String[0];
 
@@ -232,6 +233,13 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
 
     @CheckReturnValue
     @Contract("->this")
+    public RestActionAssertions hasReleasedBody()
+    {
+        return checkAssertions(outcome -> ((BufferedResponseBody) outcome.response.getBody()).forEachByte(components::add));
+    }
+
+    @CheckReturnValue
+    @Contract("->this")
     public RestActionAssertions hasNoResponse()
     {
         return checkAssertions(outcome -> assertThat(outcome.response)
@@ -340,6 +348,8 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
         {
             release(outcome);
         }
+        for (ByteBuf component : components)
+            assertThat(component.refCnt()).isZero();
     }
 
     @Override

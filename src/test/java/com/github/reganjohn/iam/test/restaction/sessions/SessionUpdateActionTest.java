@@ -182,7 +182,8 @@ public class SessionUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasStatus(StatusReason.OK.code)
                 .hasContentType(SessionUpdateActionImpl.MEDIA_TYPE_ACCESS)
-                .hasBodyEqualTo(ISSUED_OBJECT), accessObject());
+                .hasBodyEqualTo(ISSUED_OBJECT)
+                .hasReleasedBody(), accessObject());
     }
 
     @ValueSource(strings = {"", "DPoP", "DPoP first second"})

@@ -262,6 +262,7 @@ public class SelfUserCreateActionTest extends RestActionTest
                     .hasStatus(StatusReason.CREATED.code)
                     .hasContentType(SelfUserCreateActionImpl.MEDIA_TYPE_ACCESS)
                     .hasBodyMatchingSnapshot()
+                    .hasReleasedBody()
                     .whenHandled();
         }
 

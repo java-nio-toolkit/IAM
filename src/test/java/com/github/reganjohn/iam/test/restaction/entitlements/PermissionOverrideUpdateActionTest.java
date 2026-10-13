@@ -227,7 +227,8 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasStatus(StatusReason.OK.code)
                 .hasContentType(PermissionOverrideUpdateActionImpl.MEDIA_TYPE_ACCESS)
-                .hasBodyEqualTo(ISSUED_OBJECT), accessObject());
+                .hasBodyEqualTo(ISSUED_OBJECT)
+                .hasReleasedBody(), accessObject());
 
         assertThat(issuedSubject).isEqualTo(USER_ID.toString());
         assertThat(issuedActor).isEqualTo(APPLICATION_ID);

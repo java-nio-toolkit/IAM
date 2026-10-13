@@ -249,7 +249,8 @@ public class SessionCreateActionTest extends RestActionTest
                 .withJsonBody(entry.toData().toString())
                 .hasStatus(StatusReason.CREATED.code)
                 .hasContentType(SessionCreateActionImpl.MEDIA_TYPE_ACCESS)
-                .hasBodyEqualTo(ISSUED_OBJECT));
+                .hasBodyEqualTo(ISSUED_OBJECT)
+                .hasReleasedBody());
 
         SessionCreateData session = created.getValue();
         assertThat(session.getUserId()).isEqualTo(USER_ID);

@@ -273,7 +273,14 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData objectData)
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), objectData.getRaw());
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.CREATED, new CaseInsensitiveMap<>(), body));
+        try
+        {
+            BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
+            context.writeAndFlush(new Response(context, StatusReason.CREATED, new CaseInsensitiveMap<>(), body));
+        }
+        finally
+        {
+            successObj.release();
+        }
     }
 }

@@ -226,8 +226,15 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData data)
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
-        BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
-        context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        try
+        {
+            BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
+            context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
+        }
+        finally
+        {
+            successObj.release();
+        }
     }
 
     @Nonnull
