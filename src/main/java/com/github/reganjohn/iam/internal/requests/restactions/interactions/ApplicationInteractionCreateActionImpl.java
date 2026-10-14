@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.interactions;
 
+import com.github.adamorgan.jnt.api.handle.classic.ClassicObjectHandler;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -484,7 +485,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
     {
         ClassicResponseReceiveHandlerImpl receiver = pipeline.get(ClassicResponseReceiveHandlerImpl.class);
         if (receiver != null)
-            pipeline.replace(receiver, null, new ClassicResponseReceiveHandlerImpl(1 << 10, MAX_ACCESS_LENGTH));
+            pipeline.replace(receiver, null, new ClassicResponseReceiveHandlerImpl(new ClassicObjectHandler.Builder().setMaxBufferSize(MAX_ACCESS_LENGTH).build()));
         pipeline.addLast(new ApplicationInteractionActionImpl(context, data, rawAccess, application, ownerId, permissions, label, finish));
     }
 
