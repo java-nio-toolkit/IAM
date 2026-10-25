@@ -20,12 +20,12 @@ import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -33,11 +33,11 @@ import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.applications.ApplicationCreateAction;
-import com.github.reganjohn.iam.api.utils.ClassLoader;
+import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationCreateBuilder;
 import com.github.reganjohn.iam.api.utils.applications.ApplicationCreateData;
+import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
@@ -45,6 +45,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -265,7 +266,7 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
     @CheckReturnValue
     private ApplicationCreateData fromData(@Nonnull DataObject rawBody, @Nonnull UUID userId, int count)
     {
-        if (MiscUtil.isUnsafeURL(URI.create(rawBody.getString("origin"))))
+        if (StackUtil.isUnsafeURL(URI.create(rawBody.getString("origin"))))
             throw createErrorResponse("origin", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe."));
         else if (count >= MAX_APPLICATION_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_APPLICATIONS);

@@ -75,6 +75,7 @@ public class IntegrationTest extends AbstractSnapshotTest
         when(jnt.getRestConfig()).thenReturn(RestConfig.getDefault());
         when(api.getJDT()).thenReturn(jdt);
         when(jdt.retrieve(anyString())).thenAnswer(invocation -> retrieve(invocation.getArgument(0)));
+        when(jdt.retrieveSafe(anyString())).thenCallRealMethod();
 
         ChannelInboundHandlerAdapter probe = new ChannelInboundHandlerAdapter();
         channel = new EmbeddedChannel(probe);

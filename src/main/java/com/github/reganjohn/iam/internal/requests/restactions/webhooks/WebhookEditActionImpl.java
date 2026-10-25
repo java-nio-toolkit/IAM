@@ -20,9 +20,9 @@ import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.internal.utils.Checks;
@@ -32,8 +32,8 @@ import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookEditAction;
+import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.utils.webhooks.WebhookEditBuilder;
 import com.github.reganjohn.iam.api.utils.webhooks.WebhookEditData;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -44,6 +44,7 @@ import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
+import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -243,7 +244,7 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
     {
         Checks.notNull(webhook, "Webhook");
         Checks.notNull(rawBody, "Body");
-        if (rawBody.hasKey("url") && MiscUtil.isUnsafeURL(URI.create(rawBody.getString("url"))))
+        if (rawBody.hasKey("url") && StackUtil.isUnsafeURL(URI.create(rawBody.getString("url"))))
             throw createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe."));
         return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :endpoint, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF flags = :flags", fromData(webhook, rawBody))
         {

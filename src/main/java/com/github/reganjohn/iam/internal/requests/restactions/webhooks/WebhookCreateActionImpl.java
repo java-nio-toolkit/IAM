@@ -20,12 +20,12 @@ import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -33,8 +33,8 @@ import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
-import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.webhooks.WebhookCreateAction;
+import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.api.utils.webhooks.WebhookCreateBuilder;
 import com.github.reganjohn.iam.api.utils.webhooks.WebhookCreateData;
@@ -45,6 +45,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
 
 import javax.annotation.CheckReturnValue;
@@ -207,7 +208,7 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
     @CheckReturnValue
     public InteractionCallbackAction<Void> create(@Nonnull WebhookCreateData webhook, int count)
     {
-        if (MiscUtil.isUnsafeURL(URI.create(webhook.getUrl())))
+        if (StackUtil.isUnsafeURL(URI.create(webhook.getUrl())))
             throw createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe."));
         else if (count >= MAX_WEBHOOK_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS);

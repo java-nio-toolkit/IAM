@@ -20,31 +20,30 @@ import com.github.adamorgan.jnt.api.events.Event;
 import com.github.adamorgan.jnt.api.events.GenericEvent;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.*;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.UUIDv7;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.requestbody.BufferedRequestBody;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
-import com.github.reganjohn.iam.api.IAM;
-import com.github.reganjohn.iam.api.Scope;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.events.applications.interactions.GenericInteractionEvent;
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionCreateEvent;
 import com.github.reganjohn.iam.api.events.applications.interactions.InteractionOverrideEvent;
+import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.managers.WebhookOverrideManager;
+import com.github.reganjohn.iam.api.Scope;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundInvoker;
 import io.netty.util.concurrent.FutureListener;
-import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 import org.slf4j.Logger;
 
 import javax.annotation.CheckReturnValue;
@@ -117,7 +116,7 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
         int port = uri.getPort() == -1 ? 443 : uri.getPort();
         Route route = new Route(Method.POST, uri.getRawPath().length() > 1 ? uri.getRawPath().substring(1) : "/");
         Checks.check(uri.getHost() != null, "The URL is not safe.");
-        MiscUtil.resolveSafeAddress(api.getJDT(), uri.getHost()).addListener((FutureListener<InetAddress>) future ->
+        api.getJDT().retrieveSafe(uri.getHost()).addListener((FutureListener<InetAddress>) future ->
         {
             InetAddress address = future.getNow();
             if (address == null)
