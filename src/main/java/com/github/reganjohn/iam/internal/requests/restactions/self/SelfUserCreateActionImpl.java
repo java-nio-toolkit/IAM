@@ -66,7 +66,7 @@ import java.util.UUID;
 
 public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements SelfUserCreateAction
 {
-    public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
+    public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/at+jwt");
 
     public SelfUserCreateActionImpl(@Nonnull IAMImpl api)
     {

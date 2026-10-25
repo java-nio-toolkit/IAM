@@ -68,7 +68,7 @@ import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.KID;
 
 public class SessionCreateActionImpl extends AbstractSessionActionImpl implements SessionCreateAction
 {
-    public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
+    public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/at+jwt");
 
     public SessionCreateActionImpl(@Nonnull IAMImpl api)
     {

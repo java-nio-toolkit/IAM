@@ -63,7 +63,7 @@ import static com.github.adamorgan.jnt.api.managers.ProofObjectManager.JKT;
 
 public class SessionUpdateActionImpl extends AbstractSessionActionImpl implements SessionUpdateAction
 {
-    public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/dpop+jwt");
+    public static final MediaType MEDIA_TYPE_ACCESS = MediaType.parse("application/at+jwt");
 
     public SessionUpdateActionImpl(@Nonnull IAMImpl api)
     {
