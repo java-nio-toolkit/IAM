@@ -21,6 +21,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
+import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
@@ -96,6 +98,25 @@ public class ErrorObjectManagerTest extends IntegrationTest
     void testStatus(InteractionResponse error, int status)
     {
         assertThat(handle(new InteractionResponseException(error, ErrorResponse.MISSING_ACCESS)).code).isEqualTo(status);
+    }
+
+    static Stream<Arguments> testMissingAccess()
+    {
+        return Stream.of(
+                arguments(new ProofAccessException("iam", ProofObjectManager.INVALID_TOKEN, "The Access Token has expired and can no longer be used."), ErrorResponse.INVALID_TOKEN),
+                arguments(new ProofAccessException("iam", ProofObjectManager.INVALID_DPOP_PROOF, "This action requires proof of possession."), ErrorResponse.MISSING_ACCESS),
+                arguments(new ProofAccessException("iam"), ErrorResponse.MISSING_ACCESS));
+    }
+
+    @MethodSource
+    @ParameterizedTest
+    void testMissingAccess(ProofAccessException error, ErrorResponse errorResponse)
+    {
+        Response response = handle(error);
+
+        assertThat(response.code).isEqualTo(401);
+        assertThat(response.getHeaders().getFirst(ProofObjectManager.WWW_AUTHENTICATE)).startsWith("DPoP realm=\"iam\"");
+        assertThat(DataObject.fromJson(read(response)).getInt("code")).isEqualTo(errorResponse.getCode());
     }
 
     @Test

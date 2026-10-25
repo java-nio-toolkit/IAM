@@ -22,6 +22,7 @@ import com.github.adamorgan.jnt.api.events.session.InactiveType;
 import com.github.adamorgan.jnt.api.events.session.SessionInactiveEvent;
 import com.github.adamorgan.jnt.api.exceptions.*;
 import com.github.adamorgan.jnt.api.handle.classic.ClassicObjectController;
+import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.managers.RestRateLimiter;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
@@ -30,6 +31,7 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.managers.ClassicObjectManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.JNTLogger;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -230,8 +232,12 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull MissingAccessException error)
     {
-        ErrorResponseException exception = new ErrorResponseException(50001, error.getMessage());
-        handleFailure(context, exception, StatusReason.UNAUTHORIZED);
+        ErrorResponse errorResponse = ProofObjectManager.INVALID_TOKEN.equals(error.getCode()) ? ErrorResponse.INVALID_TOKEN : ErrorResponse.MISSING_ACCESS;
+        ErrorResponseException exception = new ErrorResponseException(errorResponse.getCode(), error.getMessage());
+        CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
+        if (error instanceof ProofAccessException)
+            ProofObjectManagerImpl.handleAccessChallenge(headers, (ProofAccessException) error);
+        handleFailure(context, exception, StatusReason.UNAUTHORIZED, headers);
     }
 
     private void handleFailure(@Nonnull ChannelHandlerContext context, ErrorResponse errorResponse,
@@ -249,8 +255,14 @@ public class ErrorObjectManagerImpl extends ClassicObjectManagerImpl
     private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse,
                                @Nonnull StatusReason reason)
     {
+        handleFailure(context, errorResponse, reason, new CaseInsensitiveMap<>());
+    }
+
+    private void handleFailure(@Nonnull ChannelHandlerContext context, @Nonnull ErrorResponseException errorResponse,
+                               @Nonnull StatusReason reason, @Nonnull CaseInsensitiveMap<String, String> headers)
+    {
         BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_JSON, errorResponse.getObject().toBinary(), true);
-        Response response = new Response(context, reason, new CaseInsensitiveMap<>(), body);
+        Response response = new Response(context, reason, headers, body);
         context.writeAndFlush(response);
     }
 
