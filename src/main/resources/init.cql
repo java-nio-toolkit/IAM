@@ -101,7 +101,6 @@ CREATE TABLE IF NOT EXISTS users.entitlements
     PRIMARY KEY ((user_id), application_id)
 ) WITH transactional_mode = 'full';
 
-
 CREATE TABLE IF NOT EXISTS integrations.applications
 (
     owner_id       UUID,
