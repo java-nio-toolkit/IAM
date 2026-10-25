@@ -54,21 +54,21 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     private final Set<AccessEntrySnapshot> unavailableSnapshots = ConcurrentHashMap.newKeySet();
 
     public GlobalAccessManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout,
-                                   @Nonnull TimeUnit unit, @Nonnull String audience)
+                                   @Nonnull TimeUnit unit, @Nonnull String baseUri)
     {
-        this(api, type, limit, timeout, unit, Collections.singletonList(audience));
+        this(api, type, limit, timeout, unit, baseUri, Collections.singletonList(baseUri));
     }
 
     public GlobalAccessManagerImpl(IAMImpl api, @Nonnull SignType type, int limit, long timeout,
-                                   @Nonnull TimeUnit unit, @Nonnull List<String> audiences)
+                                   @Nonnull TimeUnit unit, @Nonnull String baseUri, @Nonnull List<String> audiences)
     {
-        this(api, new HashedWheelTimer(1L, unit), type, limit, timeout, unit, audiences);
+        this(api, new HashedWheelTimer(1L, unit), type, limit, timeout, unit, baseUri, audiences);
     }
 
     private GlobalAccessManagerImpl(IAMImpl api, @Nonnull HashedWheelTimer worker, @Nonnull SignType type, int limit, long timeout,
-                                    @Nonnull TimeUnit unit, @Nonnull List<String> audiences)
+                                    @Nonnull TimeUnit unit, @Nonnull String baseUri, @Nonnull List<String> audiences)
     {
-        super(worker, type, limit, timeout, unit, audiences);
+        super(worker, type, limit, timeout, unit, baseUri, audiences);
         this.api = api;
         this.worker = worker;
     }

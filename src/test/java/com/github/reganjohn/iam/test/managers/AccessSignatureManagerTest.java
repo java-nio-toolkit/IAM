@@ -31,7 +31,6 @@ import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.internal.entities.AbstractEntityBuilder;
-import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
@@ -50,6 +49,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.Security;
 import java.security.Signature;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -81,15 +81,15 @@ public class AccessSignatureManagerTest extends IntegrationTest
     @BeforeEach
     void withAccessRaw() throws Exception
     {
-        manager = new AccessSignatureManagerImpl();
+        entries = mock(AccessEntryManager.class);
+        when(entries.getAudiences()).thenReturn(Collections.singletonList("https://" + AUTHORITY));
+        when(entries.getBaseUri()).thenReturn(URI.create("https://" + AUTHORITY));
+        manager = new AccessSignatureManagerImpl(entries, null);
         when(api.getAccessSignatureManager()).thenReturn(manager);
         if (Security.getProvider("BC") == null)
             Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
         pair = newPair();
         channel.attr(AccessSignatureManagerImpl.CLIENT_ACCESS).set(entryOf(pair));
-        entries = mock(AccessEntryManager.class);
-        when(entries.getAudiences()).thenReturn(Collections.singletonList("https://" + AUTHORITY));
-        channel.attr(AccessEntryManagerImpl.IDENTIFIER).set(entries);
     }
 
     private static KeyPair newPair() throws Exception

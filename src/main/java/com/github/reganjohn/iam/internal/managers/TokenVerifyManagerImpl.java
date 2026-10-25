@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.internal.managers;
 
+import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
@@ -42,8 +43,9 @@ public class TokenVerifyManagerImpl extends ProofCryptoManagerImpl
 {
     private final IAMImpl api;
 
-    public TokenVerifyManagerImpl(@Nonnull IAMImpl api)
+    public TokenVerifyManagerImpl(@Nonnull AccessEntryManager manager, @Nonnull IAMImpl api)
     {
+        super(manager);
         this.api = api;
     }
 

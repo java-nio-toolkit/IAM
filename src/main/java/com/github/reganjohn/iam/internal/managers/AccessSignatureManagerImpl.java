@@ -19,6 +19,7 @@ package com.github.reganjohn.iam.internal.managers;
 import com.github.adamorgan.jnt.api.exceptions.InvalidTokenException;
 import com.github.adamorgan.jnt.api.exceptions.MissingAttributeException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
+import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.managers.ProofObjectManager;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
@@ -26,6 +27,7 @@ import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofSignatureManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.CallbackContext;
@@ -40,12 +42,18 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.security.KeyPair;
 
 public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implements AccessSignatureManager
 {
     public static final AttributeKey<AccessEntryData> CLIENT_ACCESS = AttributeKey.valueOf("client.signature.access");
+
+    public AccessSignatureManagerImpl(@Nullable AccessEntryManager manager, @Nullable ProofObjectManagerImpl proofManager)
+    {
+        super(manager, proofManager);
+    }
 
     @Override
     public void channelRead0(@Nonnull ChannelHandlerContext context, @Nonnull Request request) throws Exception

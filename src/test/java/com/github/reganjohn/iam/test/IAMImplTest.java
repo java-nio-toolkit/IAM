@@ -259,7 +259,7 @@ public class IAMImplTest extends IntegrationTest
             jdtBuilders.when(() -> JDTBuilder.create(any())).thenReturn(mock(JDTBuilder.class, RETURNS_SELF));
             socketBuilders.when(DefaultSocketManagerBuilder::create).thenReturn(mock(DefaultSocketManagerBuilder.class, RETURNS_SELF));
             builders.when(() -> JNTBuilder.create(anyInt())).thenReturn(builder);
-            iam = new IAMImpl(8080, "https://localhost.com");
+            iam = new IAMImpl(8080, "https://localhost.com", Collections.singletonList("https://localhost.com"));
         }
         try
         {

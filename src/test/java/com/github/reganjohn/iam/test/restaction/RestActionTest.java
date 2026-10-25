@@ -100,7 +100,7 @@ public class RestActionTest extends IntegrationTest
     {
         if (timer == null)
             timer = new HashedWheelTimer(new DefaultThreadFactory("iam-test-timer", true), 1, TimeUnit.SECONDS);
-        return new AccessEntryManagerImpl(timer, type, 1, 1, TimeUnit.HOURS, Collections.singletonList("iam.test"));
+        return new AccessEntryManagerImpl(timer, type, 1, 1, TimeUnit.HOURS, "http://localhost", Collections.singletonList("iam.test"));
     }
 
     private void install(AccessEntryManagerImpl manager, AccessContextData contextData)

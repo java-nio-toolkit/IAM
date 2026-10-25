@@ -98,6 +98,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 public class IAMImpl implements IAM
 {
@@ -114,22 +115,25 @@ public class IAMImpl implements IAM
     private final SocketManager socketManager;
     private final EventLoopGroup socketPool = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
     private final JDT jdt;
+    private static final Pattern ORIGIN = Pattern.compile("https://[^/?#\\s]+|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:\\d+)?");
+
     private final String baseUri;
-    private final AccessSignatureManagerImpl accessSignatureManager = new AccessSignatureManagerImpl();
+    private final List<String> origins;
+    private final AccessSignatureManagerImpl accessSignatureManager;
     private final SocketTracker tracker = new SocketTracker(Metrics.globalRegistry, "unknown");
 
     private final EntityBuilder entityBuilder = new EntityBuilder(this);
 
     public static void main(String[] args) throws Exception
     {
-        IAMImpl api = new IAMImpl(8080, "http://localhost:8080");
+        IAMImpl api = new IAMImpl(8080, "http://localhost:8080", Collections.singletonList("http://localhost:3000"));
         Runtime.getRuntime().addShutdownHook(new Thread(api::shutdown));
     }
 
     @Nonnull
     private OriginAccessConfig cors()
     {
-        return new OriginAccessManager.Builder(String.join(", ", manager.getAudiences()))
+        return new OriginAccessManager.Builder(String.join(", ", origins))
                 .allowMethods(Method.GET, Method.POST, Method.PUT, Method.PATCH, Method.DELETE)
                 .allowHeaders(ProofObjectManager.AUTHORIZATION, ProofObjectManager.DPOP, ContentObjectManager.CONTENT_TYPE,
                         ContentEncodingManager.CONTENT_ENCODING, DigestObjectManager.CONTENT_DIGEST, DigestObjectManager.WANT_CONTENT_DIGEST,
@@ -175,7 +179,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ClassicRequestSendHandlerImpl::new)
                 .addEventListenerProvider(ClassicResponseReceiveHandlerImpl::new)
                 .addEventListenerProvider(() -> new ClassicIdleObjectManagerImpl(30, 30, 5))
-                .addEventListenerProvider(ProofSignatureManagerImpl::new)
+                .addEventListenerProvider(() -> new ProofSignatureManagerImpl(manager, null))
                 .addEventListeners(manager)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
                 .addEventListenerProvider(DigestObjectManagerImpl::new)
@@ -186,16 +190,21 @@ public class IAMImpl implements IAM
                 .build();
     }
 
-    public IAMImpl(int port, @Nonnull String baseUri) throws Exception
+    public IAMImpl(int port, @Nonnull String baseUri, @Nonnull List<String> origins) throws Exception
     {
         Checks.notEmpty(baseUri, "Base URI");
+        Checks.notEmpty(origins, "Origins");
+        origins.forEach(origin -> Checks.matches(origin, ORIGIN, "Origin"));
+        this.origins = List.copyOf(origins);
         this.baseUri = baseUri.endsWith("/") ? baseUri : baseUri + "/";
         this.jca = buildInstance().awaitReady();
-        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, Arrays.asList("http://localhost:8080", "http://localhost:3000"));
+        this.manager = new GlobalAccessManagerImpl(this, SignType.ED25519, 2, 15, TimeUnit.MINUTES, baseUri);
         this.jdt = JDTBuilder.create(socketPool.next())
-                .setDatagramChannelType(NioDatagramChannel.class)
+                .setPacketChannelFactory(NioDatagramChannel.class)
                 .build();
         this.socketManager = createWebhookManager();
+        ProofObjectManagerImpl proofManager = new ProofObjectManagerImpl(manager, Clock.systemUTC(), getNonceSecret(), 60, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, true);
+        this.accessSignatureManager = new AccessSignatureManagerImpl(manager, proofManager);
         this.api = JNTBuilder.create(port)
                 .setIdentifierString("IAM")
                 .setAddressController(jdt)
@@ -207,12 +216,12 @@ public class IAMImpl implements IAM
                 .addEventListeners(new CacheObjectManagerImpl())
                 .addEventListeners(new CookieObjectManagerImpl())
 
-                .addEventListeners(new ContentSecurityOverrideManagerImpl(manager.getAudiences().get(0)))
+                .addEventListeners(new ContentSecurityOverrideManagerImpl(manager.getBaseUri().toString()))
 
-                .addEventListeners(new ProofObjectManagerImpl(Clock.systemUTC(), getNonceSecret(), 60, TimeUnit.SECONDS, 15, TimeUnit.SECONDS, true))
-                .addEventListeners(new ProofOverrideManagerImpl())
+                .addEventListeners(proofManager)
+                .addEventListeners(new ProofOverrideManagerImpl(manager))
                 .addEventListeners(accessSignatureManager)
-                .addEventListeners(new TokenVerifyManagerImpl(this))
+                .addEventListeners(new TokenVerifyManagerImpl(manager, this))
                 .addEventListeners(new SubjectRestRateLimiter(250, 50000, 10, TimeUnit.SECONDS, "user", 1024))
                 .addEventListeners(manager)
 
@@ -223,7 +232,7 @@ public class IAMImpl implements IAM
                 .addEventListenerProvider(ContentEncodingManagerImpl::new)
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
 
-                .addEventListeners(new AccessEntryActionImpl())
+                .addEventListeners(new AccessEntryActionImpl(manager))
 
                 .addEventListeners(new PermOverrideManagerImpl())
 

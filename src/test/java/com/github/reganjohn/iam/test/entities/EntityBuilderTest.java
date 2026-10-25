@@ -23,6 +23,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
+import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.internal.IAMImpl;
@@ -84,7 +85,7 @@ public class EntityBuilderTest
 
     private AccessEntryManagerImpl newManager(Clock clock)
     {
-        return new AccessEntryManagerImpl(clock, timer, SignType.ED25519, 2, LIFETIME.toMinutes(), TimeUnit.MINUTES, Collections.singletonList("iam.test"));
+        return new AccessEntryManagerImpl(clock, timer, SignType.ED25519, 2, LIFETIME.toMinutes(), TimeUnit.MINUTES, "http://localhost", Collections.singletonList("iam.test"));
     }
 
     private static Clock newClock(long millis)
@@ -99,13 +100,13 @@ public class EntityBuilderTest
         AccessContextData contextData = mock(AccessContextData.class);
         when(contextData.toData()).thenReturn(DataObject.empty().put("jkt", "thumbprint"));
         return EntityBuilder.createObjectData(UUID.randomUUID().toString(), "iam.test", UUID.randomUUID().toString(),
-                manager, contextData, "application/dpop+jwt", snapshot);
+                manager, contextData, ProofOverrideManagerImpl.MEDIA_TYPE_ACCESS, snapshot);
     }
 
     @Test
     void testLifetimeFollowsTheManagerWindow()
     {
-        AccessEntryManagerImpl manager = new AccessEntryManagerImpl(newClock(System.currentTimeMillis()), timer, SignType.ED25519, 2, 5, TimeUnit.MINUTES, Collections.singletonList("iam.test"));
+        AccessEntryManagerImpl manager = new AccessEntryManagerImpl(newClock(System.currentTimeMillis()), timer, SignType.ED25519, 2, 5, TimeUnit.MINUTES, "http://localhost", Collections.singletonList("iam.test"));
 
         AccessObjectData token = issue(manager, manager.getCurrentOrder());
 

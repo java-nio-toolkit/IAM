@@ -16,24 +16,25 @@
 
 package com.github.reganjohn.iam.internal.requests.restactions.interactions;
 
-import com.github.adamorgan.jnt.api.handle.classic.ClassicObjectHandler;
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
+import com.github.adamorgan.jnt.api.handle.classic.ClassicObjectHandler;
 import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
-import com.github.adamorgan.jnt.api.utils.UUIDv7;
+import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
+import com.github.adamorgan.jnt.api.utils.cookie.ReceivedCookie;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataPath;
-import com.github.adamorgan.jnt.api.utils.cookie.ReceivedCookie;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryData;
+import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.CallbackContext;
@@ -49,8 +50,8 @@ import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
-import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.requests.restactions.interactions.ApplicationInteractionCreateAction;
+import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.interactions.ApplicationContextInteractionImpl;
@@ -65,7 +66,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundInvoker;
 import io.netty.channel.ChannelPipeline;
 import io.netty.util.concurrent.FutureListener;
-import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -453,7 +453,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                          @Nonnull DataObject rawAccess, @Nonnull Application application, @Nonnull UUID ownerId,
                          @Nonnull URI uri, long permissions, @Nullable String label, @Nonnull DataObject finish)
     {
-        MiscUtil.resolveSafeAddress(api.getJDT(), uri.getHost()).addListener((FutureListener<InetAddress>) future ->
+        api.getJDT().retrieveSafe(uri.getHost()).addListener((FutureListener<InetAddress>) future ->
         {
             InetAddress address = future.getNow();
             if (address == null)
@@ -625,6 +625,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
                                                 @Nonnull UUID ownerId, long permissions, @Nullable String label,
                                                 @Nonnull DataObject finish)
         {
+            super(api.getAccessManager());
             this.context = context;
             this.data = data;
             this.rawAccess = rawAccess;

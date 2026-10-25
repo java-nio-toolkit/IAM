@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.test.managers;
 
+import com.github.adamorgan.jnt.api.managers.AccessEntryManager;
 import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
@@ -84,7 +85,7 @@ public class TokenVerifyManagerTest extends RestActionTest
 
     private Throwable handle()
     {
-        Throwable thrown = catchThrowable(() -> new TokenVerifyManagerImpl(api).handleSuccess(context, request));
+        Throwable thrown = catchThrowable(() -> new TokenVerifyManagerImpl(mock(AccessEntryManager.class), api).handleSuccess(context, request));
         return thrown != null ? thrown : catchThrowable(channel::checkException);
     }
 
