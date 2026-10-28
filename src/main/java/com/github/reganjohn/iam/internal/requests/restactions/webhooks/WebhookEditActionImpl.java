@@ -44,6 +44,7 @@ import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
+import com.reganjohn.jdt.internal.utils.OriginUtil;
 import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -185,9 +186,9 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
             return;
         else if (!raw.isType("url", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not string.");
-        else if (!MiscUtil.isURL(url, false))
+        else if (!OriginUtil.isURL(url, false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
-        else if (!MiscUtil.isURL(url, true))
+        else if (!OriginUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
     }
     

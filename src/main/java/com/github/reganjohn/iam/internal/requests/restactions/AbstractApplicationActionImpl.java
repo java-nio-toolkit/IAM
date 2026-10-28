@@ -33,6 +33,7 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.requests.restactions.ApplicationAction;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.reganjohn.jdt.internal.utils.OriginUtil;
 import org.apache.commons.codec.digest.DigestUtils;
 import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
@@ -80,7 +81,7 @@ public abstract class AbstractApplicationActionImpl extends AbstractOverrideActi
 
     protected boolean isRedirectUri(@Nullable String str)
     {
-        if (!MiscUtil.isURL(str, false))
+        if (!OriginUtil.isURL(str, false))
             return false;
         URI uri = URI.create(str);
         if (uri.getRawUserInfo() != null || uri.getRawFragment() != null)

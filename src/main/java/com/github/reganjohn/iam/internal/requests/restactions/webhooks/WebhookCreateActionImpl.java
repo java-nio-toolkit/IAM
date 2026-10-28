@@ -22,7 +22,6 @@ import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
@@ -45,6 +44,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jdt.internal.utils.OriginUtil;
 import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -155,9 +155,9 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!raw.isType("url", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not string.");
-        else if (!MiscUtil.isURL(url, false))
+        else if (!OriginUtil.isURL(url, false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
-        else if (!MiscUtil.isURL(url, true))
+        else if (!OriginUtil.isURL(url, true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.");
     }
 

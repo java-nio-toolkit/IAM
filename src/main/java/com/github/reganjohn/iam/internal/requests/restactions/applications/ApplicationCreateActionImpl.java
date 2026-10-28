@@ -23,7 +23,6 @@ import com.github.adamorgan.jnt.api.requests.StatusReason;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
-import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.internal.utils.Checks;
@@ -45,6 +44,7 @@ import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
+import com.reganjohn.jdt.internal.utils.OriginUtil;
 import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
 
@@ -129,9 +129,9 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"origin\" value is not string.");
         else if (body.isEmpty("origin"))
             throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"origin\" value may not be empty.");
-        else if (!MiscUtil.isURL(body.getString("origin"), false))
+        else if (!OriginUtil.isURL(body.getString("origin"), false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not url.");
-        else if (!MiscUtil.isURL(body.getString("origin"), true))
+        else if (!OriginUtil.isURL(body.getString("origin"), true))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe.");
     }
 
