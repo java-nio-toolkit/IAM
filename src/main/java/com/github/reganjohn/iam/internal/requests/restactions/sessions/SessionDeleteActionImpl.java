@@ -94,19 +94,19 @@ public class SessionDeleteActionImpl extends AbstractSessionActionImpl implement
     {
         UUID userId = retrieveSelfUserId(context);
         UUID sessionId = UUID.fromString(request.getRoute().getMajorParameters().get("session_id"));
-        api.retrieveSessionCount(userId)
-                .flatMap(count -> delete(userId, sessionId, count))
+        api.retrieveSessionById(userId, sessionId)
+                .flatMap(session -> api.retrieveSessionCount(userId).flatMap(count -> delete(session, count)))
                 .queue(success -> handleSuccess(context), context::fireExceptionCaught);
     }
 
     @Nonnull
     @CheckReturnValue
-    private InteractionCallbackAction<Void> delete(@Nonnull UUID userId, @Nonnull UUID sessionId, int count)
+    private InteractionCallbackAction<Void> delete(@Nonnull Session session, int count)
     {
         if (count == 1)
             throw new ErrorResponseException(ErrorResponse.CANNOT_CLOSE_SINGLE_SESSION);
         else
-            return api.retrieveSessionById(userId, sessionId).flatMap(Session::delete);
+            return session.delete();
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context)

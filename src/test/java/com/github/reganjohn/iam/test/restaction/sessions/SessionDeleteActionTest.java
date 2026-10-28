@@ -143,11 +143,12 @@ public class SessionDeleteActionTest extends RestActionTest
         verify(session, never()).delete();
     }
 
-    @Test
-    void testUnknownSession()
+    @ValueSource(ints = {1, 2})
+    @ParameterizedTest
+    void testUnknownSession(int count)
     {
         withSession(USER_ID, SESSION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_SESSION)));
-        withSessionCount(USER_ID, completed(2));
+        withSessionCount(USER_ID, completed(count));
         withAccess(USER_ID);
 
         assertThatRequestTo(newAction())
@@ -156,6 +157,8 @@ public class SessionDeleteActionTest extends RestActionTest
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailure(ErrorResponse.UNKNOWN_SESSION)
                 .whenHandled();
+
+        verify(api, never()).retrieveSessionCount(any());
     }
 
     @Test
