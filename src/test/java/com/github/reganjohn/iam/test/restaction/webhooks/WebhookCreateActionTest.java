@@ -116,6 +116,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 arguments("name_not_string", body("name", 5, "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_COERCE"),
                 arguments("name_empty", body("name", "", "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_MIN"),
                 arguments("name_too_long", body("name", longName, "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_MAX"),
+                arguments("name_not_nickname", body("name", "hook\u0378", "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("name", "hook", "avatar_id", 5, "url", URL, "scopes", 3), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("name", "hook", "avatar_id", longAvatar, "url", URL, "scopes", 3), "avatar_id=STRING_TYPE_MAX"),
                 arguments("missing_url", body("name", "hook", "avatar_id", "cid", "scopes", 3), "url=BASE_TYPE_REQUIRED"),

@@ -105,6 +105,7 @@ public class WebhookEditActionTest extends RestActionTest
                 arguments("name_not_string", body("name", 5), "name=STRING_TYPE_COERCE"),
                 arguments("name_empty", body("name", ""), "name=STRING_TYPE_MIN"),
                 arguments("name_too_long", body("name", longName), "name=STRING_TYPE_MAX"),
+                arguments("name_not_nickname", body("name", "hook\u0378"), "name=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("avatar_id", longAvatar), "avatar_id=STRING_TYPE_MAX"),
                 arguments("url_not_string", body("url", 5), "url=STRING_TYPE_COERCE"),

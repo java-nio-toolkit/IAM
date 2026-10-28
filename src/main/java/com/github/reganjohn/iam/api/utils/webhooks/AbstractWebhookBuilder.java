@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.api.utils.webhooks;
 
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Webhook;
 
@@ -60,7 +61,7 @@ public abstract class AbstractWebhookBuilder<T, R extends AbstractWebhookBuilder
     {
         Checks.notEmpty(name, "Name");
         Checks.notLonger(name, Webhook.MAX_NAME_LENGTH, "Name");
-        this.name = name;
+        this.name = UnicodeSanitizer.Format.NICKNAME.format(name);
         return (R) this;
     }
 

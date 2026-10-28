@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.api.utils.users;
 
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.User;
 
@@ -55,7 +56,7 @@ public abstract class AbstractUserBuilder<T, R extends AbstractUserBuilder<T, R>
     {
         Checks.notEmpty(name, "Name");
         Checks.notLonger(name, User.MAX_NAME_LENGTH, "Name");
-        this.name = name;
+        this.name = UnicodeSanitizer.Format.USERNAME.format(name);
         return (R) this;
     }
 

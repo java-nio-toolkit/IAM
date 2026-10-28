@@ -126,6 +126,7 @@ public class SelfUserCreateActionTest extends RestActionTest
                 arguments("username_not_string", body("username", 5), "username=STRING_TYPE_COERCE"),
                 arguments("username_empty", body("username", ""), "username=STRING_TYPE_MIN"),
                 arguments("username_too_long", body("username", username), "username=STRING_TYPE_MAX"),
+                arguments("username_not_username", body("username", "a b"), "username=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("username", "a", "avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("username", "a", "avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
                 arguments("flags_not_number", body("username", "a", "flags", "x"), "flags=NUMBER_TYPE_COERCE"),

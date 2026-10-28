@@ -25,6 +25,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -101,6 +102,8 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         else if (body.getString("name").length() > Application.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"name\" may not be longer than %d characters.", Application.MAX_NAME_LENGTH));
+        else if (!UnicodeSanitizer.Format.NICKNAME.test(body.getString("name")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleOrigin(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

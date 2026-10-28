@@ -134,6 +134,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 arguments("name_not_string", body("name", 5), "name=STRING_TYPE_COERCE"),
                 arguments("name_empty", body("name", ""), "name=STRING_TYPE_MIN"),
                 arguments("name_too_long", body("name", repeat(Application.MAX_NAME_LENGTH + 1)), "name=STRING_TYPE_MAX"),
+                arguments("name_not_nickname", body("name", "app\u0378"), "name=STRING_TYPE_REGEX"),
                 arguments("description_not_string", body("description", 5), "description=STRING_TYPE_COERCE"),
                 arguments("description_too_long", body("description", repeat(Application.MAX_DESCRIPTION_LENGTH + 1)), "description=STRING_TYPE_MAX"),
                 arguments("icon_not_string", body("icon_id", 5), "icon_id=STRING_TYPE_COERCE"),

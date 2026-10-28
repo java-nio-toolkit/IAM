@@ -142,6 +142,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 arguments("name_not_string", valid().replace("\"app\"", "5"), "name=STRING_TYPE_COERCE"),
                 arguments("name_empty", valid().replace("\"app\"", "\"\""), "name=STRING_TYPE_MIN"),
                 arguments("name_too_long", valid().replace("\"app\"", "\"" + repeat(Application.MAX_NAME_LENGTH + 1) + "\""), "name=STRING_TYPE_MAX"),
+                arguments("name_not_nickname", valid().replace("\"app\"", "\"app\u0378\""), "name=STRING_TYPE_REGEX"),
                 arguments("missing_origin", body("name", "app", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_REQUIRED"),
                 arguments("origin_not_string", body("name", "app", "origin", 5, "redirect_uris", uris(CALLBACK)), "origin=STRING_TYPE_COERCE"),
                 arguments("origin_empty", body("name", "app", "origin", "", "redirect_uris", uris(CALLBACK)), "origin=STRING_TYPE_MIN"),

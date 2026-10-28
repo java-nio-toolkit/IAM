@@ -28,6 +28,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
@@ -111,6 +112,8 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         else if (body.getString("username").length() > User.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"username\" may not be longer than %d characters.", User.MAX_NAME_LENGTH));
+        else if (!UnicodeSanitizer.Format.USERNAME.test(body.getString("username")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleAvatarId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

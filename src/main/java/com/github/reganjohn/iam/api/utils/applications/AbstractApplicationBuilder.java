@@ -16,6 +16,7 @@
 
 package com.github.reganjohn.iam.api.utils.applications;
 
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.reganjohn.iam.api.entities.Application;
 
@@ -75,7 +76,7 @@ public abstract class AbstractApplicationBuilder<T, R extends AbstractApplicatio
     {
         Checks.notEmpty(name, "Name");
         Checks.notLonger(name, Application.MAX_NAME_LENGTH, "Name");
-        this.name = name;
+        this.name = UnicodeSanitizer.Format.NICKNAME.format(name);
         return (R) this;
     }
 

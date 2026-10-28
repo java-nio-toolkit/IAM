@@ -25,6 +25,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataType;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -130,6 +131,8 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
         else if (raw.getString("name").length() > Webhook.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"name\" may not be longer than %d characters.", Webhook.MAX_NAME_LENGTH));
+        else if (!UnicodeSanitizer.Format.NICKNAME.test(raw.getString("name")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
     
     private void handleAvatarId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

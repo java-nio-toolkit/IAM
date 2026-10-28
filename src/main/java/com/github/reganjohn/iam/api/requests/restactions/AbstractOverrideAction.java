@@ -28,6 +28,7 @@ public interface AbstractOverrideAction extends RestAction
     String STRING_TYPE_COERCE = "STRING_TYPE_COERCE";
     String STRING_TYPE_MIN = "STRING_TYPE_MIN";
     String STRING_TYPE_MAX = "STRING_TYPE_MAX";
+    String STRING_TYPE_REGEX = "STRING_TYPE_REGEX";
 
     String NUMBER_TYPE_COERCE = "NUMBER_TYPE_COERCE";
     String NUMBER_TYPE_MIN = "NUMBER_TYPE_MIN";
