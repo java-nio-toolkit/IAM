@@ -38,13 +38,20 @@ import com.github.reganjohn.iam.api.entities.Session;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.test.IntegrationTest;
+import com.github.adamorgan.jnt.internal.utils.tracker.SocketTracker;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.Consistency;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
+import com.reganjohn.c4j.api.utils.cache.ObjectCacheView;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.JCAImpl;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.requests.Requester;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.channel.ChannelInboundHandler;
 import io.netty.util.HashedWheelTimer;
 import io.netty.util.concurrent.DefaultThreadFactory;
+import io.netty.util.concurrent.ImmediateEventExecutor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.mockito.MockedStatic;
@@ -121,11 +128,31 @@ public class RestActionTest extends IntegrationTest
         timer = null;
     }
 
-    protected void withJCA()
+    protected JCAImpl withJCA()
     {
         JCAImpl jca = mock(JCAImpl.class);
         when(jca.getConsistency()).thenReturn(Consistency.QUORUM);
         when(api.getJCA()).thenReturn(jca);
+        return jca;
+    }
+
+    protected List<InteractionImpl<?>> withRequester()
+    {
+        List<InteractionImpl<?>> requests = new ArrayList<>();
+        Requester requester = mock(Requester.class);
+        doAnswer(invocation -> requests.add(invocation.getArgument(0))).when(requester).request(any());
+        JCAImpl jca = withJCA();
+        when(jca.getRequester()).thenReturn(requester);
+        when(jca.getObjectCache()).thenReturn(mock(ObjectCacheView.class));
+        when(jca.getCallbackPool()).thenReturn(ImmediateEventExecutor.INSTANCE);
+        when(jca.getTracker()).thenReturn(mock(SocketTracker.class));
+        return requests;
+    }
+
+    @SuppressWarnings("unchecked")
+    protected static <T> void respond(InteractionImpl<?> request, BufferArray rows) throws Exception
+    {
+        ((InteractionMappingActionImpl<T>) request.getObjectAction()).handleSuccess(mock(InteractionCallbackResponse.class), (InteractionImpl<T>) request, rows);
     }
 
     protected static void withIssuedObject(MockedStatic<EntityBuilder> builder)

@@ -33,21 +33,20 @@ import com.github.reganjohn.iam.api.interactions.ApplicationContextInteraction;
 import com.github.reganjohn.iam.internal.requests.restactions.interactions.ApplicationInteractionOverrideActionImpl;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockedConstruction;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,12 +54,10 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.withSettings;
 
 public class ApplicationInteractionOverrideActionTest extends RestActionTest
 {
@@ -91,7 +88,7 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         when(interaction.getUniqueId()).thenReturn(INTERACTION_ID);
         when(interaction.getPermissionsRaw()).thenReturn(1L);
         when(interaction.getRedirectUri()).thenReturn(CALLBACK);
-        when(interaction.getTimeExpiresAt()).thenReturn(OffsetDateTime.parse("2026-01-01T00:05:00Z"));
+        when(interaction.getTimeExpiresAt()).thenReturn(OffsetDateTime.now().plusMinutes(5));
         when(interaction.getClientNonce()).thenReturn("client-nonce");
         when(interaction.getFinishNonce()).thenReturn("finish-nonce");
         when(interaction.getMethodHash()).thenReturn("sha-256");
@@ -113,23 +110,11 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         withRetrieval(OWNER_ID, completed(owner));
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private MockedConstruction<InteractionListContextActionImpl> mockResponse(List<Object[]> statements)
+    private static BufferArray rows(boolean empty)
     {
-        return mockConstruction(InteractionListContextActionImpl.class,
-                withSettings().defaultAnswer(invocation ->
-                {
-                    if (invocation.getMethod().getName().equals("add"))
-                    {
-                        statements.add(invocation.getArguments());
-                        return invocation.getMock();
-                    }
-                    else if (invocation.getMethod().getName().equals("map"))
-                        return completed(((Function) invocation.getArgument(0)).apply(null));
-                    else
-                        return null;
-                }),
-                (action, context) -> {});
+        BufferArray rows = mock(BufferArray.class);
+        when(rows.isEmpty()).thenReturn(empty);
+        return rows;
     }
 
     private static String thumbprintOf(AccessEntryData entry)
@@ -416,33 +401,82 @@ public class ApplicationInteractionOverrideActionTest extends RestActionTest
         verify(api, never()).retrieveUserById(any());
     }
 
-    @Test
-    void testCreateResponse()
+    @ValueSource(longs = {0, 300})
+    @ParameterizedTest
+    void testExpiredInteraction(long seconds)
     {
-        withJCA();
+        withProofOfUser();
         ApplicationContextInteraction interaction = newInteraction();
-        List<Object[]> statements = new ArrayList<>();
-        ApplicationContextInteraction[] result = new ApplicationContextInteraction[1];
+        when(interaction.getTimeExpiresAt()).thenReturn(OffsetDateTime.now().minusSeconds(seconds));
+        withStoredInteraction(interaction);
+        ApplicationInteractionOverrideActionImpl action = spy(newAction());
 
-        try (MockedConstruction<InteractionListContextActionImpl> construction = mockResponse(statements))
-        {
-            InteractionCallbackAction<ApplicationContextInteraction> response = newAction().createResponse(USER_ID, "user-jkt", "reference", interaction);
-            response.queue(accepted -> result[0] = accepted, failure -> {});
+        assertThatRequestTo(action)
+                .withRouteParams(OWNER_ID.toString(), APPLICATION_ID.toString(), INTERACTION_ID.toString())
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.UNKNOWN_INTERACTION)
+                .whenHandled();
 
-            assertThat(construction.constructed()).hasSize(1);
-        }
+        verify(action, never()).createResponse(any(), any(), any(), any());
+    }
 
-        assertThat(result[0]).isSameAs(interaction);
-        assertThat(statements).hasSize(3);
-        assertThat(statements.get(0)[0].toString()).isEqualTo("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?");
-        assertThat(Arrays.copyOfRange(statements.get(0), 1, 4)).containsExactly(OWNER_ID, APPLICATION_ID, INTERACTION_ID);
-        assertThat(statements.get(1)[0].toString()).contains("INSERT INTO integrations.responses");
-        assertThat(Arrays.copyOfRange(statements.get(1), 1, 12))
-                .containsExactly(INTERACTION_ID, USER_ID, OWNER_ID, APPLICATION_ID, 1L, "reference", "continue-hash", DataObject.empty().put("kid", "client-jkt").toString(), "user-jkt", "my-token", false);
-        assertThat(statements.get(2)[0].toString()).contains("INSERT INTO users.entitlements");
-        assertThat(Arrays.copyOfRange(statements.get(2), 1, 6)).containsExactly(USER_ID, APPLICATION_ID, OWNER_ID, 0L, 1L);
-        assertThat(statements.get(2)[6]).isInstanceOf(OffsetDateTime.class);
-        assertThat(statements.get(1)[0].toString().chars().filter(character -> character == '?').count()).isEqualTo(11);
-        assertThat(statements.get(2)[0].toString().chars().filter(character -> character == '?').count()).isEqualTo(6);
+    @Test
+    void testCreateResponse() throws Exception
+    {
+        List<InteractionImpl<?>> requests = withRequester();
+        ApplicationContextInteraction interaction = newInteraction();
+        List<ApplicationContextInteraction> results = new ArrayList<>();
+
+        newAction().createResponse(USER_ID, "user-jkt", "reference", interaction).queue(results::add, failure -> {});
+
+        assertThat(requests).hasSize(1);
+        InteractionMappingActionImpl<?> consumption = (InteractionMappingActionImpl<?>) requests.get(0).getObjectAction();
+        assertThat(consumption.getContent()).contains("BEGIN TRANSACTION", "DELETE FROM integrations.interactions", "INSERT INTO users.entitlements");
+        assertThat(consumption.getContent()).doesNotContain("INSERT INTO integrations.responses");
+        assertThatStatementIsBound(consumption);
+        assertThat(consumption.getParams())
+                .containsEntry("interaction_id", INTERACTION_ID)
+                .containsEntry("user_id", USER_ID)
+                .containsEntry("owner_id", OWNER_ID)
+                .containsEntry("application_id", APPLICATION_ID)
+                .containsEntry("permissions", 1L)
+                .containsEntry("reference", "reference")
+                .containsEntry("hash", "continue-hash")
+                .containsEntry("access_raw", DataObject.empty().put("kid", "client-jkt").toString())
+                .containsEntry("thumbprint", "user-jkt")
+                .containsEntry("label", "my-token")
+                .containsEntry("denied", false);
+        assertThat(consumption.getParams().get("updated_at")).isInstanceOf(OffsetDateTime.class);
+
+        respond(requests.get(0), rows(false));
+
+        assertThat(requests).hasSize(2);
+        InteractionMappingActionImpl<?> response = (InteractionMappingActionImpl<?>) requests.get(1).getObjectAction();
+        assertThat(response.getContent()).contains("INSERT INTO integrations.responses", ":denied");
+        assertThat(response.getContent()).doesNotContain("BEGIN TRANSACTION");
+        assertThatStatementIsBound(response);
+        assertThat(response.getParams()).containsEntry("denied", false);
+        assertThat(results).isEmpty();
+
+        respond(requests.get(1), rows(true));
+
+        assertThat(results).containsExactly(interaction);
+    }
+
+    @Test
+    void testCreateResponseMissing() throws Exception
+    {
+        List<InteractionImpl<?>> requests = withRequester();
+        List<ApplicationContextInteraction> results = new ArrayList<>();
+        List<Throwable> failures = new ArrayList<>();
+
+        newAction().createResponse(USER_ID, "user-jkt", "reference", newInteraction()).queue(results::add, failures::add);
+        respond(requests.get(0), rows(true));
+
+        assertThat(requests).hasSize(1);
+        assertThat(results).isEmpty();
+        assertThat(failures).singleElement().isInstanceOf(ErrorResponseException.class);
+        assertThat(((ErrorResponseException) failures.get(0)).getErrorCode()).isEqualTo(ErrorResponse.UNKNOWN_INTERACTION.getCode());
     }
 }

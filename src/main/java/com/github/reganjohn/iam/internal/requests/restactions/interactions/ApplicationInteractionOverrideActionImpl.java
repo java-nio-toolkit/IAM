@@ -42,13 +42,16 @@ import com.github.reganjohn.iam.api.requests.restactions.interactions.Applicatio
 import com.github.reganjohn.iam.api.utils.ClassLoader;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractApplicationActionImpl;
+import com.reganjohn.c4j.api.interactions.context.InteractionMapping;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
-import com.reganjohn.c4j.api.requests.objaction.InteractionListType;
-import com.reganjohn.c4j.internal.requests.objaction.InteractionListContextActionImpl;
+import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
+import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.internal.interactions.InteractionImpl;
+import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.github.reganjohn.iam.internal.utils.ApplicationUtil;
 import io.netty.channel.ChannelHandlerContext;
 import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -172,7 +175,9 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     @Nonnull
     private ApplicationContextInteraction checkRedirectUri(@Nonnull ApplicationContextInteraction interaction)
     {
-        if (!isRedirectUri(interaction.getRedirectUri()))
+        if (!interaction.getTimeExpiresAt().isAfter(OffsetDateTime.now()))
+            throw new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION);
+        else if (!isRedirectUri(interaction.getRedirectUri()))
             throw new ErrorResponseException(ErrorResponse.INVALID_REDIRECT_URI);
         return interaction;
     }
@@ -197,7 +202,8 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
     }
 
     private void handleSuccess(@Nonnull ChannelHandlerContext context,
-                               @Nonnull ApplicationContextInteraction interaction, @Nonnull String reference, boolean json)
+                               @Nonnull ApplicationContextInteraction interaction, @Nonnull String reference,
+                               boolean json)
     {
         String location = withQueryParam(interaction, reference);
         context.writeAndFlush(json ? createJsonResponse(context, location) : createRedirectResponse(context, location))
@@ -247,29 +253,73 @@ public class ApplicationInteractionOverrideActionImpl extends AbstractApplicatio
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId, @Nonnull String thumbprint,
+    public InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId,
+                                                                                   @Nonnull String thumbprint,
                                                                                    @Nonnull String reference,
                                                                                    @Nonnull ApplicationContextInteraction interaction)
     {
-        return createResponse(userId, thumbprint, reference, interaction, false)
-                .add(ClassLoader.getResourceAsString("create_entitlement.cql"), userId, interaction.getApplicationId(), interaction.getOwnerId(), 0L, interaction.getPermissionsRaw(), OffsetDateTime.now())
-                .map(unused -> interaction);
+        return createResponse(userId, thumbprint, reference, interaction, false);
     }
 
     @Nonnull
     @CheckReturnValue
-    protected InteractionListContextActionImpl<Object> createResponse(@Nonnull UUID userId, @Nonnull String thumbprint,
-                                                                      @Nonnull String reference,
-                                                                      @Nonnull ApplicationContextInteraction interaction,
-                                                                      boolean denied)
+    protected InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull UUID userId,
+                                                                                      @Nonnull String thumbprint,
+                                                                                      @Nonnull String reference,
+                                                                                      @Nonnull ApplicationContextInteraction interaction,
+                                                                                      boolean denied)
     {
-        UUID ownerId = interaction.getOwnerId();
-        UUID applicationId = interaction.getApplicationId();
-        UUID interactionId = interaction.getUniqueId();
-        long permissions = interaction.getPermissionsRaw();
-        return new InteractionListContextActionImpl<>(api.getJCA(), InteractionListType.LOGGED, new ArrayListValuedHashMap<>())
-                .add("DELETE FROM integrations.interactions WHERE user_id = ? AND application_id = ? AND interaction_id = ?", ownerId, applicationId, interactionId)
-                .add(ClassLoader.getResourceAsString("create_interaction_response.cql"), interactionId, userId, ownerId, applicationId, permissions,
-                        reference, interaction.hash(), interaction.getAccessRaw().toString(), thumbprint, interaction.getLabel(), denied);
+        String content = ClassLoader.getResourceAsString(denied ? "deny_interaction.cql" : "accept_interaction.cql");
+        Map<String, Object> params = dataFromMap(userId, thumbprint, reference, interaction, denied);
+        return new InteractionMappingActionImpl<Map<String, Object>>(api.getJCA(), content, params)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Map<String, Object>> request, @Nonnull BufferArray array)
+            {
+                if (array.isEmpty())
+                    request.onFailure(new ErrorResponseException(ErrorResponse.UNKNOWN_INTERACTION));
+                else
+                    request.onSuccess(params);
+            }
+        }.flatMap(consumed -> createResponse(consumed, interaction));
+    }
+
+    @Nonnull
+    @Unmodifiable
+    private Map<String, Object> dataFromMap(@Nonnull UUID userId, @Nonnull String thumbprint, @Nonnull String reference,
+                                            @Nonnull ApplicationContextInteraction interaction, boolean denied)
+    {
+        return new InteractionMapping.Builder()
+                .put("interaction_id", interaction.getUniqueId())
+                .put("user_id", userId)
+                .put("owner_id", interaction.getOwnerId())
+                .put("application_id", interaction.getApplicationId())
+                .put("permissions", interaction.getPermissionsRaw())
+                .put("reference", reference)
+                .put("hash", interaction.hash())
+                .put("access_raw", interaction.getAccessRaw().toString())
+                .put("thumbprint", thumbprint)
+                .put("label", interaction.getLabel())
+                .put("updated_at", OffsetDateTime.now())
+                .put("denied", denied)
+                .toMap();
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<ApplicationContextInteraction> createResponse(@Nonnull Map<String, Object> params,
+                                                                                    @Nonnull ApplicationContextInteraction interaction)
+    {
+        return new InteractionMappingActionImpl<ApplicationContextInteraction>(api.getJCA(), ClassLoader.getResourceAsString("create_interaction_response.cql"), params)
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<ApplicationContextInteraction> request,
+                                      @Nonnull BufferArray array)
+            {
+                request.onSuccess(interaction);
+            }
+        };
     }
 }

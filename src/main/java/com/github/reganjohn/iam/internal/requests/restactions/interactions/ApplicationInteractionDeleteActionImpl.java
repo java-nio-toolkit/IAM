@@ -43,7 +43,7 @@ public class ApplicationInteractionDeleteActionImpl extends ApplicationInteracti
                                                                                    @Nonnull String reference,
                                                                                    @Nonnull ApplicationContextInteraction interaction)
     {
-        return createResponse(userId, userThumbprint, reference, interaction, true).map(unused -> interaction);
+        return createResponse(userId, userThumbprint, reference, interaction, true);
     }
 
     @Override

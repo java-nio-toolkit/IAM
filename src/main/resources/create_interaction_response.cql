@@ -15,4 +15,4 @@
  */
 
 INSERT INTO integrations.responses (interaction_id, user_id, owner_id, application_id, permissions, reference, hash, access_raw, thumbprint, label, denied)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (:interaction_id, :user_id, :owner_id, :application_id, :permissions, :reference, :hash, :access_raw, :thumbprint, :label, :denied)
