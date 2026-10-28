@@ -84,6 +84,7 @@ public class SelfUserEditActionTest extends RestActionTest
                 arguments("avatar_too_long", body("avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
                 arguments("flags_not_number", body("flags", "x"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", body("flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("flags_negative_long", body("flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
                 arguments("every_field_invalid", body("username", 5, "avatar_id", 5, "flags", -1), "username=STRING_TYPE_COERCE,avatar_id=STRING_TYPE_COERCE,flags=NUMBER_TYPE_MIN"));
     }
 
@@ -250,7 +251,7 @@ public class SelfUserEditActionTest extends RestActionTest
         assertThat(edited.getValue().getRawUserFlags()).isEqualTo(2L & ~User.UserFlag.SYSTEM);
     }
 
-    @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE})
+    @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE, 2147483648L, 4294967301L})
     @ParameterizedTest
     void testSystemFlags(long flags)
     {

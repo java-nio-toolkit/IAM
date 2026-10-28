@@ -91,6 +91,7 @@ public class SessionEditActionTest extends RestActionTest
                 arguments("user_agent_too_long", body("user_agent", StringUtils.repeat('a', User.MAX_NAME_LENGTH + 1)), "user_agent=STRING_TYPE_MAX"),
                 arguments("flags_not_number", body("flags", "x"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", body("flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("flags_negative_long", body("flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
                 arguments("every_field_invalid", body("user_agent", 5, "flags", -1), "user_agent=STRING_TYPE_COERCE,flags=NUMBER_TYPE_MIN"));
     }
 
@@ -121,6 +122,8 @@ public class SessionEditActionTest extends RestActionTest
                 body("user_agent", StringUtils.repeat('a', User.MAX_NAME_LENGTH)),
                 body("flags", 0),
                 body("user_agent", "curl/8.0", "flags", 1),
+                body("flags", 2147483648L),
+                body("flags", 4294967301L),
                 body("unknown", "field"));
     }
 

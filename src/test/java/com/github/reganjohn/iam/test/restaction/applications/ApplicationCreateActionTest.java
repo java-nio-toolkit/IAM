@@ -153,6 +153,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 arguments("icon_too_long", valid("icon_id", repeat(Application.ICON_CID_MAX_LENGTH + 1)), "icon_id=STRING_TYPE_MAX"),
                 arguments("flags_not_number", valid("flags", "all"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", valid("flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("flags_negative_long", valid("flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
                 arguments("missing_redirect_uris", body("name", "app", "origin", ORIGIN), "redirect_uris=BASE_TYPE_REQUIRED"),
                 arguments("redirect_uris_not_array", body("name", "app", "origin", ORIGIN, "redirect_uris", CALLBACK), "redirect_uris=MODEL_TYPE_CONVERT"),
                 arguments("redirect_uris_empty", body("name", "app", "origin", ORIGIN, "redirect_uris", uris()), "redirect_uris=BASE_TYPE_MIN_LENGTH"),
@@ -296,7 +297,7 @@ public class ApplicationCreateActionTest extends RestActionTest
         assertThat(application.getFlagsRaw()).isEqualTo(4);
     }
 
-    @ValueSource(longs = {0, 1, 4, DELETED, DELETED | 4})
+    @ValueSource(longs = {0, 1, 4, 2147483648L, 4294967301L, DELETED, DELETED | 4})
     @ParameterizedTest
     void testSystemFlagsAreIgnored(long flags)
     {

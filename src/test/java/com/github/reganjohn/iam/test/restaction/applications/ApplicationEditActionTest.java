@@ -140,6 +140,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 arguments("icon_too_long", body("icon_id", repeat(Application.ICON_CID_MAX_LENGTH + 1)), "icon_id=STRING_TYPE_MAX"),
                 arguments("flags_not_number", body("flags", "all"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", body("flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("flags_negative_long", body("flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
                 arguments("redirect_uris_not_array", body("redirect_uris", CALLBACK), "redirect_uris=MODEL_TYPE_CONVERT"),
                 arguments("redirect_uris_empty", body("redirect_uris", uris()), "redirect_uris=BASE_TYPE_MIN_LENGTH"),
                 arguments("redirect_uris_too_many", body("redirect_uris", uris(CALLBACK, CALLBACK, CALLBACK, CALLBACK, CALLBACK, CALLBACK)), "redirect_uris=BASE_TYPE_MAX_LENGTH"),
@@ -321,7 +322,7 @@ public class ApplicationEditActionTest extends RestActionTest
         assertThat(data.getRedirectUris()).containsExactly("https://example.net/callback", "https://example.org/other");
     }
 
-    @ValueSource(longs = {0, 1, 8, DELETED, DELETED | 8})
+    @ValueSource(longs = {0, 1, 8, 2147483648L, 4294967301L, DELETED, DELETED | 8})
     @ParameterizedTest
     void testSystemFlagsAreKept(long flags)
     {

@@ -166,7 +166,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
             return;
         else if (!body.isType("flags", DataType.INT))
             throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"flags\" is not number.");
-        else if (body.getInt("flags") < 0)
+        else if (body.getLong("flags") < 0)
             throw new DataObjectParsingException(NUMBER_TYPE_MIN,
                     "Value \"flags\" should be greater than or equal to 0.");
     }
@@ -195,7 +195,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
             return;
         else if (!body.isType("flags", DataType.INT))
             throw new DataObjectParsingException(NUMBER_TYPE_COERCE, "Value \"flags\" is not number.");
-        else if (body.getInt("flags") < 0)
+        else if (body.getLong("flags") < 0)
             throw new DataObjectParsingException(NUMBER_TYPE_MIN,
                     "Value \"flags\" should be greater than or equal to 0.");
     }

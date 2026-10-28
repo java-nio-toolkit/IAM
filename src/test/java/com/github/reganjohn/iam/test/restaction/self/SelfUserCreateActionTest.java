@@ -130,8 +130,10 @@ public class SelfUserCreateActionTest extends RestActionTest
                 arguments("avatar_too_long", body("username", "a", "avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
                 arguments("flags_not_number", body("username", "a", "flags", "x"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", body("username", "a", "flags", -1), "flags=NUMBER_TYPE_MIN"),
+                arguments("flags_negative_long", body("username", "a", "flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
                 arguments("session_flags_not_number", body("username", "a", "session", session("flags", "x")), "session.flags=NUMBER_TYPE_COERCE"),
                 arguments("session_flags_negative", body("username", "a", "session", session("flags", -1)), "session.flags=NUMBER_TYPE_MIN"),
+                arguments("session_flags_negative_long", body("username", "a", "session", session("flags", -4294967295L)), "session.flags=NUMBER_TYPE_MIN"),
                 arguments("every_field_invalid", body("avatar_id", 5, "flags", -1, "session", session("flags", -1)), "username=BASE_TYPE_REQUIRED,avatar_id=STRING_TYPE_COERCE,flags=NUMBER_TYPE_MIN,session.flags=NUMBER_TYPE_MIN"));
     }
 
@@ -291,7 +293,7 @@ public class SelfUserCreateActionTest extends RestActionTest
         assertWithSnapshot(summarize(created.getValue()), "user");
     }
 
-    @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE})
+    @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE, 2147483648L, 4294967301L})
     @ParameterizedTest
     void testSystemFlags(long flags)
     {
