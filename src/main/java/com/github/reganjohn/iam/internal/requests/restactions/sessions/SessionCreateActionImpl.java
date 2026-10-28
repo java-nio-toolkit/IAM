@@ -52,6 +52,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.AbstractSessionAct
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import io.netty.buffer.ByteBuf;
@@ -464,10 +465,13 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
-                if (array.isEmpty())
-                    request.onSuccess(null);
-                else
+                BufferObject row = array.getObject(0);
+                if (!row.isNull(2))
+                    request.onFailure(new ErrorResponseException(ErrorResponse.SESSION_ALREADY_EXISTS));
+                else if (!row.isNull(0) || !row.isNull(1))
                     request.onFailure(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS));
+                else
+                    request.onSuccess(null);
             }
         };
     }

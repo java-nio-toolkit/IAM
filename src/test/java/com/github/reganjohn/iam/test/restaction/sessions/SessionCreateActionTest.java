@@ -42,6 +42,7 @@ import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -128,6 +129,17 @@ public class SessionCreateActionTest extends RestActionTest
         }
     }
 
+    private static BufferArray rows(boolean global, boolean access, boolean session)
+    {
+        BufferObject row = mock(BufferObject.class);
+        when(row.isNull(0)).thenReturn(!global);
+        when(row.isNull(1)).thenReturn(!access);
+        when(row.isNull(2)).thenReturn(!session);
+        BufferArray rows = mock(BufferArray.class);
+        when(rows.getObject(0)).thenReturn(row);
+        return rows;
+    }
+
     static Stream<Arguments> testInvalidInputs()
     {
         return Stream.of(
@@ -173,6 +185,16 @@ public class SessionCreateActionTest extends RestActionTest
                 body("kty", "OKP", "use", "sig", "crv", "Ed25519", "kid", "k", "alg", DataObject.empty()),
                 body("kty", "OKP", "use", "sig", "crv", "Ed25519", "kid", "k", "alg", "Ed25519", "x", null),
                 body("kty", "OKP", "use", "sig", "crv", "Ed25519", "kid", "k", "alg", "Ed25519", "x", DataArray.empty()));
+    }
+
+    static Stream<Arguments> testCreateExisting()
+    {
+        return Stream.of(
+                arguments("session_only", false, false, true, ErrorResponse.SESSION_ALREADY_EXISTS),
+                arguments("everything", true, true, true, ErrorResponse.SESSION_ALREADY_EXISTS),
+                arguments("global_only", true, false, false, ErrorResponse.ACCESS_ALREADY_EXISTS),
+                arguments("access_only", false, true, false, ErrorResponse.ACCESS_ALREADY_EXISTS),
+                arguments("global_and_access", true, true, false, ErrorResponse.ACCESS_ALREADY_EXISTS));
     }
 
     static Stream<Arguments> testInvalidSubject()
@@ -395,29 +417,28 @@ public class SessionCreateActionTest extends RestActionTest
         withJCA();
         InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(SessionCreateData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
-        BufferArray rows = mock(BufferArray.class);
-        when(rows.isEmpty()).thenReturn(true);
 
-        creation.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows);
+        creation.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(false, false, false));
 
         verify(interaction).onSuccess(null);
+        verify(interaction, never()).onFailure(any());
     }
 
-    @Test
+    @MethodSource
+    @ParameterizedTest
     @SuppressWarnings("unchecked")
-    void testCreateExisting() throws Exception
+    void testCreateExisting(String name, boolean global, boolean access, boolean session, ErrorResponse expected) throws Exception
     {
         withJCA();
         InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(SessionCreateData.class));
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
-        BufferArray rows = mock(BufferArray.class);
-        when(rows.isEmpty()).thenReturn(false);
 
-        creation.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows);
+        creation.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(global, access, session));
 
         verify(interaction).onFailure(argThat(error ->
                 error instanceof InvalidResponseException
-                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.ACCESS_ALREADY_EXISTS.getCode()));
+                        && ((InvalidResponseException) error).getErrorCode() == expected.getCode()));
+        verify(interaction, never()).onSuccess(any());
     }
 
     @Test

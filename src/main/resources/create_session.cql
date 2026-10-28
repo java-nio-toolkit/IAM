@@ -19,8 +19,7 @@ BEGIN TRANSACTION
     LET access_data = (SELECT * FROM users.public_keys WHERE user_id = :user_id AND thumbprint = :thumbprint);
     LET global_data = (SELECT * FROM global.public_keys WHERE thumbprint = :thumbprint);
 
-    -- Return data directly from table (must come before INSERT)
-    SELECT * FROM global.public_keys WHERE thumbprint = :thumbprint;
+    SELECT global_data.thumbprint, access_data.thumbprint, session_data.session_id;
 
     IF global_data IS NULL AND session_data IS NULL AND access_data IS NULL THEN
         INSERT INTO global.public_keys (kid, alg, kty, usage, flags, thumbprint, public_key)
