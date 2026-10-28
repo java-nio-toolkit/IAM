@@ -57,6 +57,7 @@ import org.jetbrains.annotations.Unmodifiable;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -119,7 +120,7 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
     {
         String authorization = request.getHeaders().getFirst("Authorization");
         String[] parts = Helpers.nonEmpty(authorization) ? authorization.split(" ") : new String[0];
-        if (parts.length != 2)
+        if (parts.length != 2 || !Helpers.equals(parts[0], ProofOverrideManagerImpl.PREFIX, true))
             throw new ErrorResponseException(ErrorResponse.UNAUTHORIZED);
         String accessToken = parts[1];
         ProofObjectData data = retrieveSelfProof(context);
@@ -129,6 +130,8 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
             if (!Helpers.equals(json.getThumbprint(), contextData.digest(), false))
                 throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
             else if (!Helpers.equals(IOUtil.encodeURL(DigestUtils.sha256(accessToken)), data.getAccessTokenHash(), false))
+                throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+            else if (!json.getTimeExpiresAt().plus(api.getAccessManager().getTimeoutDuration()).isAfter(OffsetDateTime.now()))
                 throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
             else
                 handleInternally(context, request, json, contextData);

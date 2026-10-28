@@ -46,6 +46,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -92,6 +94,8 @@ public class SessionUpdateActionTest extends RestActionTest
         GlobalAccessManagerImpl manager = mock(GlobalAccessManagerImpl.class);
         when(manager.hasAccess(any())).thenReturn(access);
         when(manager.getCurrentOrder()).thenReturn(mock(AccessEntryManagerImpl.AccessEntrySnapshot.class));
+        when(manager.getTimeoutDuration()).thenReturn(Duration.ofMinutes(15));
+        when(api.getAccessManager()).thenReturn(manager);
         channel.attr(GlobalAccessManagerImpl.IDENTIFIER).set(manager);
     }
 
@@ -100,6 +104,7 @@ public class SessionUpdateActionTest extends RestActionTest
         AccessObjectData access = mock(AccessObjectData.class);
         when(access.getThumbprint()).thenReturn("proof-thumbprint");
         when(access.getExpirationTimestamp()).thenReturn(System.currentTimeMillis());
+        when(access.getTimeExpiresAt()).thenReturn(OffsetDateTime.now().plusMinutes(5));
         when(access.getSubject()).thenReturn(subject);
         when(access.getContextData()).thenReturn(confirmation);
         when(access.getActor()).thenReturn(actor);
@@ -200,6 +205,71 @@ public class SessionUpdateActionTest extends RestActionTest
                 .whenHandled();
 
         verify(api, never()).retrieveUserById(any());
+    }
+
+    @ValueSource(strings = {"Bearer " + TOKEN, "Basic " + TOKEN, "DPoPs " + TOKEN})
+    @ParameterizedTest
+    void testWrongScheme(String authorization)
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredSession();
+
+        whenHandled(assertThatRequestTo(newAction())
+                .withRouteParams(SESSION_ID.toString())
+                .withHeader("Authorization", authorization)
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.UNAUTHORIZED), accessObject());
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @ValueSource(strings = {"dpop " + TOKEN, "DPOP " + TOKEN})
+    @ParameterizedTest
+    void testSchemeIgnoresCase(String authorization)
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredSession();
+
+        whenHandled(assertThatRequestTo(newAction())
+                .withRouteParams(SESSION_ID.toString())
+                .withHeader("Authorization", authorization)
+                .hasStatus(StatusReason.OK.code), accessObject());
+    }
+
+    @ValueSource(longs = {15, 16, 60})
+    @ParameterizedTest
+    void testExpiredToken(long minutes)
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredSession();
+        AccessObjectData access = accessObject();
+        when(access.getTimeExpiresAt()).thenReturn(OffsetDateTime.now().minusMinutes(minutes));
+
+        whenHandled(assertThatUpdating()
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.INVALID_TOKEN), access);
+
+        verify(api, never()).retrieveUserById(any());
+    }
+
+    @ValueSource(longs = {0, 1, 14})
+    @ParameterizedTest
+    void testRecentlyExpiredToken(long minutes)
+    {
+        withAccessProof("proof-thumbprint", hashOf(TOKEN));
+        withManager(true);
+        withStoredSession();
+        AccessObjectData access = accessObject();
+        when(access.getTimeExpiresAt()).thenReturn(OffsetDateTime.now().minusMinutes(minutes));
+
+        whenHandled(assertThatUpdating()
+                .hasStatus(StatusReason.OK.code)
+                .hasBodyEqualTo(ISSUED_OBJECT), access);
     }
 
     @Test
