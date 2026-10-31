@@ -42,7 +42,6 @@ public enum ErrorResponse
     USER_ALREADY_EXISTS(40121, "An user with that access object already exists"),
     SESSION_ALREADY_EXISTS(40122, "An session with that access object already exists"),
     ACCESS_ALREADY_EXISTS(40123, "An access object with that already exists"),
-    APPLICATION_ALREADY_EXISTS(40124, "An application with that access object already exists"),
 
     MISSING_ACCESS(50001, "Missing Access"),
     CANNOT_CLOSE_SINGLE_SESSION(50008, "The single remaining session cannot be closed."),
