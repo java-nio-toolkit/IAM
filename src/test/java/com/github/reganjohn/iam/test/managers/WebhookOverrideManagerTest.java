@@ -47,6 +47,7 @@ import org.mockito.ArgumentCaptor;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -63,6 +64,9 @@ public class WebhookOverrideManagerTest extends RestActionTest
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
     private static final UUID WEBHOOK_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
 
+    private final EmbeddedChannel loop = new EmbeddedChannel();
+    private final Channel connected = mock(Channel.class);
+
     private SocketManager withEndpoint(String url, ChannelPipeline pipeline)
     {
         Webhook webhook = withWebhook(WEBHOOK_ID, USER_ID, "hook", null, url, 3, 0);
@@ -71,8 +75,9 @@ public class WebhookOverrideManagerTest extends RestActionTest
         withWebhooks(user, completed(Collections.singletonList(webhook)));
         withRetrieval(USER_ID, completed(user));
 
-        Channel connected = mock(Channel.class);
         when(connected.pipeline()).thenReturn(pipeline);
+        when(connected.eventLoop()).thenReturn(loop.eventLoop());
+        when(connected.closeFuture()).thenReturn(loop.closeFuture());
         ChannelFuture future = mock(ChannelFuture.class);
         when(future.isSuccess()).thenReturn(true);
         when(future.channel()).thenReturn(connected);
@@ -114,6 +119,22 @@ public class WebhookOverrideManagerTest extends RestActionTest
         verify(manager, never()).connect(anyString(), anyInt());
         verify(pipeline).addLast(handler.capture());
         assertThat(((RestActionImpl) handler.getValue()).getBaseRoute().get(0).compile().getCompiledRoute()).isEqualTo(path);
+    }
+
+    @Test
+    void testDeadline()
+    {
+        withEndpoint("https://1.1.1.1/hook", mock(ChannelPipeline.class));
+
+        handle();
+
+        loop.advanceTimeBy(9, TimeUnit.SECONDS);
+        loop.runPendingTasks();
+        verify(connected, never()).close();
+
+        loop.advanceTimeBy(1, TimeUnit.SECONDS);
+        loop.runPendingTasks();
+        verify(connected).close();
     }
 
     private EmbeddedChannel connect(ChannelHandler... handlers)

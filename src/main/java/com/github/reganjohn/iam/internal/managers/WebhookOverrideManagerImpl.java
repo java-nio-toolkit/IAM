@@ -39,6 +39,7 @@ import com.github.reganjohn.iam.api.IAM;
 import com.github.reganjohn.iam.api.managers.WebhookOverrideManager;
 import com.github.reganjohn.iam.api.Scope;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -53,6 +54,8 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl implements WebhookOverrideManager
@@ -139,7 +142,10 @@ public class WebhookOverrideManagerImpl extends ClassicObjectManagerImpl impleme
 
     private void handleSuccess(@Nonnull ChannelFuture connect, @Nonnull Route route, @Nonnull DataObject rawData)
     {
-        connect.channel().pipeline().addLast(new WebhookActionImpl(route, rawData));
+        Channel channel = connect.channel();
+        ScheduledFuture<?> deadline = channel.eventLoop().schedule(() -> channel.close(), 10, TimeUnit.SECONDS);
+        channel.closeFuture().addListener(closed -> deadline.cancel(false));
+        channel.pipeline().addLast(new WebhookActionImpl(route, rawData));
     }
 
     private void handleFailure(@Nonnull Throwable error)
