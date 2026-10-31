@@ -33,6 +33,7 @@ import com.github.adamorgan.jnt.api.utils.AccessUtil;
 import com.github.adamorgan.jnt.api.utils.SignType;
 import com.github.adamorgan.jnt.api.utils.jose.AccessEntryArray;
 import com.github.adamorgan.jnt.internal.JNTImpl;
+import com.github.adamorgan.jnt.api.handle.classic.ClassicObjectHandler;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicRequestSendHandlerImpl;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHandlerImpl;
@@ -40,6 +41,7 @@ import com.github.adamorgan.jnt.internal.managers.*;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.adamorgan.jnt.internal.utils.config.ClassicConfig;
 import com.github.adamorgan.jnt.internal.utils.config.OriginAccessConfig;
 import com.github.adamorgan.jnt.internal.utils.tracker.SocketTracker;
 import com.github.reganjohn.iam.api.IAM;
@@ -116,6 +118,9 @@ public class IAMImpl implements IAM
     private final EventLoopGroup socketPool = new MultiThreadIoEventLoopGroup(NioIoHandler.newFactory());
     private final JDT jdt;
     private static final Pattern ORIGIN = Pattern.compile("https://[^/?#\\s]+|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:\\d+)?");
+    private static final ClassicConfig CLASSIC_CONFIG = new ClassicObjectHandler.Builder()
+            .setMaxBufferSize(1 << 16)
+            .build();
 
     private final String baseUri;
     private final List<String> origins;
@@ -210,7 +215,7 @@ public class IAMImpl implements IAM
                 .setAddressController(jdt)
                 .setEventLoopGroup(socketPool)
                 .addEventListeners(new SocketTrackerManagerImpl(tracker))
-                .addEventListenerProvider(ClassicReceiveHandlerImpl::new)
+                .addEventListenerProvider(() -> new ClassicReceiveHandlerImpl(CLASSIC_CONFIG))
                 .addEventListeners(new ClockObjectManagerImpl())
                 .addEventListeners(new OriginAccessManagerImpl(cors()))
                 .addEventListeners(new CacheObjectManagerImpl())
@@ -229,7 +234,7 @@ public class IAMImpl implements IAM
                 .addEventListeners(new DigestObjectManagerImpl())
 
                 .addEventListenerProvider(ClassicIdleObjectManagerImpl::new)
-                .addEventListenerProvider(ContentEncodingManagerImpl::new)
+                .addEventListenerProvider(() -> new ContentEncodingManagerImpl(CLASSIC_CONFIG.getMaxBufferSize()))
                 .addEventListenerProvider(ContentObjectManagerImpl::new)
 
                 .addEventListeners(new AccessEntryActionImpl(manager))
