@@ -23,9 +23,9 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-core:2.22.3")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.3")
     implementation("org.bouncycastle:bcprov-lts8on:2.73.12")
-    implementation("com.adamorgan:JNT:0.26.0_DEV")
-    implementation("com.reganjohn:JDT:2.1.0_DEV")
-    implementation("com.reganjohn:C4J:0.0.61_DEV")
+    implementation("com.adamorgan:JNT:0.27.0_DEV")
+    implementation("com.reganjohn:JDT:2.1.1_DEV")
+    implementation("com.reganjohn:C4J:0.0.62_DEV")
     implementation("ch.qos.logback:logback-classic:1.5.32")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
