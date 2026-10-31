@@ -54,6 +54,8 @@ public enum ErrorResponse
     APPLICATION_CANNOT_ACCEPT_MEMBERS(50096, "The application temporarily not accepting members."),
     INVALID_REQUEST_BODY(50109, "The request body contains invalid JSON."),
 
+    APPLICATION_NOT_AUTHORIZED(80011, "A user is no longer authorized with this application"),
+
     SERVER_ERROR(0, "Oops! We've encountered an internal server error! Not good!");
 
     private final int code;

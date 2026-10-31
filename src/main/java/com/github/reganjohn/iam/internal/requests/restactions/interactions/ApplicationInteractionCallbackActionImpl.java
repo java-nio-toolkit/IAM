@@ -41,6 +41,7 @@ import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -65,6 +66,7 @@ import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -269,8 +271,21 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
                                                                            @Nonnull ApplicationCallbackResponse response)
     {
         return api.retrieveUserById(response.getUserId())
-                .flatMap(user -> user.retrieveSessions().flatMap(sessions -> retrieveAccess(user, sessions, response)))
+                .flatMap(user -> user.retrieveEntitlementById(response.getApplicationId())
+                        .onErrorMap(ErrorResponse.UNKNOWN_ENTITLEMENT::test, error -> null)
+                        .flatMap(entitlement -> retrieveSessions(user, entitlement))
+                        .flatMap(sessions -> retrieveAccess(user, sessions, response)))
                 .map(entries -> createAccessObject(context, entries, response));
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    private InteractionCallbackAction<List<Session>> retrieveSessions(@Nonnull User user, @Nullable PermissionOverride entitlement)
+    {
+        if (entitlement == null)
+            throw new InteractionResponseException(InteractionResponse.REQUEST_DENIED, ErrorResponse.APPLICATION_NOT_AUTHORIZED);
+        else
+            return user.retrieveSessions();
     }
 
     @Nonnull

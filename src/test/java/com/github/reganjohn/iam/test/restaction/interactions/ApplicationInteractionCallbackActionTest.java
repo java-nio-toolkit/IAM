@@ -34,6 +34,7 @@ import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.reganjohn.iam.api.Permission;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.PermissionOverride;
 import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -189,6 +190,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
         for (String thumbprint : sessionThumbprints)
             sessions.add(withSession(UUID.randomUUID(), USER_ID, null, 0, thumbprint));
         User user = withUser(USER_ID, "alice", null, 0);
+        withEntitlement(user, APPLICATION_ID, completed(mock(PermissionOverride.class)));
         withSessions(user, completed(sessions));
         withAccessEntries(user, completed(new AccessEntryArray(Arrays.asList(entries))));
         withRetrieval(USER_ID, completed(user));
@@ -546,6 +548,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
         withProofOfClient();
         ApplicationCallbackResponse response = newResponse();
         User user = withUser(USER_ID, "alice", null, 0);
+        withEntitlement(user, APPLICATION_ID, completed(mock(PermissionOverride.class)));
         withSessions(user, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
         withRetrieval(USER_ID, completed(user));
 
@@ -555,6 +558,42 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
 
         verify(response, never()).delete();
         verify(user, never()).retrieveAccess();
+    }
+
+    @Test
+    void testRevokedEntitlement()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        User user = withUser(USER_ID, "alice", null, 0);
+        withEntitlement(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_ENTITLEMENT)));
+        withRetrieval(USER_ID, completed(user));
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasInteractionResponse(InteractionResponse.REQUEST_DENIED, ErrorResponse.APPLICATION_NOT_AUTHORIZED));
+
+        verify(response, never()).delete();
+        verify(user, never()).retrieveSessions();
+        assertThat(issuedSubject).isNull();
+    }
+
+    @Test
+    void testEntitlementFailure()
+    {
+        withProofOfClient();
+        ApplicationCallbackResponse response = newResponse();
+        User user = withUser(USER_ID, "alice", null, 0);
+        withEntitlement(user, APPLICATION_ID, failed(new ErrorResponseException(ErrorResponse.MISSING_ACCESS)));
+        withRetrieval(USER_ID, completed(user));
+
+        whenHandled(assertThatContinuing(newAction(response))
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.MISSING_ACCESS));
+
+        verify(response, never()).delete();
+        verify(user, never()).retrieveSessions();
     }
 
     @Test
