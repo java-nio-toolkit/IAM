@@ -37,6 +37,8 @@ public interface User extends IUnique
     int MAX_NAME_LENGTH = 32;
     /** The maximum length for a avatar id ({@value}) */
     int AVATAR_CID_MAX_LENGTH = 128;
+    /** The maximum length for a user-agent ({@value}) */
+    int MAX_USER_AGENT_LENGTH = 256;
 
     /**
      * The username of the {@link User User}. Length is between 2 and 32 characters (inclusive).

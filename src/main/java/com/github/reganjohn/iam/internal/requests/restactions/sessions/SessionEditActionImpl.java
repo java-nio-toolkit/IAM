@@ -28,6 +28,7 @@ import com.github.adamorgan.jnt.api.utils.jose.AccessContextType;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -130,9 +131,11 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"user_agent\" value is not string.");
         else if (json.isEmpty("user_agent"))
             throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"user_agent\" value may not be empty.");
-        else if (json.getString("user_agent").length() > User.MAX_NAME_LENGTH)
+        else if (json.getString("user_agent").length() > User.MAX_USER_AGENT_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
-                    Helpers.format("The \"user_agent\" value may not be longer than %d characters.", User.MAX_NAME_LENGTH));
+                    Helpers.format("The \"user_agent\" value may not be longer than %d characters.", User.MAX_USER_AGENT_LENGTH));
+        else if (!UnicodeSanitizer.Format.NICKNAME.test(json.getString("user_agent")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

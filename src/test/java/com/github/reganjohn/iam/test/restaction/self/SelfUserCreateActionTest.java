@@ -295,6 +295,27 @@ public class SelfUserCreateActionTest extends RestActionTest
         assertWithSnapshot(summarize(created.getValue()), "user");
     }
 
+    @ValueSource(strings = {"", "agent\tx", "agent\u0085"})
+    @ParameterizedTest
+    void testInvalidUserAgent(String userAgent)
+    {
+        withProof();
+        ArgumentCaptor<UserCreateData> created = ArgumentCaptor.forClass(UserCreateData.class);
+
+        try (MockedStatic<EntityBuilder> builder = mockStatic(EntityBuilder.class))
+        {
+            withIssuedObject(builder);
+
+            assertThatRequestTo(newAction(succeeding(), created))
+                    .withHeader("User-Agent", userAgent)
+                    .withJsonBody(VALID_BODY)
+                    .hasStatus(StatusReason.CREATED.code)
+                    .whenHandled();
+        }
+
+        assertThat(created.getValue().getSession().getUserAgent()).isNull();
+    }
+
     @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE, 2147483648L, 4294967301L})
     @ParameterizedTest
     void testSystemFlags(long flags)

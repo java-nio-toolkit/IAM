@@ -284,6 +284,28 @@ public class SessionCreateActionTest extends RestActionTest
         assertThat(session.getThumbprint()).isEqualTo(entry.getContext(AccessContextType.SHA_256).digest());
     }
 
+    static Stream<String> invalidUserAgents()
+    {
+        return Stream.of("", "a".repeat(User.MAX_USER_AGENT_LENGTH + 1), "agent\tx", "agent\u0085");
+    }
+
+    @MethodSource("invalidUserAgents")
+    @ParameterizedTest
+    void testInvalidUserAgent(String userAgent)
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
+        withStoredUser(entry, 1);
+
+        whenHandled(assertThatRequestTo(newAction(created))
+                .withHeader("User-Agent", userAgent)
+                .withJsonBody(entry.toData().toString())
+                .hasStatus(StatusReason.CREATED.code)
+                .hasReleasedBody());
+
+        assertThat(created.getValue().getUserAgent()).isNull();
+    }
+
     @EnumSource(value = SignType.class, names = {"MLDSA44", "MLDSA65", "MLDSA87"})
     @ParameterizedTest
     void testAkpKeyWithoutCurve(SignType type)

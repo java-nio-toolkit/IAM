@@ -428,7 +428,7 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
     {
         UUIDv7 sessionId = UUIDv7.nameUUIDFromBytes(entryData.getPublic().getEncoded());
         String subject = data.getSubject();
-        String userAgent = request.getHeaders().getFirst("User-Agent");
+        String userAgent = hasUserAgent(request) ? request.getHeaders().getFirst("User-Agent") : null;
         String thumbprint = context.digest();
         UUID userId = UUID.fromString(subject);
         return new SessionCreateBuilder()

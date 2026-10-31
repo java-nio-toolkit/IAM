@@ -18,14 +18,17 @@ package com.github.reganjohn.iam.internal.requests.restactions;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.exceptions.ProofAccessException;
+import com.github.adamorgan.jnt.api.requests.Request;
 import com.github.adamorgan.jnt.api.requests.Route;
 import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.jose.AccessObjectData;
 import com.github.adamorgan.jnt.api.utils.jose.ProofObjectData;
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.RestActionImpl;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
+import com.github.reganjohn.iam.api.entities.User;
 import com.github.reganjohn.iam.api.exceptions.DataObjectParsingException;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
@@ -113,5 +116,11 @@ public abstract class AbstractOverrideActionImpl extends RestActionImpl implemen
             throw new ProofAccessException(api.getIdentifierString(), INVALID_REQUEST, "This action requires a DPoP proof.");
         else
             return data;
+    }
+
+    protected boolean hasUserAgent(@Nonnull Request request)
+    {
+        String userAgent = request.getHeaders().getFirst("User-Agent");
+        return Helpers.nonEmpty(userAgent) && userAgent.length() <= User.MAX_USER_AGENT_LENGTH && UnicodeSanitizer.Format.NICKNAME.test(userAgent);
     }
 }
