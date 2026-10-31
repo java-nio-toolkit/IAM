@@ -448,7 +448,7 @@ public class RestActionTest extends IntegrationTest
 
     protected static void assertThatStatementIsBound(InteractionMappingActionImpl<?> action)
     {
-        Matcher matcher = Pattern.compile("(?<![\\w:]):([a-z_]+)\\b").matcher(action.getContent());
+        Matcher matcher = Pattern.compile("(?<![\\w:]):([a-z_][a-z0-9_]*)\\b").matcher(action.getContent());
         Set<String> placeholders = new TreeSet<>();
         while (matcher.find())
             placeholders.add(matcher.group(1));

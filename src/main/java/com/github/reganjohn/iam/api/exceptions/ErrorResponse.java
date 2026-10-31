@@ -34,6 +34,7 @@ public enum ErrorResponse
     ONLY_APPLICATION_ALLOWED(20002, "Only application can use this endpoint"),
 
     MAX_APPLICATIONS(30002, "Maximum number of Applications reached (32)"),
+    MAX_SESSIONS(30003, "Maximum number of sessions reached (36)"),
     MAX_WEBHOOKS(30007, "Maximum number of webhooks reached (8)"),
     MAX_ACCESS_APPLICATION(30015, "Maximum number of access in a application (10)"),
 

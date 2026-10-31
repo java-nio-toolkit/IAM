@@ -18,10 +18,11 @@ BEGIN TRANSACTION
     LET session_data = (SELECT * FROM users.sessions WHERE user_id = :user_id AND session_id = :session_id);
     LET access_data = (SELECT * FROM users.public_keys WHERE user_id = :user_id AND thumbprint = :thumbprint);
     LET global_data = (SELECT * FROM global.public_keys WHERE thumbprint = :thumbprint);
+    LET other_data = (SELECT session_id FROM users.sessions WHERE user_id = :user_id AND session_id NOT IN :sessions LIMIT 1);
 
-    SELECT global_data.thumbprint, access_data.thumbprint, session_data.session_id;
+    SELECT global_data.thumbprint, access_data.thumbprint, session_data.session_id, other_data.session_id;
 
-    IF global_data IS NULL AND session_data IS NULL AND access_data IS NULL THEN
+    IF global_data IS NULL AND session_data IS NULL AND access_data IS NULL AND other_data IS NULL THEN
         INSERT INTO global.public_keys (kid, alg, kty, usage, flags, thumbprint, public_key)
         VALUES (:kid, :alg, :kty, :usage, :access_flags, :thumbprint, :public_key);
         INSERT INTO users.public_keys (user_id, kid, alg, kty, usage, flags, thumbprint, public_key)

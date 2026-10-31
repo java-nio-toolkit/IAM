@@ -20,4 +20,6 @@ import com.github.reganjohn.iam.api.requests.restactions.SessionAction;
 
 public interface SessionCreateAction extends SessionAction
 {
+    int MAX_KID_LENGTH = 256;
+    int MAX_SESSION_COUNT = 36;
 }

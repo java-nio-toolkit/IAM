@@ -36,6 +36,8 @@ import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
 import com.github.reganjohn.iam.api.managers.AccessSignatureManager;
 import com.github.reganjohn.iam.api.requests.restactions.SessionAction;
+import com.github.reganjohn.iam.api.requests.restactions.sessions.SessionCreateAction;
+import com.github.reganjohn.iam.api.utils.sessions.SessionCreateBuilder;
 import com.github.reganjohn.iam.api.utils.sessions.SessionCreateData;
 import com.github.reganjohn.iam.internal.requests.restactions.sessions.SessionCreateActionImpl;
 import com.github.reganjohn.iam.test.assertions.restaction.RestActionAssertions;
@@ -59,12 +61,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -92,8 +96,29 @@ public class SessionCreateActionTest extends RestActionTest
     private SessionCreateActionImpl newAction(ArgumentCaptor<SessionCreateData> created)
     {
         SessionCreateActionImpl action = spy(newAction());
-        doReturn(completed(null)).when(action).create(created.capture());
+        doReturn(completed(null)).when(action).create(created.capture(), any());
         return action;
+    }
+
+    private SessionCreateData newSession()
+    {
+        return new SessionCreateBuilder()
+                .setUserId(USER_ID)
+                .setSessionId(UUID.randomUUID())
+                .setUserAgent(USER_AGENT)
+                .setAccessEntry(withProof(SignType.ED25519))
+                .setSessionFlags(0)
+                .setThumbprint(THUMBPRINT)
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private InteractionMappingActionImpl<Void> creation(UUID... sessionIds)
+    {
+        withJCA();
+        return (InteractionMappingActionImpl<Void>) newAction().create(newSession(), Arrays.stream(sessionIds)
+                .map(id -> withSession(id, USER_ID, USER_AGENT, 0, "thumbprint"))
+                .collect(Collectors.toList()));
     }
 
     @BeforeEach
@@ -103,20 +128,21 @@ public class SessionCreateActionTest extends RestActionTest
         when(api.getAccessSignatureManager()).thenReturn(signatures);
     }
 
-    private void withStoredUser(AccessEntryData entry, int count)
+    private User withStoredUser(AccessEntryData entry, int count)
     {
         List<Session> sessions = new ArrayList<>();
         for (int i = 0; i < count; i++)
             sessions.add(withSession(UUID.randomUUID(), USER_ID, USER_AGENT, 0, i == 0 ? entry.getContext(AccessContextType.SHA_256).digest() : "thumbprint-" + i));
-        withStoredUser(sessions);
+        return withStoredUser(sessions);
     }
 
-    private void withStoredUser(List<Session> sessions)
+    private User withStoredUser(List<Session> sessions)
     {
         User user = withUser(USER_ID, "alice", null, 0);
         withSessions(user, completed(sessions));
         withAccess(USER_ID);
         withRetrieval(USER_ID, completed(user));
+        return user;
     }
 
     private static void whenHandled(RestActionAssertions assertions)
@@ -132,9 +158,20 @@ public class SessionCreateActionTest extends RestActionTest
     private static BufferArray rows(boolean global, boolean access, boolean session)
     {
         BufferObject row = mock(BufferObject.class);
+        when(row.isNull(anyInt())).thenReturn(true);
         when(row.isNull(0)).thenReturn(!global);
         when(row.isNull(1)).thenReturn(!access);
         when(row.isNull(2)).thenReturn(!session);
+        BufferArray rows = mock(BufferArray.class);
+        when(rows.getObject(0)).thenReturn(row);
+        return rows;
+    }
+
+    private static BufferArray rows(int column)
+    {
+        BufferObject row = mock(BufferObject.class);
+        when(row.isNull(anyInt())).thenReturn(true);
+        when(row.isNull(column)).thenReturn(false);
         BufferArray rows = mock(BufferArray.class);
         when(rows.getObject(0)).thenReturn(row);
         return rows;
@@ -158,6 +195,8 @@ public class SessionCreateActionTest extends RestActionTest
                 arguments("crv_of_another_algorithm", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "Ed448", "crv", "Ed25519", "x", "AAAA"), "crv=BASE_TYPE_CHOICES"),
                 arguments("missing_kid", body("kty", "OKP", "use", "sig", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kid=BASE_TYPE_REQUIRED"),
                 arguments("kid_not_string", body("kty", "OKP", "use", "sig", "kid", 5, "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kid=STRING_TYPE_COERCE"),
+                arguments("kid_too_long", body("kty", "OKP", "use", "sig", "kid", "k".repeat(SessionCreateActionImpl.MAX_KID_LENGTH + 1), "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kid=STRING_TYPE_MAX"),
+                arguments("kid_not_password", body("kty", "OKP", "use", "sig", "kid", "k\uD800", "alg", "Ed25519", "crv", "Ed25519", "x", "AAAA"), "kid=STRING_TYPE_REGEX"),
                 arguments("missing_alg", body("kty", "OKP", "use", "sig", "kid", "k", "crv", "Ed25519", "x", "AAAA"), "alg=BASE_TYPE_REQUIRED"),
                 arguments("alg_not_string", body("kty", "OKP", "use", "sig", "kid", "k", "alg", 5, "crv", "Ed25519", "x", "AAAA"), "alg=BASE_TYPE_CHOICES,crv=BASE_TYPE_CHOICES"),
                 arguments("alg_unknown", body("kty", "OKP", "use", "sig", "kid", "k", "alg", "HS256", "crv", "Ed25519", "x", "AAAA"), "alg=BASE_TYPE_CHOICES"),
@@ -338,11 +377,27 @@ public class SessionCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testManySessions()
+    void testMaxSessions()
     {
         AccessEntryData entry = withProof(SignType.ED25519);
         ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
-        withStoredUser(entry, 100);
+        withStoredUser(entry, SessionCreateAction.MAX_SESSION_COUNT);
+
+        whenHandled(assertThatRequestTo(newAction(created))
+                .withJsonBody(entry.toData().toString())
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.MAX_SESSIONS));
+
+        assertThat(created.getAllValues()).isEmpty();
+    }
+
+    @Test
+    void testLastAllowedSession()
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        ArgumentCaptor<SessionCreateData> created = ArgumentCaptor.forClass(SessionCreateData.class);
+        withStoredUser(entry, SessionCreateAction.MAX_SESSION_COUNT - 1);
 
         whenHandled(assertThatRequestTo(newAction(created))
                 .withJsonBody(entry.toData().toString())
@@ -384,7 +439,7 @@ public class SessionCreateActionTest extends RestActionTest
         AccessEntryData entry = withProof(SignType.ED25519);
         withStoredUser(entry, 1);
         SessionCreateActionImpl action = spy(newAction());
-        doReturn(failed(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS))).when(action).create(any());
+        doReturn(failed(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS))).when(action).create(any(), any());
 
         whenHandled(assertThatRequestTo(action)
                 .withJsonBody(entry.toData().toString())
@@ -429,7 +484,44 @@ public class SessionCreateActionTest extends RestActionTest
     void testNullArguments()
     {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().create(null));
+                .isThrownBy(() -> newAction().create(null, Collections.emptyList()));
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> newAction().create(mock(SessionCreateData.class), null));
+    }
+
+    @Test
+    void testCreateStatement()
+    {
+        InteractionMappingActionImpl<Void> creation = creation();
+
+        assertThat(creation.getContent())
+                .containsOnlyOnce("LET other_data = (SELECT session_id FROM users.sessions WHERE user_id = :user_id AND session_id NOT IN :sessions LIMIT 1);")
+                .contains("session_data.session_id, other_data.session_id;", "access_data IS NULL AND other_data IS NULL THEN");
+        assertThat(creation.getParams()).containsEntry("sessions", Collections.emptyList());
+        assertThatStatementIsBound(creation);
+    }
+
+    @Test
+    void testCreateSessions()
+    {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+
+        assertThat(creation(first, second).getParams()).containsEntry("sessions", Arrays.asList(first, second));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testCreateOther() throws Exception
+    {
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+
+        creation(UUID.randomUUID(), UUID.randomUUID()).handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(3));
+
+        verify(interaction).onFailure(argThat(error ->
+                error instanceof InvalidResponseException
+                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.MAX_SESSIONS.getCode()));
+        verify(interaction, never()).onSuccess(any());
     }
 
     @Test
@@ -437,7 +529,7 @@ public class SessionCreateActionTest extends RestActionTest
     void testCreateApplied() throws Exception
     {
         withJCA();
-        InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(SessionCreateData.class));
+        InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(SessionCreateData.class), Collections.emptyList());
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
 
         creation.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(false, false, false));
@@ -452,7 +544,7 @@ public class SessionCreateActionTest extends RestActionTest
     void testCreateExisting(String name, boolean global, boolean access, boolean session, ErrorResponse expected) throws Exception
     {
         withJCA();
-        InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(SessionCreateData.class));
+        InteractionMappingActionImpl<Void> creation = (InteractionMappingActionImpl<Void>) newAction().create(mock(SessionCreateData.class), Collections.emptyList());
         InteractionImpl<Void> interaction = mock(InteractionImpl.class);
 
         creation.handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(global, access, session));
@@ -526,6 +618,25 @@ public class SessionCreateActionTest extends RestActionTest
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFailure(ErrorResponse.INVALID_TOKEN));
 
-        verify(action, never()).create(any());
+        verify(action, never()).create(any(), any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testSessionIds()
+    {
+        AccessEntryData entry = withProof(SignType.ED25519);
+        List<UUID> sessionIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        withStoredUser(Arrays.asList(withSession(sessionIds.get(0), USER_ID, USER_AGENT, 0, entry.getContext(AccessContextType.SHA_256).digest()),
+                withSession(sessionIds.get(1), USER_ID, USER_AGENT, 0, "thumbprint-1")));
+        ArgumentCaptor<List<Session>> created = ArgumentCaptor.forClass(List.class);
+        SessionCreateActionImpl action = spy(newAction());
+        doReturn(completed(null)).when(action).create(any(), created.capture());
+
+        whenHandled(assertThatRequestTo(action)
+                .withJsonBody(entry.toData().toString())
+                .hasStatus(StatusReason.CREATED.code));
+
+        assertThat(created.getValue()).extracting(Session::getUniqueId).isEqualTo(sessionIds);
     }
 }

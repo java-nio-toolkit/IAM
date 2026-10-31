@@ -237,6 +237,11 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required.");
         else if (!rawData.hasKey(ProofObjectManager.KID, DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, Helpers.format("Value \"%s\" is not string.", ProofObjectManager.KID));
+        else if (rawData.getString(ProofObjectManager.KID).length() > MAX_KID_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"%s\" may not be longer than %d characters.", ProofObjectManager.KID, MAX_KID_LENGTH));
+        else if (!UnicodeSanitizer.Format.PASSWORD.test(rawData.getString(ProofObjectManager.KID)))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleAvailable(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -450,16 +455,21 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
             throw new ErrorResponseException(ErrorResponse.UNKNOWN_USER);
         else if (sessions.stream().noneMatch(entry -> Helpers.equals(entry.getThumbprint(), thumbprint, false)))
             throw new ErrorResponseException(ErrorResponse.INVALID_TOKEN);
+        else if (sessions.size() >= MAX_SESSION_COUNT)
+            throw new ErrorResponseException(ErrorResponse.MAX_SESSIONS);
         else
-            return create(session);
+            return create(session, sessions);
     }
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> create(@Nonnull SessionCreateData session)
+    public InteractionCallbackAction<Void> create(@Nonnull SessionCreateData session, @Nonnull List<Session> sessions)
     {
         Checks.notNull(session, "Session");
-        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_session.cql"), session)
+        Checks.noneNull(sessions, "Session");
+        Map<String, Object> params = new HashMap<>(session.toMap());
+        params.put("sessions", sessions.stream().map(Session::getUniqueId).collect(Collectors.toList()));
+        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_session.cql"), params)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
@@ -470,6 +480,8 @@ public class SessionCreateActionImpl extends AbstractSessionActionImpl implement
                     request.onFailure(new ErrorResponseException(ErrorResponse.SESSION_ALREADY_EXISTS));
                 else if (!row.isNull(0) || !row.isNull(1))
                     request.onFailure(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS));
+                else if (!row.isNull(3))
+                    request.onFailure(new ErrorResponseException(ErrorResponse.MAX_SESSIONS));
                 else
                     request.onSuccess(null);
             }
