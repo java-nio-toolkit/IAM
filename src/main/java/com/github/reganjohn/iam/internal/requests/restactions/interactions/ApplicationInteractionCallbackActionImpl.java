@@ -172,6 +172,8 @@ public class ApplicationInteractionCallbackActionImpl extends AbstractApplicatio
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"interact_ref\" value is not string.");
         else if (raw.isEmpty("interact_ref"))
             throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"interact_ref\" value may not be empty.");
+        else if (!raw.getString("interact_ref").matches("[A-Za-z0-9_-]{43}"))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleErrorResponse(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

@@ -90,7 +90,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
     private static final UUID APPLICATION_ID = UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c");
     private static final UUID INTERACTION_ID = UUID.fromString("05e4d59d-2366-7152-9eda-876e03dfa88d");
     private static final String TOKEN = "continue-token";
-    private static final String REFERENCE = "interaction-reference";
+    private static final String REFERENCE = "Interaction_Reference-0123456789abcdefghijk";
     private static final String USER_KEY = "user-jkt";
     private static final long ISSUED_LIFETIME = 900;
 
@@ -254,7 +254,11 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
                 arguments("reference_not_string", body("interact_ref", 5)),
                 arguments("reference_empty", body("interact_ref", "")),
                 arguments("reference_null", "{\"interact_ref\":null}"),
-                arguments("reference_array", body("interact_ref", DataArray.empty())));
+                arguments("reference_array", body("interact_ref", DataArray.empty())),
+                arguments("reference_short", body("interact_ref", REFERENCE.substring(1))),
+                arguments("reference_long", body("interact_ref", REFERENCE + "l")),
+                arguments("reference_padded", body("interact_ref", REFERENCE.substring(1) + "=")),
+                arguments("reference_whitespace", body("interact_ref", REFERENCE.substring(1) + " ")));
     }
 
     @MethodSource
@@ -470,7 +474,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
         verify(response, never()).delete();
     }
 
-    @ValueSource(strings = {"another-reference", "INTERACTION-REFERENCE", "interaction-reference "})
+    @ValueSource(strings = {"Another_Reference-0123456789abcdefghijklmno", "INTERACTION_REFERENCE-0123456789ABCDEFGHIJK"})
     @ParameterizedTest
     void testAnotherReference(String reference)
     {
@@ -661,7 +665,7 @@ public class ApplicationInteractionCallbackActionTest extends RestActionTest
         ApplicationCallbackResponse response = newResponse();
         when(response.isDenied()).thenReturn(true);
 
-        assertThatContinuing(newAction(response), "GNAP " + TOKEN, body("interact_ref", "another-reference"))
+        assertThatContinuing(newAction(response), "GNAP " + TOKEN, body("interact_ref", "Another_Reference-0123456789abcdefghijklmno"))
                 .hasNoResponse()
                 .hasInteractionResponse(InteractionResponse.INVALID_INTERACTION, ErrorResponse.UNKNOWN_INTERACTION)
                 .whenHandled();
