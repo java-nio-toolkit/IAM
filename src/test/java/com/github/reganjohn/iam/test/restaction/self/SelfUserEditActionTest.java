@@ -198,8 +198,8 @@ public class SelfUserEditActionTest extends RestActionTest
 
         assertThat(edited.getValue().getUserId()).isEqualTo(USER_ID);
         assertThat(edited.getValue().getName()).isEqualTo("alice");
-        assertThat(edited.getValue().getAvatarId()).isEqualTo("avatar-cid");
-        assertThat(edited.getValue().getRawUserFlags()).isEqualTo(6);
+        assertThat(edited.getValue().getAvatarId()).isEqualTo("bafkqaab");
+        assertThat(edited.getValue().getRawUserFlags()).isZero();
     }
 
     @Test
@@ -215,8 +215,8 @@ public class SelfUserEditActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(edited.getValue().getName()).isEqualTo("bob");
-        assertThat(edited.getValue().getAvatarId()).isEqualTo("avatar-cid");
-        assertThat(edited.getValue().getRawUserFlags()).isEqualTo(6);
+        assertThat(edited.getValue().getAvatarId()).isEqualTo("bafkqaab");
+        assertThat(edited.getValue().getRawUserFlags()).isZero();
     }
 
     @Test
@@ -224,16 +224,16 @@ public class SelfUserEditActionTest extends RestActionTest
     {
         ArgumentCaptor<UserEditData> edited = ArgumentCaptor.forClass(UserEditData.class);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "avatar-cid", 6)));
+        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "bafkqaab", 6)));
 
         assertThatRequestTo(newAction(edited))
-                .withJsonBody(body("avatar_id", "other-cid"))
+                .withJsonBody(body("avatar_id", "bafkqaac"))
                 .hasStatus(StatusReason.NO_CONTENT.code)
                 .whenHandled();
 
         assertThat(edited.getValue().getName()).isEqualTo("alice");
-        assertThat(edited.getValue().getAvatarId()).isEqualTo("other-cid");
-        assertThat(edited.getValue().getRawUserFlags()).isEqualTo(6);
+        assertThat(edited.getValue().getAvatarId()).isEqualTo("bafkqaac");
+        assertThat(edited.getValue().getRawUserFlags()).isZero();
     }
 
     @Test
@@ -249,8 +249,8 @@ public class SelfUserEditActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(edited.getValue().getName()).isEqualTo("alice");
-        assertThat(edited.getValue().getAvatarId()).isEqualTo("avatar-cid");
-        assertThat(edited.getValue().getRawUserFlags()).isEqualTo(2L & ~User.UserFlag.SYSTEM);
+        assertThat(edited.getValue().getAvatarId()).isEqualTo("bafkqaab");
+        assertThat(edited.getValue().getRawUserFlags()).isEqualTo(2L & User.UserFlag.ALL & ~User.UserFlag.SYSTEM);
     }
 
     @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE, 2147483648L, 4294967301L})
@@ -268,7 +268,7 @@ public class SelfUserEditActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(edited.getValue().getRawUserFlags() & User.UserFlag.SYSTEM).isEqualTo(current & User.UserFlag.SYSTEM);
-        assertThat(edited.getValue().getRawUserFlags() & ~User.UserFlag.SYSTEM).isEqualTo(flags & ~User.UserFlag.SYSTEM);
+        assertThat(edited.getValue().getRawUserFlags() & ~User.UserFlag.SYSTEM).isEqualTo(flags & User.UserFlag.ALL & ~User.UserFlag.SYSTEM);
     }
 
     @Test

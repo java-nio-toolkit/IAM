@@ -262,17 +262,17 @@ public class WebhookCreateActionTest extends RestActionTest
     }
 
     @Test
-    void testUserFlagsAreKept()
+    void testUserFlagsAreIgnored()
     {
         ArgumentCaptor<WebhookCreateData> created = ArgumentCaptor.forClass(WebhookCreateData.class);
         withStoredUser(1);
 
         assertThatRequestTo(newAction(created))
-                .withJsonBody(body("name", "hook", "avatar_id", "cid", "url", URL, "scopes", 3, "flags", 4))
+                .withJsonBody(body("name", "hook", "avatar_id", "bafkqaaa", "url", URL, "scopes", 3, "flags", 4))
                 .hasStatus(StatusReason.CREATED.code)
                 .whenHandled();
 
-        assertThat(created.getValue().getFlagsRaw()).isEqualTo(4);
+        assertThat(created.getValue().getFlagsRaw()).isZero();
     }
 
     @Test

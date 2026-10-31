@@ -291,14 +291,14 @@ public class ApplicationCreateActionTest extends RestActionTest
         withStoredUser(1);
 
         assertThatRequestTo(newAction(created))
-                .withJsonBody(valid("description", "description", "icon_id", "icon-cid", "flags", 4))
+                .withJsonBody(valid("description", "description", "icon_id", "bafkqaab", "flags", 4))
                 .hasStatus(StatusReason.CREATED.code)
                 .whenHandled();
 
         ApplicationCreateData application = created.getValue();
         assertThat(application.getDescription()).isEqualTo("description");
-        assertThat(application.getIconId()).isEqualTo("icon-cid");
-        assertThat(application.getFlagsRaw()).isEqualTo(4);
+        assertThat(application.getIconId()).isEqualTo("bafkqaab");
+        assertThat(application.getFlagsRaw()).isZero();
     }
 
     @ValueSource(longs = {0, 1, 4, 2147483648L, 4294967301L, DELETED, DELETED | 4})

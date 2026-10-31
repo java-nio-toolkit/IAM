@@ -235,7 +235,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
                 .setUserId(userId)
                 .setName(rawData.getString("username"))
                 .setAvatarId(rawData.getString("avatar_id", null))
-                .setUserFlags(rawData.getLong("flags", 0) & ~User.UserFlag.SYSTEM)
+                .setUserFlags(rawData.getLong("flags", 0) & User.UserFlag.ALL & ~User.UserFlag.SYSTEM)
                 .setSession(sessionData)
                 .build();
     }
@@ -249,9 +249,9 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         return new SessionCreateBuilder()
                 .setUserId(userId)
                 .setSessionId(UUIDv7.nameUUIDFromBytes(access.getPublic().getEncoded()).toUUID())
-                .setUserAgent(request.getHeaders().getFirst("User-Agent"))
+                .setUserAgent(hasUserAgent(request) ? request.getHeaders().getFirst("User-Agent") : null)
                 .setAccessEntry(access)
-                .setSessionFlags(sessionData.getLong("flags", 0) & ~Session.SessionFlag.SYSTEM)
+                .setSessionFlags(sessionData.getLong("flags", 0) & Session.SessionFlag.ALL & ~Session.SessionFlag.SYSTEM)
                 .setThumbprint(context.digest())
                 .build();
     }

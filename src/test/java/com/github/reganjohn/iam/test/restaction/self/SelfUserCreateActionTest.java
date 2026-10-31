@@ -262,7 +262,7 @@ public class SelfUserCreateActionTest extends RestActionTest
 
             assertThatRequestTo(newAction(succeeding(), created))
                     .withHeader("User-Agent", "iam-test/1.0")
-                    .withJsonBody("{\"username\":\"alice\",\"avatar_id\":\"cid\",\"flags\":1,\"session\":{\"flags\":2}}")
+                    .withJsonBody("{\"username\":\"alice\",\"avatar_id\":\"bafkqaaa\",\"flags\":1,\"session\":{\"flags\":2}}")
                     .hasStatus(StatusReason.CREATED.code)
                     .hasContentType(SelfUserCreateActionImpl.MEDIA_TYPE_ACCESS)
                     .hasBodyMatchingSnapshot()
@@ -271,8 +271,8 @@ public class SelfUserCreateActionTest extends RestActionTest
         }
 
         assertWithSnapshot(summarize(created.getValue()), "user");
-        assertThat(created.getValue().getRawUserFlags()).isEqualTo(1L & ~User.UserFlag.SYSTEM);
-        assertThat(created.getValue().getSession().getRawSessionFlags()).isEqualTo(2L & ~Session.SessionFlag.SYSTEM);
+        assertThat(created.getValue().getRawUserFlags()).isEqualTo(1L & User.UserFlag.ALL & ~User.UserFlag.SYSTEM);
+        assertThat(created.getValue().getSession().getRawSessionFlags()).isEqualTo(2L & Session.SessionFlag.ALL & ~Session.SessionFlag.SYSTEM);
     }
 
     @Test
@@ -335,9 +335,9 @@ public class SelfUserCreateActionTest extends RestActionTest
 
         UserCreateData user = created.getValue();
         assertThat(user.getRawUserFlags() & User.UserFlag.SYSTEM).isZero();
-        assertThat(user.getRawUserFlags()).isEqualTo(flags & ~User.UserFlag.SYSTEM);
+        assertThat(user.getRawUserFlags()).isEqualTo(flags & User.UserFlag.ALL & ~User.UserFlag.SYSTEM);
         assertThat(user.getSession().getRawSessionFlags() & Session.SessionFlag.SYSTEM).isZero();
-        assertThat(user.getSession().getRawSessionFlags()).isEqualTo(flags & ~Session.SessionFlag.SYSTEM);
+        assertThat(user.getSession().getRawSessionFlags()).isEqualTo(flags & Session.SessionFlag.ALL & ~Session.SessionFlag.SYSTEM);
     }
 
     @EnumSource(value = SignType.class, mode = EnumSource.Mode.EXCLUDE, names = {"HS256", "HS384", "HS512", "NONE", "UNKNOWN"})

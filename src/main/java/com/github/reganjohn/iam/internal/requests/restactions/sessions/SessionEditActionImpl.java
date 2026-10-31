@@ -192,7 +192,7 @@ public class SessionEditActionImpl extends AbstractSessionActionImpl implements 
         String userAgent = json.getString("user_agent", session.getUserAgent());
         long flags = json.getLong("flags", session.getFlagsRaw());
         long base = session.getFlagsRaw() & Session.SessionFlag.SYSTEM;
-        long modifiers = flags & ~Session.SessionFlag.SYSTEM;
+        long modifiers = flags & Session.SessionFlag.ALL & ~Session.SessionFlag.SYSTEM;
         return new SessionEditBuilder()
                 .setUserId(userId)
                 .setSessionId(sessionId)

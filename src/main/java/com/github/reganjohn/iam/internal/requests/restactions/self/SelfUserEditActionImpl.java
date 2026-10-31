@@ -177,7 +177,7 @@ public class SelfUserEditActionImpl extends AbstractUserActionImpl implements Se
         String avatarId = data.getString("avatar_id", user.getAvatarId());
         long flags = data.getLong("flags", user.getFlagsRaw());
         long base = user.getFlagsRaw() & User.UserFlag.SYSTEM;
-        long modifiers = flags & ~User.UserFlag.SYSTEM;
+        long modifiers = flags & User.UserFlag.ALL & ~User.UserFlag.SYSTEM;
         return new UserEditBuilder()
                 .setUserId(userId)
                 .setName(name)

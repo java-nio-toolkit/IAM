@@ -1,9 +1,9 @@
 {
   "username" : "alice",
-  "avatar_id" : "cid",
-  "flags" : 1,
+  "avatar_id" : "bafkqaaa",
+  "flags" : 0,
   "session" : {
-    "flags" : 2,
+    "flags" : 0,
     "thumbprint" : "thumbprint",
     "user_agent" : "iam-test/1.0",
     "belongs_to_user" : true

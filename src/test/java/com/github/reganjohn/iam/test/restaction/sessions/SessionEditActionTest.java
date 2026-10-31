@@ -244,7 +244,7 @@ public class SessionEditActionTest extends RestActionTest
         assertThat(edited.getValue().getUserId()).isEqualTo(USER_ID);
         assertThat(edited.getValue().getSessionId()).isEqualTo(SESSION_ID);
         assertThat(edited.getValue().getUserAgent()).isEqualTo("Mozilla/5.0");
-        assertThat(edited.getValue().getRawSessionFlags()).isEqualTo(6);
+        assertThat(edited.getValue().getRawSessionFlags()).isZero();
     }
 
     @Test
@@ -260,7 +260,7 @@ public class SessionEditActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(edited.getValue().getUserAgent()).isEqualTo("curl/8.0");
-        assertThat(edited.getValue().getRawSessionFlags()).isEqualTo(6);
+        assertThat(edited.getValue().getRawSessionFlags()).isZero();
     }
 
     @Test
@@ -276,7 +276,7 @@ public class SessionEditActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(edited.getValue().getUserAgent()).isEqualTo("Mozilla/5.0");
-        assertThat(edited.getValue().getRawSessionFlags()).isEqualTo(2L & ~Session.SessionFlag.SYSTEM);
+        assertThat(edited.getValue().getRawSessionFlags()).isEqualTo(2L & Session.SessionFlag.ALL & ~Session.SessionFlag.SYSTEM);
     }
 
     @ValueSource(longs = {0, 1, 2, 3, 7, Integer.MAX_VALUE})
@@ -294,7 +294,7 @@ public class SessionEditActionTest extends RestActionTest
                 .whenHandled();
 
         assertThat(edited.getValue().getRawSessionFlags() & Session.SessionFlag.SYSTEM).isEqualTo(current & Session.SessionFlag.SYSTEM);
-        assertThat(edited.getValue().getRawSessionFlags() & ~Session.SessionFlag.SYSTEM).isEqualTo(flags & ~Session.SessionFlag.SYSTEM);
+        assertThat(edited.getValue().getRawSessionFlags() & ~Session.SessionFlag.SYSTEM).isEqualTo(flags & Session.SessionFlag.ALL & ~Session.SessionFlag.SYSTEM);
     }
 
     @Test

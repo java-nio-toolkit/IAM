@@ -283,9 +283,9 @@ public class ApplicationEditActionTest extends RestActionTest
         assertThat(data.getUniqueId()).isEqualTo(APPLICATION_ID);
         assertThat(data.getName()).isEqualTo("app");
         assertThat(data.getDescription()).isEqualTo("description");
-        assertThat(data.getIconId()).isEqualTo("icon-cid");
+        assertThat(data.getIconId()).isEqualTo("bafkqaab");
         assertThat(data.getOrigin()).isEqualTo(ORIGIN);
-        assertThat(data.getFlagsRaw()).isEqualTo(4);
+        assertThat(data.getFlagsRaw()).isZero();
         assertThat(data.getRedirectUris()).containsExactly(CALLBACK);
     }
 
@@ -320,8 +320,8 @@ public class ApplicationEditActionTest extends RestActionTest
         ApplicationEditData data = modified.getValue();
         assertThat(data.getName()).isEqualTo("renamed");
         assertThat(data.getDescription()).isEqualTo("another");
-        assertThat(data.getIconId()).isEqualTo("another-cid");
-        assertThat(data.getFlagsRaw()).isEqualTo(8);
+        assertThat(data.getIconId()).isEqualTo("bafkqaac");
+        assertThat(data.getFlagsRaw()).isZero();
         assertThat(data.getRedirectUris()).containsExactly("https://example.net/callback", "https://example.org/other");
     }
 
@@ -353,7 +353,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 .hasStatus(StatusReason.NO_CONTENT.code)
                 .whenHandled();
 
-        assertThat(modified.getValue().getFlagsRaw()).isEqualTo(8);
+        assertThat(modified.getValue().getFlagsRaw()).isZero();
     }
 
     @Test
