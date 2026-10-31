@@ -78,7 +78,7 @@ public class AccessSignatureManagerImpl extends ProofSignatureManagerImpl implem
         Route route = request.getRoute().getBaseRoute();
         if (!acceptInboundMessage(route))
             return super.getSecret(context, request, metadata);
-        else if (route == Routes.Session.ADD_SESSION && !Helpers.contains(metadata.getComponents(), ProofObjectManager.AUTHORIZATION, true))
+        else if ((route == Routes.Session.ADD_SESSION || route == Routes.Interactions.EXECUTE_APPLICATION_INTERACTION) && !Helpers.contains(metadata.getComponents(), ProofObjectManager.AUTHORIZATION, true))
             throw new InvalidTokenException();
         else
             return new KeyPair(retrieveAccess(context).getPublic(), null);

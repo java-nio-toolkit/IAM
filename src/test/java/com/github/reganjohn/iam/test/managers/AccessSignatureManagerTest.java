@@ -168,7 +168,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
     @ParameterizedTest
     void testValidSignature(boolean creation) throws Exception
     {
-        manager.verify(context, signed(creation ? createRoute() : continueRoute()));
+        manager.verify(context, creation ? signed(createRoute()) : signed(continueRoute(), pair, "GNAP access-token"));
 
         assertThat((Object) channel.readInbound()).isNull();
     }
@@ -194,7 +194,7 @@ public class AccessSignatureManagerTest extends IntegrationTest
     @ParameterizedTest
     void testVerifiedKey(boolean creation) throws Exception
     {
-        AccessEntryData data = manager.verify(context, signed(creation ? createRoute() : continueRoute()), rawOf(pair));
+        AccessEntryData data = manager.verify(context, creation ? signed(createRoute()) : signed(continueRoute(), pair, "GNAP access-token"), rawOf(pair));
 
         assertThat(data.getPublic()).isEqualTo(pair.getPublic());
         assertThat(channel.attr(AccessSignatureManagerImpl.CLIENT_ACCESS).get()).isNull();
@@ -233,6 +233,14 @@ public class AccessSignatureManagerTest extends IntegrationTest
     void testSessionSignatureWithoutAuthorization() throws Exception
     {
         Request request = signed(Routes.Session.ADD_SESSION.compile());
+
+        assertThatThrownBy(() -> manager.verify(context, request)).isInstanceOf(InvalidTokenException.class);
+    }
+
+    @Test
+    void testContinueSignatureWithoutAuthorization() throws Exception
+    {
+        Request request = signed(continueRoute());
 
         assertThatThrownBy(() -> manager.verify(context, request)).isInstanceOf(InvalidTokenException.class);
     }
