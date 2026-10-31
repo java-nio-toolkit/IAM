@@ -360,6 +360,11 @@ public class RestActionTest extends IntegrationTest
         when(api.retrieveWebhookCount(userId)).thenReturn(result);
     }
 
+    protected void withLatestWebhook(UUID userId, InteractionCallbackAction<Webhook> result)
+    {
+        when(api.retrieveLatestWebhook(userId)).thenReturn(result);
+    }
+
     protected static Application withApplication(UUID applicationId, UUID ownerId, String name, String description, String iconId, String origin, long flags, String... redirectUris)
     {
         InteractionCallbackAction<Void> deletion = completed(null);
@@ -394,6 +399,11 @@ public class RestActionTest extends IntegrationTest
     protected void withApplicationCount(UUID userId, InteractionCallbackAction<Integer> result)
     {
         when(api.retrieveApplicationCount(userId)).thenReturn(result);
+    }
+
+    protected void withLatestApplication(UUID userId, InteractionCallbackAction<Application> result)
+    {
+        when(api.retrieveLatestApplication(userId)).thenReturn(result);
     }
 
     protected static PermissionOverride withEntitlement(UUID userId, UUID applicationId, UUID ownerId, long permissions, long flags)

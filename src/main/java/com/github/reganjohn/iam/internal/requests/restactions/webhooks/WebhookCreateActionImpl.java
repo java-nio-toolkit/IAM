@@ -46,15 +46,20 @@ import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.jdt.internal.utils.OriginUtil;
-import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.concurrent.FutureListener;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.net.InetAddress;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implements WebhookCreateAction
@@ -206,52 +211,65 @@ public class WebhookCreateActionImpl extends AbstractWebhookActionImpl implement
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody)
     {
         UUID userId = retrieveSelfUserId(context);
-        WebhookCreateData webhook = fromData(userId, rawBody);
-        api.retrieveWebhookCount(userId)
-                .flatMap(count -> create(webhook, count))
-                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        api.retrieveLatestWebhook(userId).queue(webhook -> handleSuccess(context, rawBody, userId, webhook == null ? null : webhook.getUniqueId()), context::fireExceptionCaught);
     }
 
-    @Nonnull
-    @CheckReturnValue
-    public InteractionCallbackAction<Void> create(@Nonnull WebhookCreateData webhook, int count)
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody, @Nonnull UUID userId,
+                              @Nullable UUID webhookId)
     {
-        if (StackUtil.isUnsafeURL(URI.create(webhook.getUrl())))
-            throw createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe."));
-        else if (count >= MAX_WEBHOOK_COUNT)
-            throw new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS);
-        else
-            return create(webhook);
+        api.retrieveWebhookCount(userId)
+                .map(count -> fromData(userId, rawBody, webhookId, count))
+                .queue(webhook -> checkAccess(context, webhook, webhookId), context::fireExceptionCaught);
+    }
+
+    private void checkAccess(@Nonnull ChannelHandlerContext context, @Nonnull WebhookCreateData webhook, @Nullable UUID webhookId)
+    {
+        api.getJDT().retrieveSafe(URI.create(webhook.getUrl()).getHost()).addListener((FutureListener<InetAddress>) future ->
+        {
+            if (future.getNow() == null)
+                context.fireExceptionCaught(createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.")));
+            else
+                create(webhook, webhookId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        });
     }
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> create(@Nonnull WebhookCreateData webhook)
+    public InteractionCallbackAction<Void> create(@Nonnull WebhookCreateData webhook, @Nullable UUID webhookId)
     {
         Checks.notNull(webhook, "Webhook");
-        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_webhook.cql"), webhook)
+        Map<String, Object> params = new HashMap<>(webhook.toMap());
+        if (webhookId != null)
+            params.put("current_id", webhookId);
+        String content = ClassLoader.getResourceAsString(webhookId == null ? "create_initial_webhook.cql" : "create_webhook.cql");
+        return new InteractionMappingActionImpl<>(api.getJCA(), content, params)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
-                if (array.isEmpty())
+                if (array.isEmpty() ? webhookId == null : Objects.equals(array.getObject(0).getUUID("webhook_id"), webhookId))
                     request.onSuccess(null);
                 else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS));
+                    request.onFailure(new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS));
             }
         };
     }
 
     @Nonnull
-    private WebhookCreateData fromData(@Nonnull UUID userId, @Nonnull DataObject raw)
+    private WebhookCreateData fromData(@Nonnull UUID userId, @Nonnull DataObject raw, @Nullable UUID webhookId, int count)
     {
-        UUIDv7 id = UUIDv7.randomUUID();
+        if (count >= MAX_WEBHOOK_COUNT)
+            throw new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS);
+        long timestamp = System.currentTimeMillis();
+        if (webhookId != null)
+            timestamp = Math.max(timestamp, (webhookId.getMostSignificantBits() >>> 16) + 1);
+        UUIDv7 id = UUIDv7.randomUUID(timestamp);
         String name = raw.getString("name");
         String avatarId = raw.getString("avatar_id", null);
         long scopes = raw.getLong("scopes");
         String url = raw.getString("url");
-        long flags = raw.getLong("flags", 0) & ~Webhook.WebhookFlag.SYSTEM;
+        long flags = raw.getLong("flags", 0) & Webhook.WebhookFlag.ALL & ~Webhook.WebhookFlag.SYSTEM;
         OffsetDateTime createdAt = OffsetDateTime.now();
         return new WebhookCreateBuilder()
                 .setUniqueId(id.toUUID())

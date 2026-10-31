@@ -469,6 +469,22 @@ public class IAMImpl implements IAM
 
     @Nonnull
     @CheckReturnValue
+    public InteractionCallbackAction<Webhook> retrieveLatestWebhook(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM users.webhooks WHERE owner_id = ? LIMIT 1", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Webhook> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess(array.isEmpty() ? null : getEntityBuilder().createWebhook(array.getObject(0)));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
     public InteractionCallbackAction<Application> retrieveApplicationById(@Nonnull UUID userId, @Nonnull UUID applicationId)
     {
         Checks.notNull(userId, "User ID");
@@ -515,6 +531,22 @@ public class IAMImpl implements IAM
                                       @Nonnull InteractionImpl<Integer> request, @Nonnull BufferArray array)
             {
                 request.onSuccess((int) EntityBuilder.count(array));
+            }
+        };
+    }
+
+    @Nonnull
+    @CheckReturnValue
+    public InteractionCallbackAction<Application> retrieveLatestApplication(@Nonnull UUID userId)
+    {
+        Checks.notNull(userId, "User ID");
+        return new InteractionContextActionImpl<>(getJCA(), "SELECT * FROM integrations.applications WHERE owner_id = ? LIMIT 1", Collections.singletonList(userId))
+        {
+            @Override
+            public void handleSuccess(@Nonnull InteractionCallbackResponse response,
+                                      @Nonnull InteractionImpl<Application> request, @Nonnull BufferArray array)
+            {
+                request.onSuccess(array.isEmpty() ? null : getEntityBuilder().createApplication(array.getObject(0)));
             }
         };
     }

@@ -46,14 +46,19 @@ import com.reganjohn.c4j.api.utils.data.BufferArray;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.jdt.internal.utils.OriginUtil;
-import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.concurrent.FutureListener;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.net.InetAddress;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -266,30 +271,49 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
     private void handleInternally(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody)
     {
         UUID userId = retrieveSelfUserId(context);
+        api.retrieveLatestApplication(userId).queue(application -> handleSuccess(context, rawBody, userId, application == null ? null : application.getUniqueId()), context::fireExceptionCaught);
+    }
+
+    private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull DataObject rawBody, @Nonnull UUID userId,
+                              @Nullable UUID applicationId)
+    {
         api.retrieveApplicationCount(userId)
-                .map(count -> fromData(rawBody, userId, count))
-                .flatMap(this::create)
-                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
+                .map(count -> fromData(rawBody, userId, applicationId, count))
+                .queue(application -> handleAccess(context, application, applicationId), context::fireExceptionCaught);
+    }
+
+    private void handleAccess(@Nonnull ChannelHandlerContext context, @Nonnull ApplicationCreateData application,
+                              @Nullable UUID applicationId)
+    {
+        URI uri = URI.create(application.getOrigin());
+        api.getJDT().retrieveSafe(uri.getHost()).addListener((FutureListener<InetAddress>) future ->
+        {
+            if (future.getNow() == null)
+                context.fireExceptionCaught(createErrorResponse("origin", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe.")));
+            else
+                create(application, applicationId).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        });
     }
 
     @Nonnull
     @CheckReturnValue
-    private ApplicationCreateData fromData(@Nonnull DataObject rawBody, @Nonnull UUID userId, int count)
+    private ApplicationCreateData fromData(@Nonnull DataObject rawBody, @Nonnull UUID userId, @Nullable UUID applicationId, int count)
     {
-        if (StackUtil.isUnsafeURL(URI.create(rawBody.getString("origin"))))
-            throw createErrorResponse("origin", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not safe."));
-        else if (count >= MAX_APPLICATION_COUNT)
+        if (count >= MAX_APPLICATION_COUNT)
             throw new ErrorResponseException(ErrorResponse.MAX_APPLICATIONS);
-        UUIDv7 applicationId = UUIDv7.randomUUID();
+        long timestamp = System.currentTimeMillis();
+        if (applicationId != null)
+            timestamp = Math.max(timestamp, (applicationId.getMostSignificantBits() >>> 16) + 1);
+        UUIDv7 id = UUIDv7.randomUUID(timestamp);
         String name = rawBody.getString("name");
         String description = rawBody.getString("description", null);
         String iconId = rawBody.getString("icon_id", null);
         String origin = rawBody.getString("origin");
-        long flags = rawBody.getLong("flags", 0) & ~Application.ApplicationFlag.SYSTEM;
+        long flags = rawBody.getLong("flags", 0) & Application.ApplicationFlag.ALL & ~Application.ApplicationFlag.SYSTEM;
         List<String> redirectUris = rawBody.getArray("redirect_uris").stream(DataArray::getString).collect(Collectors.toList());
         return new ApplicationCreateBuilder()
                 .setOwnerId(userId)
-                .setUniqueId(applicationId.toUUID())
+                .setUniqueId(id.toUUID())
                 .setName(name)
                 .setDescription(description)
                 .setIconId(iconId)
@@ -301,19 +325,23 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
 
     @Nonnull
     @CheckReturnValue
-    public InteractionCallbackAction<Void> create(@Nonnull ApplicationCreateData application)
+    public InteractionCallbackAction<Void> create(@Nonnull ApplicationCreateData application, @Nullable UUID applicationId)
     {
         Checks.notNull(application, "Application");
-        return new InteractionMappingActionImpl<>(api.getJCA(), ClassLoader.getResourceAsString("create_application.cql"), application)
+        Map<String, Object> params = new HashMap<>(application.toMap());
+        if (applicationId != null)
+            params.put("current_id", applicationId);
+        String content = ClassLoader.getResourceAsString(applicationId == null ? "create_initial_application.cql" : "create_application.cql");
+        return new InteractionMappingActionImpl<Void>(api.getJCA(), content, params)
         {
             @Override
             public void handleSuccess(@Nonnull InteractionCallbackResponse response,
                                       @Nonnull InteractionImpl<Void> request, @Nonnull BufferArray array)
             {
-                if (array.isEmpty())
+                if (array.isEmpty() ? applicationId == null : Objects.equals(array.getObject(0).getUUID("application_id"), applicationId))
                     request.onSuccess(null);
                 else
-                    request.onFailure(new ErrorResponseException(ErrorResponse.APPLICATION_ALREADY_EXISTS));
+                    request.onFailure(new ErrorResponseException(ErrorResponse.MAX_APPLICATIONS));
             }
         };
     }

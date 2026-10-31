@@ -34,12 +34,15 @@ import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.AccessOverrideManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofObjectManagerImpl;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
+import com.github.reganjohn.iam.api.entities.Application;
 import com.github.reganjohn.iam.api.entities.EntityBuilder;
 import com.github.reganjohn.iam.api.entities.Session;
+import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.requests.Routes;
 import com.github.reganjohn.iam.internal.IAMImpl;
+import com.github.reganjohn.iam.internal.entities.ApplicationImpl;
 import com.github.reganjohn.iam.internal.entities.SessionImpl;
 import com.github.reganjohn.iam.internal.managers.AccessSignatureManagerImpl;
 import com.github.reganjohn.iam.internal.managers.GlobalAccessManagerImpl;
@@ -65,6 +68,7 @@ import org.mockito.MockedStatic;
 import java.security.KeyPairGenerator;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -148,9 +152,7 @@ public class IAMImplTest extends IntegrationTest
     @SuppressWarnings("unchecked")
     private InteractionContextActionImpl<Session> retrieveSession()
     {
-        JCAImpl jca = mock(JCAImpl.class);
-        when(jca.getConsistency()).thenReturn(Consistency.QUORUM);
-        when(api.getJCA()).thenReturn(jca);
+        withJCA();
         when(api.retrieveSessionById(any(), any())).thenCallRealMethod();
         return (InteractionContextActionImpl<Session>) api.retrieveSessionById(USER_ID, SESSION_ID);
     }
@@ -217,6 +219,101 @@ public class IAMImplTest extends IntegrationTest
         when(row.getLong("flags", 0)).thenReturn(1L << 34);
 
         assertUnknownSession(rowsOf(row));
+    }
+
+    private void withJCA()
+    {
+        JCAImpl jca = mock(JCAImpl.class);
+        when(jca.getConsistency()).thenReturn(Consistency.QUORUM);
+        when(api.getJCA()).thenReturn(jca);
+    }
+
+    @SuppressWarnings("unchecked")
+    private InteractionContextActionImpl<Webhook> retrieveLatestWebhook()
+    {
+        withJCA();
+        when(api.retrieveLatestWebhook(any())).thenCallRealMethod();
+        return (InteractionContextActionImpl<Webhook>) api.retrieveLatestWebhook(USER_ID);
+    }
+
+    @SuppressWarnings("unchecked")
+    private InteractionContextActionImpl<Application> retrieveLatestApplication()
+    {
+        withJCA();
+        when(api.retrieveLatestApplication(any())).thenCallRealMethod();
+        return (InteractionContextActionImpl<Application>) api.retrieveLatestApplication(USER_ID);
+    }
+
+    @Test
+    void testLatestWebhookStatement()
+    {
+        InteractionContextActionImpl<Webhook> retrieval = retrieveLatestWebhook();
+
+        assertThat(retrieval.getContent()).contains("SELECT * FROM users.webhooks", "owner_id = ?", "LIMIT 1");
+        assertThat(retrieval.getElements()).containsExactly(USER_ID);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testLatestWebhook() throws Exception
+    {
+        BufferObject row = mock(BufferObject.class);
+        Webhook webhook = mock(Webhook.class);
+        EntityBuilder builder = mock(EntityBuilder.class);
+        when(builder.createWebhook(row)).thenReturn(webhook);
+        when(api.getEntityBuilder()).thenReturn(builder);
+        InteractionImpl<Webhook> interaction = mock(InteractionImpl.class);
+
+        retrieveLatestWebhook().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rowsOf(row));
+
+        verify(interaction).onSuccess(webhook);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testMissingLatestWebhook() throws Exception
+    {
+        InteractionImpl<Webhook> interaction = mock(InteractionImpl.class);
+
+        retrieveLatestWebhook().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rowsOf());
+
+        verify(interaction).onSuccess(null);
+    }
+
+    @Test
+    void testLatestApplicationStatement()
+    {
+        InteractionContextActionImpl<Application> retrieval = retrieveLatestApplication();
+
+        assertThat(retrieval.getContent()).contains("SELECT * FROM integrations.applications", "owner_id = ?", "LIMIT 1");
+        assertThat(retrieval.getElements()).containsExactly(USER_ID);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testLatestApplication() throws Exception
+    {
+        BufferObject row = mock(BufferObject.class);
+        ApplicationImpl application = mock(ApplicationImpl.class);
+        EntityBuilder builder = mock(EntityBuilder.class);
+        when(builder.createApplication(row)).thenReturn(application);
+        when(api.getEntityBuilder()).thenReturn(builder);
+        InteractionImpl<Application> interaction = mock(InteractionImpl.class);
+
+        retrieveLatestApplication().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rowsOf(row));
+
+        verify(interaction).onSuccess(application);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testMissingLatestApplication() throws Exception
+    {
+        InteractionImpl<Application> interaction = mock(InteractionImpl.class);
+
+        retrieveLatestApplication().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rowsOf());
+
+        verify(interaction).onSuccess(null);
     }
 
     private void withSessionRequest() throws Exception

@@ -18,6 +18,7 @@ package com.github.reganjohn.iam.test.restaction.applications;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.data.DataArray;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.Application;
@@ -30,6 +31,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.applications.Appli
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import org.junit.jupiter.api.Test;
@@ -38,6 +40,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 import java.util.Collections;
 import java.util.UUID;
@@ -49,6 +52,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -58,6 +62,8 @@ import static org.mockito.Mockito.when;
 public class ApplicationCreateActionTest extends RestActionTest
 {
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
+    private static final UUID LATEST_ID = UUID.fromString("0199e2a0-5b1c-7c3e-8f4a-2d6b9e1c7a50");
+    private static final UUID OTHER_ID = UUID.fromString("0199e2a0-5b1c-7c3e-8f4a-2d6b9e1c7a51");
     private static final String ORIGIN = "https://example.org";
     private static final String CALLBACK = "https://example.org/callback";
     private static final long DELETED = 1L << 34;
@@ -69,13 +75,24 @@ public class ApplicationCreateActionTest extends RestActionTest
 
     private ApplicationCreateActionImpl newAction(ArgumentCaptor<ApplicationCreateData> created)
     {
+        return newAction(created, ArgumentCaptor.forClass(UUID.class));
+    }
+
+    private ApplicationCreateActionImpl newAction(ArgumentCaptor<ApplicationCreateData> created, ArgumentCaptor<UUID> latest)
+    {
         ApplicationCreateActionImpl action = spy(newAction());
-        doReturn(completed(null)).when(action).create(created.capture());
+        doReturn(completed(null)).when(action).create(created.capture(), latest.capture());
         return action;
     }
 
     private void withStoredUser(int count)
     {
+        withStoredUser(null, count);
+    }
+
+    private void withStoredUser(UUID applicationId, int count)
+    {
+        withLatestApplication(USER_ID, completed(applicationId == null ? null : withApplication(applicationId, USER_ID, "app", null, null, ORIGIN, 0, CALLBACK)));
         withApplicationCount(USER_ID, completed(count));
         withAccess(USER_ID);
     }
@@ -108,16 +125,39 @@ public class ApplicationCreateActionTest extends RestActionTest
     }
 
     @SuppressWarnings("unchecked")
-    private InteractionMappingActionImpl<Void> creation()
+    private InteractionMappingActionImpl<Void> creation(UUID applicationId)
     {
         withJCA();
-        return (InteractionMappingActionImpl<Void>) newAction().create(newData());
+        return (InteractionMappingActionImpl<Void>) newAction().create(newData(), applicationId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private InteractionImpl<Void> handled(UUID applicationId, BufferArray rows) throws Exception
+    {
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+        creation(applicationId).handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows);
+        return interaction;
+    }
+
+    private static boolean isMaxApplications(Throwable error)
+    {
+        return error instanceof InvalidResponseException
+                && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.MAX_APPLICATIONS.getCode();
     }
 
     private static BufferArray rows(boolean empty)
     {
         BufferArray rows = mock(BufferArray.class);
         when(rows.isEmpty()).thenReturn(empty);
+        return rows;
+    }
+
+    private static BufferArray rows(UUID applicationId)
+    {
+        BufferObject row = mock(BufferObject.class);
+        when(row.getUUID("application_id")).thenReturn(applicationId);
+        BufferArray rows = rows(false);
+        when(rows.getObject(0)).thenReturn(row);
         return rows;
     }
 
@@ -351,14 +391,79 @@ public class ApplicationCreateActionTest extends RestActionTest
     {
         withStoredUser(1);
         ApplicationCreateActionImpl action = spy(newAction());
-        doReturn(failed(new ErrorResponseException(ErrorResponse.APPLICATION_ALREADY_EXISTS))).when(action).create(any(ApplicationCreateData.class));
+        doReturn(failed(new ErrorResponseException(ErrorResponse.MAX_APPLICATIONS))).when(action).create(any(ApplicationCreateData.class), any());
 
         assertThatRequestTo(action)
                 .withJsonBody(valid())
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.APPLICATION_ALREADY_EXISTS)
+                .hasFailure(ErrorResponse.MAX_APPLICATIONS)
                 .whenHandled();
+    }
+
+    @Test
+    void testLatestBeforeCount()
+    {
+        withStoredUser(1);
+
+        assertThatRequestTo(newAction(ArgumentCaptor.forClass(ApplicationCreateData.class)))
+                .withJsonBody(valid())
+                .hasStatus(StatusReason.CREATED.code)
+                .whenHandled();
+
+        InOrder order = inOrder(api);
+        order.verify(api).retrieveLatestApplication(USER_ID);
+        order.verify(api).retrieveApplicationCount(USER_ID);
+    }
+
+    @Test
+    void testLatestId()
+    {
+        ArgumentCaptor<ApplicationCreateData> created = ArgumentCaptor.forClass(ApplicationCreateData.class);
+        ArgumentCaptor<UUID> latest = ArgumentCaptor.forClass(UUID.class);
+        withStoredUser(LATEST_ID, 1);
+
+        assertThatRequestTo(newAction(created, latest))
+                .withJsonBody(valid())
+                .hasStatus(StatusReason.CREATED.code)
+                .whenHandled();
+
+        assertThat(latest.getValue()).isEqualTo(LATEST_ID);
+        assertThat(created.getValue().getUniqueId()).isNotEqualTo(LATEST_ID);
+    }
+
+    @Test
+    void testFutureLatestId()
+    {
+        UUID applicationId = UUIDv7.randomUUID(System.currentTimeMillis() + 3_600_000).toUUID();
+        ArgumentCaptor<ApplicationCreateData> created = ArgumentCaptor.forClass(ApplicationCreateData.class);
+        withStoredUser(applicationId, 1);
+
+        assertThatRequestTo(newAction(created))
+                .withJsonBody(valid())
+                .hasStatus(StatusReason.CREATED.code)
+                .whenHandled();
+
+        assertThat(created.getValue().getUniqueId().getMostSignificantBits() >>> 16)
+                .isGreaterThan(applicationId.getMostSignificantBits() >>> 16);
+    }
+
+    @Test
+    void testLatestFailure()
+    {
+        ArgumentCaptor<ApplicationCreateData> created = ArgumentCaptor.forClass(ApplicationCreateData.class);
+        withLatestApplication(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
+        withAccess(USER_ID);
+
+        assertThatRequestTo(newAction(created))
+                .withJsonBody(valid())
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
+                .whenHandled();
+
+        verify(api, never()).retrieveApplicationCount(any());
+        assertThat(created.getAllValues()).isEmpty();
     }
 
     @Test
@@ -394,52 +499,76 @@ public class ApplicationCreateActionTest extends RestActionTest
     void testNullArguments()
     {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().create(null));
+                .isThrownBy(() -> newAction().create(null, null));
     }
 
     @Test
     void testCreateStatement()
     {
-        InteractionMappingActionImpl<Void> creation = creation();
+        InteractionMappingActionImpl<Void> creation = creation(null);
 
-        assertThat(creation.getContent()).contains("INSERT INTO integrations.applications");
+        assertThat(creation.getContent()).contains("INSERT INTO integrations.applications", "IF current_data IS NULL");
+        assertThatStatementIsBound(creation);
+    }
+
+    @Test
+    void testCreateLatestStatement()
+    {
+        InteractionMappingActionImpl<Void> creation = creation(LATEST_ID);
+
+        assertThat(creation.getContent()).contains("INSERT INTO integrations.applications", ":current_id");
         assertThatStatementIsBound(creation);
     }
 
     @Test
     void testCreateParams()
     {
-        assertThat(creation().getParams())
+        assertThat(creation(null).getParams())
                 .containsEntry("user_id", USER_ID)
                 .containsEntry("name", "app")
                 .containsEntry("description", "description")
-                .containsEntry("icon_id", "icon-cid")
+                .containsEntry("icon_id", "bafkqaab")
                 .containsEntry("origin", ORIGIN)
                 .containsEntry("flags", 4L)
-                .containsKeys("application_id", "redirect_uris");
+                .containsKeys("application_id", "redirect_uris")
+                .doesNotContainKey("current_id");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
+    void testCreateLatestParams()
+    {
+        assertThat(creation(LATEST_ID).getParams())
+                .containsEntry("user_id", USER_ID)
+                .containsEntry("current_id", LATEST_ID);
+    }
+
+    @Test
     void testCreateApplied() throws Exception
     {
-        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
-
-        creation().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(true));
-
-        verify(interaction).onSuccess(null);
+        verify(handled(null, rows(true))).onSuccess(null);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testCreateExisting() throws Exception
     {
-        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+        verify(handled(null, rows(OTHER_ID))).onFailure(argThat(ApplicationCreateActionTest::isMaxApplications));
+    }
 
-        creation().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(false));
+    @Test
+    void testCreateLatestApplied() throws Exception
+    {
+        verify(handled(LATEST_ID, rows(LATEST_ID))).onSuccess(null);
+    }
 
-        verify(interaction).onFailure(argThat(error ->
-                error instanceof InvalidResponseException
-                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.APPLICATION_ALREADY_EXISTS.getCode()));
+    @Test
+    void testCreateLatestMissing() throws Exception
+    {
+        verify(handled(LATEST_ID, rows(true))).onFailure(argThat(ApplicationCreateActionTest::isMaxApplications));
+    }
+
+    @Test
+    void testCreateRace() throws Exception
+    {
+        verify(handled(LATEST_ID, rows(OTHER_ID))).onFailure(argThat(ApplicationCreateActionTest::isMaxApplications));
     }
 }

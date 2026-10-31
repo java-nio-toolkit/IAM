@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS users.webhooks
     flags      BIGINT,
     updated_at TIMESTAMP,
     PRIMARY KEY ((owner_id), webhook_id)
-) WITH transactional_mode = 'full';
+) WITH CLUSTERING ORDER BY (webhook_id DESC) AND transactional_mode = 'full';
 
 CREATE TABLE IF NOT EXISTS users.entitlements
 (
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS integrations.applications
     flags          BIGINT,
     redirect_uris  LIST<TEXT>,
     PRIMARY KEY ((owner_id), application_id)
-) WITH transactional_mode = 'full';
+) WITH CLUSTERING ORDER BY (application_id DESC) AND transactional_mode = 'full';
 
 CREATE TABLE IF NOT EXISTS integrations.interactions
 (

@@ -14,5 +14,14 @@
  * limitations under the License.
  */
 
-INSERT INTO users.webhooks (owner_id, webhook_id, name, avatar_id, endpoint, scopes, flags, updated_at)
-VALUES (:owner_id, :webhook_id, :name, :avatar_id, :endpoint, :scopes, :flags, :updated_at);
+BEGIN TRANSACTION
+    LET current_data = (SELECT webhook_id FROM users.webhooks WHERE owner_id = :owner_id LIMIT 1);
+
+    -- Return data directly from table (must come before INSERT)
+    SELECT webhook_id FROM users.webhooks WHERE owner_id = :owner_id LIMIT 1;
+
+    IF current_data.webhook_id = :current_id THEN
+        INSERT INTO users.webhooks (owner_id, webhook_id, name, avatar_id, endpoint, scopes, flags, updated_at)
+        VALUES (:owner_id, :webhook_id, :name, :avatar_id, :endpoint, :scopes, :flags, :updated_at);
+    END IF
+COMMIT TRANSACTION;

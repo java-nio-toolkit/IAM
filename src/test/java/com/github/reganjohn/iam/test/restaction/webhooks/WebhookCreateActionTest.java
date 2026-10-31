@@ -18,6 +18,7 @@ package com.github.reganjohn.iam.test.restaction.webhooks;
 
 import com.github.adamorgan.jnt.api.exceptions.InvalidResponseException;
 import com.github.adamorgan.jnt.api.requests.StatusReason;
+import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.reganjohn.iam.api.entities.Webhook;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
@@ -29,6 +30,7 @@ import com.github.reganjohn.iam.internal.requests.restactions.webhooks.WebhookCr
 import com.github.reganjohn.iam.test.restaction.RestActionTest;
 import com.reganjohn.c4j.api.interactions.response.InteractionCallbackResponse;
 import com.reganjohn.c4j.api.utils.data.BufferArray;
+import com.reganjohn.c4j.api.utils.data.BufferObject;
 import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -48,6 +51,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -57,8 +61,10 @@ import static org.mockito.Mockito.when;
 public class WebhookCreateActionTest extends RestActionTest
 {
     private static final UUID USER_ID = UUID.fromString("01a0f15f-ef22-7d1e-9a96-432acf9b644f");
+    private static final UUID LATEST_ID = UUID.fromString("0199e2a0-5b1c-7c3e-8f4a-2d6b9e1c7a50");
+    private static final UUID OTHER_ID = UUID.fromString("0199e2a0-5b1c-7c3e-8f4a-2d6b9e1c7a51");
     private static final String URL = "https://example.org/hook";
-    private static final String VALID = body("name", "hook", "avatar_id", "avatar-cid", "url", URL, "scopes", 3);
+    private static final String VALID = body("name", "hook", "avatar_id", "bafkqaab", "url", URL, "scopes", 3);
 
     private WebhookCreateActionImpl newAction()
     {
@@ -67,13 +73,24 @@ public class WebhookCreateActionTest extends RestActionTest
 
     private WebhookCreateActionImpl newAction(ArgumentCaptor<WebhookCreateData> created)
     {
+        return newAction(created, ArgumentCaptor.forClass(UUID.class));
+    }
+
+    private WebhookCreateActionImpl newAction(ArgumentCaptor<WebhookCreateData> created, ArgumentCaptor<UUID> latest)
+    {
         WebhookCreateActionImpl action = spy(newAction());
-        doReturn(completed(null)).when(action).create(created.capture());
+        doReturn(completed(null)).when(action).create(created.capture(), latest.capture());
         return action;
     }
 
     private void withStoredUser(int count)
     {
+        withStoredUser(null, count);
+    }
+
+    private void withStoredUser(UUID webhookId, int count)
+    {
+        withLatestWebhook(USER_ID, completed(webhookId == null ? null : withWebhook(webhookId, USER_ID, "hook", null, URL, 3, 0)));
         withWebhookCount(USER_ID, completed(count));
         withAccess(USER_ID);
     }
@@ -93,10 +110,24 @@ public class WebhookCreateActionTest extends RestActionTest
     }
 
     @SuppressWarnings("unchecked")
-    private InteractionMappingActionImpl<Void> creation()
+    private InteractionMappingActionImpl<Void> creation(UUID webhookId)
     {
         withJCA();
-        return (InteractionMappingActionImpl<Void>) newAction().create(newData());
+        return (InteractionMappingActionImpl<Void>) newAction().create(newData(), webhookId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private InteractionImpl<Void> handled(UUID webhookId, BufferArray rows) throws Exception
+    {
+        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+        creation(webhookId).handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows);
+        return interaction;
+    }
+
+    private static boolean isMaxWebhooks(Throwable error)
+    {
+        return error instanceof InvalidResponseException
+                && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.MAX_WEBHOOKS.getCode();
     }
 
     private static BufferArray rows(boolean empty)
@@ -106,25 +137,37 @@ public class WebhookCreateActionTest extends RestActionTest
         return rows;
     }
 
+    private static BufferArray rows(UUID webhookId)
+    {
+        BufferObject row = mock(BufferObject.class);
+        when(row.getUUID("webhook_id")).thenReturn(webhookId);
+        BufferArray rows = rows(false);
+        when(rows.getObject(0)).thenReturn(row);
+        return rows;
+    }
+
     static Stream<Arguments> testInvalidInputs()
     {
         String longName = new String(new char[Webhook.MAX_NAME_LENGTH + 1]).replace('\0', 'a');
         String longAvatar = new String(new char[Webhook.ICON_CID_MAX_LENGTH + 1]).replace('\0', 'a');
+        String longUrl = "https://example.org/" + new String(new char[Webhook.MAX_URL_LENGTH]).replace('\0', 'a');
         return Stream.of(
                 arguments("empty_body", body(), "name=BASE_TYPE_REQUIRED,url=BASE_TYPE_REQUIRED,scopes=BASE_TYPE_REQUIRED"),
-                arguments("missing_name", body("avatar_id", "cid", "url", URL, "scopes", 3), "name=BASE_TYPE_REQUIRED"),
-                arguments("name_not_string", body("name", 5, "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_COERCE"),
-                arguments("name_empty", body("name", "", "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_MIN"),
-                arguments("name_too_long", body("name", longName, "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_MAX"),
-                arguments("name_not_nickname", body("name", "hook\u0378", "avatar_id", "cid", "url", URL, "scopes", 3), "name=STRING_TYPE_REGEX"),
+                arguments("missing_name", body("avatar_id", "bafkqaaa", "url", URL, "scopes", 3), "name=BASE_TYPE_REQUIRED"),
+                arguments("name_not_string", body("name", 5, "avatar_id", "bafkqaaa", "url", URL, "scopes", 3), "name=STRING_TYPE_COERCE"),
+                arguments("name_empty", body("name", "", "avatar_id", "bafkqaaa", "url", URL, "scopes", 3), "name=STRING_TYPE_MIN"),
+                arguments("name_too_long", body("name", longName, "avatar_id", "bafkqaaa", "url", URL, "scopes", 3), "name=STRING_TYPE_MAX"),
+                arguments("name_not_nickname", body("name", "hook\u0378", "avatar_id", "bafkqaaa", "url", URL, "scopes", 3), "name=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("name", "hook", "avatar_id", 5, "url", URL, "scopes", 3), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("name", "hook", "avatar_id", longAvatar, "url", URL, "scopes", 3), "avatar_id=STRING_TYPE_MAX"),
-                arguments("missing_url", body("name", "hook", "avatar_id", "cid", "scopes", 3), "url=BASE_TYPE_REQUIRED"),
-                arguments("url_not_string", body("name", "hook", "avatar_id", "cid", "url", 5, "scopes", 3), "url=STRING_TYPE_COERCE"),
-                arguments("url_not_url", body("name", "hook", "avatar_id", "cid", "url", "not-a-url", "scopes", 3), "url=BASE_TYPE_CHOICES"),
-                arguments("url_not_https", body("name", "hook", "avatar_id", "cid", "url", "http://example.org/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
-                arguments("missing_scopes", body("name", "hook", "avatar_id", "cid", "url", URL), "scopes=BASE_TYPE_REQUIRED"),
-                arguments("scopes_not_number", body("name", "hook", "avatar_id", "cid", "url", URL, "scopes", "all"), "scopes=NUMBER_TYPE_COERCE"),
+                arguments("avatar_not_cid", body("name", "hook", "avatar_id", "Qmcid", "url", URL, "scopes", 3), "avatar_id=STRING_TYPE_REGEX"),
+                arguments("missing_url", body("name", "hook", "avatar_id", "bafkqaaa", "scopes", 3), "url=BASE_TYPE_REQUIRED"),
+                arguments("url_not_string", body("name", "hook", "avatar_id", "bafkqaaa", "url", 5, "scopes", 3), "url=STRING_TYPE_COERCE"),
+                arguments("url_too_long", body("name", "hook", "avatar_id", "bafkqaaa", "url", longUrl, "scopes", 3), "url=STRING_TYPE_MAX"),
+                arguments("url_not_url", body("name", "hook", "avatar_id", "bafkqaaa", "url", "not-a-url", "scopes", 3), "url=BASE_TYPE_CHOICES"),
+                arguments("url_not_https", body("name", "hook", "avatar_id", "bafkqaaa", "url", "http://example.org/hook", "scopes", 3), "url=BASE_TYPE_CHOICES"),
+                arguments("missing_scopes", body("name", "hook", "avatar_id", "bafkqaaa", "url", URL), "scopes=BASE_TYPE_REQUIRED"),
+                arguments("scopes_not_number", body("name", "hook", "avatar_id", "bafkqaaa", "url", URL, "scopes", "all"), "scopes=NUMBER_TYPE_COERCE"),
                 arguments("everything_invalid", body("name", 5, "avatar_id", 5, "url", 5, "scopes", "all"), "name=STRING_TYPE_COERCE,avatar_id=STRING_TYPE_COERCE,url=STRING_TYPE_COERCE,scopes=NUMBER_TYPE_COERCE"));
     }
 
@@ -310,14 +353,79 @@ public class WebhookCreateActionTest extends RestActionTest
     {
         withStoredUser(1);
         WebhookCreateActionImpl action = spy(newAction());
-        doReturn(failed(new ErrorResponseException(ErrorResponse.ACCESS_ALREADY_EXISTS))).when(action).create(any(WebhookCreateData.class));
+        doReturn(failed(new ErrorResponseException(ErrorResponse.MAX_WEBHOOKS))).when(action).create(any(WebhookCreateData.class), any());
 
         assertThatRequestTo(action)
                 .withJsonBody(VALID)
                 .hasNoResponse()
                 .hasFailureOfType(ErrorResponseException.class)
-                .hasFailure(ErrorResponse.ACCESS_ALREADY_EXISTS)
+                .hasFailure(ErrorResponse.MAX_WEBHOOKS)
                 .whenHandled();
+    }
+
+    @Test
+    void testLatestBeforeCount()
+    {
+        withStoredUser(1);
+
+        assertThatRequestTo(newAction(ArgumentCaptor.forClass(WebhookCreateData.class)))
+                .withJsonBody(VALID)
+                .hasStatus(StatusReason.CREATED.code)
+                .whenHandled();
+
+        InOrder order = inOrder(api);
+        order.verify(api).retrieveLatestWebhook(USER_ID);
+        order.verify(api).retrieveWebhookCount(USER_ID);
+    }
+
+    @Test
+    void testLatestId()
+    {
+        ArgumentCaptor<WebhookCreateData> created = ArgumentCaptor.forClass(WebhookCreateData.class);
+        ArgumentCaptor<UUID> latest = ArgumentCaptor.forClass(UUID.class);
+        withStoredUser(LATEST_ID, 1);
+
+        assertThatRequestTo(newAction(created, latest))
+                .withJsonBody(VALID)
+                .hasStatus(StatusReason.CREATED.code)
+                .whenHandled();
+
+        assertThat(latest.getValue()).isEqualTo(LATEST_ID);
+        assertThat(created.getValue().getUniqueId()).isNotEqualTo(LATEST_ID);
+    }
+
+    @Test
+    void testFutureLatestId()
+    {
+        UUID webhookId = UUIDv7.randomUUID(System.currentTimeMillis() + 3_600_000).toUUID();
+        ArgumentCaptor<WebhookCreateData> created = ArgumentCaptor.forClass(WebhookCreateData.class);
+        withStoredUser(webhookId, 1);
+
+        assertThatRequestTo(newAction(created))
+                .withJsonBody(VALID)
+                .hasStatus(StatusReason.CREATED.code)
+                .whenHandled();
+
+        assertThat(created.getValue().getUniqueId().getMostSignificantBits() >>> 16)
+                .isGreaterThan(webhookId.getMostSignificantBits() >>> 16);
+    }
+
+    @Test
+    void testLatestFailure()
+    {
+        ArgumentCaptor<WebhookCreateData> created = ArgumentCaptor.forClass(WebhookCreateData.class);
+        withLatestWebhook(USER_ID, failed(new ErrorResponseException(ErrorResponse.UNKNOWN_USER)));
+        withAccess(USER_ID);
+
+        assertThatRequestTo(newAction(created))
+                .withJsonBody(VALID)
+                .hasNoResponse()
+                .hasFailureOfType(ErrorResponseException.class)
+                .hasFailure(ErrorResponse.UNKNOWN_USER)
+                .whenHandled();
+
+        verify(api, never()).retrieveWebhookCount(any());
+        assertThat(created.getAllValues()).isEmpty();
     }
 
     @Test
@@ -353,51 +461,75 @@ public class WebhookCreateActionTest extends RestActionTest
     void testNullArguments()
     {
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().create(null));
+                .isThrownBy(() -> newAction().create(null, null));
     }
 
     @Test
     void testCreateStatement()
     {
-        InteractionMappingActionImpl<Void> creation = creation();
+        InteractionMappingActionImpl<Void> creation = creation(null);
 
-        assertThat(creation.getContent()).contains("INSERT INTO users.webhooks");
+        assertThat(creation.getContent()).contains("INSERT INTO users.webhooks", "IF current_data IS NULL");
+        assertThatStatementIsBound(creation);
+    }
+
+    @Test
+    void testCreateLatestStatement()
+    {
+        InteractionMappingActionImpl<Void> creation = creation(LATEST_ID);
+
+        assertThat(creation.getContent()).contains("INSERT INTO users.webhooks", ":current_id");
         assertThatStatementIsBound(creation);
     }
 
     @Test
     void testCreateParams()
     {
-        assertThat(creation().getParams())
+        assertThat(creation(null).getParams())
                 .containsEntry("owner_id", USER_ID)
                 .containsEntry("name", "hook")
-                .containsEntry("avatar_id", "avatar-cid")
+                .containsEntry("avatar_id", "bafkqaab")
                 .containsEntry("endpoint", URL)
                 .containsEntry("scopes", 3L)
-                .containsEntry("flags", 0L);
+                .containsEntry("flags", 0L)
+                .doesNotContainKey("current_id");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
+    void testCreateLatestParams()
+    {
+        assertThat(creation(LATEST_ID).getParams())
+                .containsEntry("owner_id", USER_ID)
+                .containsEntry("current_id", LATEST_ID);
+    }
+
+    @Test
     void testCreateApplied() throws Exception
     {
-        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
-
-        creation().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(true));
-
-        verify(interaction).onSuccess(null);
+        verify(handled(null, rows(true))).onSuccess(null);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testCreateExisting() throws Exception
     {
-        InteractionImpl<Void> interaction = mock(InteractionImpl.class);
+        verify(handled(null, rows(OTHER_ID))).onFailure(argThat(WebhookCreateActionTest::isMaxWebhooks));
+    }
 
-        creation().handleSuccess(mock(InteractionCallbackResponse.class), interaction, rows(false));
+    @Test
+    void testCreateLatestApplied() throws Exception
+    {
+        verify(handled(LATEST_ID, rows(LATEST_ID))).onSuccess(null);
+    }
 
-        verify(interaction).onFailure(argThat(error ->
-                error instanceof InvalidResponseException
-                        && ((InvalidResponseException) error).getErrorCode() == ErrorResponse.ACCESS_ALREADY_EXISTS.getCode()));
+    @Test
+    void testCreateLatestMissing() throws Exception
+    {
+        verify(handled(LATEST_ID, rows(true))).onFailure(argThat(WebhookCreateActionTest::isMaxWebhooks));
+    }
+
+    @Test
+    void testCreateRace() throws Exception
+    {
+        verify(handled(LATEST_ID, rows(OTHER_ID))).onFailure(argThat(WebhookCreateActionTest::isMaxWebhooks));
     }
 }
