@@ -162,6 +162,8 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
         else if (raw.getString("avatar_id").length() > Webhook.ICON_CID_MAX_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"avatar_id\" may not be longer than %d characters.", Webhook.ICON_CID_MAX_LENGTH));
+        else if (!raw.getString("avatar_id").matches("(b[a-z2-7]+)?"))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
     
     private void handleUrl(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -189,6 +191,9 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
             return;
         else if (!raw.isType("url", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "Value \"url\" is not string.");
+        else if (url.length() > Webhook.MAX_URL_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"url\" may not be longer than %d characters.", Webhook.MAX_URL_LENGTH));
         else if (!OriginUtil.isURL(url, false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not url.");
         else if (!OriginUtil.isURL(url, true))

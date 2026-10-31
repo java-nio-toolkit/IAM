@@ -129,6 +129,7 @@ public class SelfUserCreateActionTest extends RestActionTest
                 arguments("username_not_username", body("username", "a b"), "username=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("username", "a", "avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("username", "a", "avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
+                arguments("avatar_not_cid", body("username", "a", "avatar_id", "Qmcid"), "avatar_id=STRING_TYPE_REGEX"),
                 arguments("flags_not_number", body("username", "a", "flags", "x"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", body("username", "a", "flags", -1), "flags=NUMBER_TYPE_MIN"),
                 arguments("flags_negative_long", body("username", "a", "flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
@@ -143,7 +144,7 @@ public class SelfUserCreateActionTest extends RestActionTest
         return Stream.of(
                 body("username", "a"),
                 body("username", StringUtils.repeat('a', User.MAX_NAME_LENGTH)),
-                body("username", "a", "avatar_id", StringUtils.repeat('a', User.AVATAR_CID_MAX_LENGTH)),
+                body("username", "a", "avatar_id", "b" + StringUtils.repeat('a', User.AVATAR_CID_MAX_LENGTH - 1)),
                 body("username", "a", "avatar_id", ""),
                 body("username", "a", "flags", 0),
                 body("username", "a", "session", session("flags", 0)),

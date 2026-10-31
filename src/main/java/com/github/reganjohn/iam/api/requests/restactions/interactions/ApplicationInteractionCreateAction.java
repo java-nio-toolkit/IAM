@@ -25,4 +25,5 @@ public interface ApplicationInteractionCreateAction extends ApplicationAction
     int MAX_ACCESS_LENGTH = 1 << 16;
     int MIN_NONCE_LENGTH = 16;
     int MAX_NONCE_LENGTH = 256;
+    int MAX_LABEL_LENGTH = 32;
 }

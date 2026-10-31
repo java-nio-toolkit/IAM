@@ -34,6 +34,7 @@ import com.github.adamorgan.jnt.api.utils.MiscUtil;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.JacksonResponseBody;
+import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.api.utils.UUIDv7;
 import com.github.adamorgan.jnt.internal.handle.classic.ClassicResponseReceiveHandlerImpl;
 import com.github.adamorgan.jnt.internal.requests.restaction.AccessEntryActionImpl;
@@ -185,6 +186,11 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             throw createParsingException(PermissionUtil.getNames());
         else if (raw.hasKey("label") && !raw.isType("label", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"label\" value is not string.");
+        else if (raw.hasKey("label") && raw.getString("label").length() > MAX_LABEL_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"label\" may not be longer than %d characters.", MAX_LABEL_LENGTH));
+        else if (raw.hasKey("label") && !UnicodeSanitizer.Format.NICKNAME.test(raw.getString("label")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -233,7 +239,7 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
         }
         finally
         {
-            handleStart(context, request, raw, errors);
+            onStart(context, request, raw, errors);
         }
     }
 
@@ -271,9 +277,9 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             throw new DataObjectParsingException(MODEL_TYPE_CONVERT, "Expected an object/dictionary.");
     }
 
-    private void handleStart(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
-                             @Nonnull DataObject raw,
-                             @Nonnull List<InvalidResponseException.SchemaError> errors)
+    private void onStart(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
+                         @Nonnull DataObject raw,
+                         @Nonnull List<InvalidResponseException.SchemaError> errors)
     {
         try (ThreadLocalReason.Closable closable = ThreadLocalReason.closable(context))
         {
@@ -357,6 +363,9 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             throw new DataObjectParsingException(BASE_TYPE_REQUIRED, "This field is required");
         else if (!raw.isType("uri", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"uri\" value is not string.");
+        else if (raw.getString("uri").length() > Application.MAX_URL_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"uri\" may not be longer than %d characters.", Application.MAX_URL_LENGTH));
         else if (!isRedirectUri(raw.getString("uri")))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"uri\" is not url.");
         else if (!raw.hasKey("nonce"))
@@ -367,6 +376,8 @@ public class ApplicationInteractionCreateActionImpl extends AbstractApplicationA
             throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"nonce\" value may not be empty.");
         else if (raw.getString("nonce").length() < MIN_NONCE_LENGTH || raw.getString("nonce").length() > MAX_NONCE_LENGTH)
             throw new DataObjectParsingException(BASE_TYPE_BAD_LENGTH, Helpers.format("The \"nonce\" value must be between %d and %d characters long.", MIN_NONCE_LENGTH, MAX_NONCE_LENGTH));
+        else if (!UnicodeSanitizer.Format.PASSWORD.test(raw.getString("nonce")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
         else if (raw.hasKey("hash_method") && !raw.isType("hash_method", DataType.STRING))
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"hash_method\" value is not string.");
         else if (raw.hasKey("hash_method") && !ApplicationUtil.MODES.containsKey(raw.getString("hash_method")))

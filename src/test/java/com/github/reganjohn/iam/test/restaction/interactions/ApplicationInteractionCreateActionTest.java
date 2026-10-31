@@ -233,6 +233,8 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("access_unknown_action", grant(token(token -> token.put("access", DataArray.empty().add(DataObject.empty().put("type", "account").put("actions", DataArray.empty().add("write"))))))),
                 arguments("access_action_not_string", grant(token(token -> token.put("access", DataArray.empty().add(DataObject.empty().put("type", "account").put("actions", DataArray.empty().add(5))))))),
                 arguments("label_not_string", grant(token(token -> token.put("label", 5)))),
+                arguments("label_too_long", grant(token(token -> token.put("label", "a".repeat(ApplicationInteractionCreateActionImpl.MAX_LABEL_LENGTH + 1))))),
+                arguments("label_not_nickname", grant(token(token -> token.put("label", "label\u0378")))),
                 arguments("missing_client", grant(grant -> grant.remove("client"))),
                 arguments("client_string", grant(grant -> grant.put("client", "instance"))),
                 arguments("client_without_key", grant(grant -> grant.getObject("client").remove("key"))),
@@ -255,6 +257,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("finish_method_unknown", grant(finish(finish -> finish.put("method", "poll")))),
                 arguments("finish_uri_missing", grant(finish(finish -> finish.remove("uri")))),
                 arguments("finish_uri_not_string", grant(finish(finish -> finish.put("uri", 5)))),
+                arguments("finish_uri_too_long", grant(finish(finish -> finish.put("uri", "https://example.org/" + "a".repeat(Application.MAX_URL_LENGTH))))),
                 arguments("finish_uri_not_url", grant(finish(finish -> finish.put("uri", "not-a-url")))),
                 arguments("finish_uri_http", grant(finish(finish -> finish.put("uri", "http://example.org/callback")))),
                 arguments("finish_uri_http_localhost_suffix", grant(finish(finish -> finish.put("uri", "http://localhost.example.org/callback")))),
@@ -266,6 +269,7 @@ public class ApplicationInteractionCreateActionTest extends RestActionTest
                 arguments("finish_nonce_one_below_minimum", grant(finish(finish -> finish.put("nonce", "a".repeat(15))))),
                 arguments("finish_nonce_one_above_maximum", grant(finish(finish -> finish.put("nonce", "a".repeat(257))))),
                 arguments("finish_nonce_not_string", grant(finish(finish -> finish.put("nonce", 5)))),
+                arguments("finish_nonce_not_password", grant(finish(finish -> finish.put("nonce", "a".repeat(15) + "\n")))),
                 arguments("finish_hash_method_not_string", grant(finish(finish -> finish.put("hash_method", 5)))),
                 arguments("finish_hash_method_unknown", grant(finish(finish -> finish.put("hash_method", "md5")))));
     }

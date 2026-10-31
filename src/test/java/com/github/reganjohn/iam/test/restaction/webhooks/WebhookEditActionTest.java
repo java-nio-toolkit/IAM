@@ -66,7 +66,7 @@ public class WebhookEditActionTest extends RestActionTest
 
     private Webhook withStoredWebhook()
     {
-        Webhook webhook = withWebhook(WEBHOOK_ID, USER_ID, "hook", "avatar-cid", URL, 3, 0);
+        Webhook webhook = withWebhook(WEBHOOK_ID, USER_ID, "hook", "bafkqaab", URL, 3, 0);
         InteractionCallbackAction<Webhook> retrieval = completed(webhook);
         when(api.retrieveWebhookById(USER_ID, WEBHOOK_ID)).thenReturn(retrieval);
         withAccess(USER_ID);
@@ -101,6 +101,7 @@ public class WebhookEditActionTest extends RestActionTest
     {
         String longName = new String(new char[Webhook.MAX_NAME_LENGTH + 1]).replace('\0', 'a');
         String longAvatar = new String(new char[Webhook.ICON_CID_MAX_LENGTH + 1]).replace('\0', 'a');
+        String longUrl = "https://example.org/" + new String(new char[Webhook.MAX_URL_LENGTH]).replace('\0', 'a');
         return Stream.of(
                 arguments("name_not_string", body("name", 5), "name=STRING_TYPE_COERCE"),
                 arguments("name_empty", body("name", ""), "name=STRING_TYPE_MIN"),
@@ -108,7 +109,9 @@ public class WebhookEditActionTest extends RestActionTest
                 arguments("name_not_nickname", body("name", "hook\u0378"), "name=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("avatar_id", longAvatar), "avatar_id=STRING_TYPE_MAX"),
+                arguments("avatar_not_cid", body("avatar_id", "Qmcid"), "avatar_id=STRING_TYPE_REGEX"),
                 arguments("url_not_string", body("url", 5), "url=STRING_TYPE_COERCE"),
+                arguments("url_too_long", body("url", longUrl), "url=STRING_TYPE_MAX"),
                 arguments("url_not_url", body("url", "not-a-url"), "url=BASE_TYPE_CHOICES"),
                 arguments("url_not_https", body("url", "http://example.org/hook"), "url=BASE_TYPE_CHOICES"),
                 arguments("scopes_not_number", body("scopes", "all"), "scopes=NUMBER_TYPE_COERCE"),
@@ -199,10 +202,10 @@ public class WebhookEditActionTest extends RestActionTest
             "{}",
             "{\"unknown\":true}",
             "{\"name\":\"renamed\"}",
-            "{\"avatar_id\":\"another-cid\"}",
+            "{\"avatar_id\":\"bafkqaac\"}",
             "{\"url\":\"https://example.net/hook\"}",
             "{\"scopes\":0}",
-            "{\"name\":\"renamed\",\"avatar_id\":\"another-cid\",\"url\":\"https://example.net/hook\",\"scopes\":7}"})
+            "{\"name\":\"renamed\",\"avatar_id\":\"bafkqaac\",\"url\":\"https://example.net/hook\",\"scopes\":7}"})
     @ParameterizedTest
     void testValidInputs(String json)
     {
@@ -336,13 +339,13 @@ public class WebhookEditActionTest extends RestActionTest
     @Test
     void testModifyKeepsStoredValues()
     {
-        InteractionMappingActionImpl<Void> modification = modification(withWebhook(WEBHOOK_ID, USER_ID, "hook", "avatar-cid", URL, 3, 4), DataObject.empty());
+        InteractionMappingActionImpl<Void> modification = modification(withWebhook(WEBHOOK_ID, USER_ID, "hook", "bafkqaab", URL, 3, 4), DataObject.empty());
 
         assertThat(modification.getParams())
                 .containsEntry("owner_id", USER_ID)
                 .containsEntry("webhook_id", WEBHOOK_ID)
                 .containsEntry("name", "hook")
-                .containsEntry("avatar_id", "avatar-cid")
+                .containsEntry("avatar_id", "bafkqaab")
                 .containsEntry("endpoint", URL)
                 .containsEntry("scopes", 3L)
                 .containsEntry("flags", 4L)
@@ -354,14 +357,14 @@ public class WebhookEditActionTest extends RestActionTest
     {
         DataObject body = DataObject.empty()
                 .put("name", "renamed")
-                .put("avatar_id", "another-cid")
+                .put("avatar_id", "bafkqaac")
                 .put("url", "https://example.net/hook")
                 .put("scopes", 7);
-        InteractionMappingActionImpl<Void> modification = modification(withWebhook(WEBHOOK_ID, USER_ID, "hook", "avatar-cid", URL, 3, 4), body);
+        InteractionMappingActionImpl<Void> modification = modification(withWebhook(WEBHOOK_ID, USER_ID, "hook", "bafkqaab", URL, 3, 4), body);
 
         assertThat(modification.getParams())
                 .containsEntry("name", "renamed")
-                .containsEntry("avatar_id", "another-cid")
+                .containsEntry("avatar_id", "bafkqaac")
                 .containsEntry("endpoint", "https://example.net/hook")
                 .containsEntry("scopes", 7L)
                 .containsEntry("flags", 4L);

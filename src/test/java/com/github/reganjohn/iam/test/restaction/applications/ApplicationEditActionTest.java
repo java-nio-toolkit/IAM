@@ -77,7 +77,7 @@ public class ApplicationEditActionTest extends RestActionTest
 
     private Application withStoredApplication(long flags)
     {
-        Application application = withApplication(APPLICATION_ID, USER_ID, "app", "description", "icon-cid", ORIGIN, flags, CALLBACK);
+        Application application = withApplication(APPLICATION_ID, USER_ID, "app", "description", "bafkqaab", ORIGIN, flags, CALLBACK);
         withApplication(USER_ID, APPLICATION_ID, completed(application));
         withAccess(USER_ID);
         return application;
@@ -90,7 +90,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 .setUniqueId(APPLICATION_ID)
                 .setName("app")
                 .setDescription("description")
-                .setIconId("icon-cid")
+                .setIconId("bafkqaab")
                 .setOrigin(ORIGIN)
                 .setFlags(4)
                 .setRedirectUris(Arrays.asList(CALLBACK))
@@ -102,7 +102,7 @@ public class ApplicationEditActionTest extends RestActionTest
     private InteractionMappingActionImpl<Void> modification()
     {
         withJCA();
-        return (InteractionMappingActionImpl<Void>) newAction().modify(withApplication(APPLICATION_ID, USER_ID, "app", "description", "icon-cid", ORIGIN, 2, CALLBACK), newData());
+        return (InteractionMappingActionImpl<Void>) newAction().modify(withApplication(APPLICATION_ID, USER_ID, "app", "description", "bafkqaab", ORIGIN, 2, CALLBACK), newData());
     }
 
     private static BufferArray rows(boolean empty, boolean applied)
@@ -137,8 +137,10 @@ public class ApplicationEditActionTest extends RestActionTest
                 arguments("name_not_nickname", body("name", "app\u0378"), "name=STRING_TYPE_REGEX"),
                 arguments("description_not_string", body("description", 5), "description=STRING_TYPE_COERCE"),
                 arguments("description_too_long", body("description", repeat(Application.MAX_DESCRIPTION_LENGTH + 1)), "description=STRING_TYPE_MAX"),
+                arguments("description_not_password", body("description", "a\nb"), "description=STRING_TYPE_REGEX"),
                 arguments("icon_not_string", body("icon_id", 5), "icon_id=STRING_TYPE_COERCE"),
                 arguments("icon_too_long", body("icon_id", repeat(Application.ICON_CID_MAX_LENGTH + 1)), "icon_id=STRING_TYPE_MAX"),
+                arguments("icon_not_cid", body("icon_id", "Qmcid"), "icon_id=STRING_TYPE_REGEX"),
                 arguments("flags_not_number", body("flags", "all"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", body("flags", -1), "flags=NUMBER_TYPE_MIN"),
                 arguments("flags_negative_long", body("flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
@@ -241,13 +243,13 @@ public class ApplicationEditActionTest extends RestActionTest
             "{\"name\":\"renamed\"}",
             "{\"description\":\"another\"}",
             "{\"description\":null}",
-            "{\"icon_id\":\"another-cid\"}",
+            "{\"icon_id\":\"bafkqaac\"}",
             "{\"flags\":0}",
             "{\"origin\":5}",
             "{\"origin\":\"https://other.example\"}",
             "{\"redirect_uris\":[\"https://example.net/callback\"]}",
             "{\"redirect_uris\":[\"https://example.net/callback\",\"https://example.org/other\"]}",
-            "{\"name\":\"renamed\",\"description\":\"another\",\"icon_id\":\"another-cid\",\"flags\":8,\"redirect_uris\":[\"https://example.net/callback\"]}"})
+            "{\"name\":\"renamed\",\"description\":\"another\",\"icon_id\":\"bafkqaac\",\"flags\":8,\"redirect_uris\":[\"https://example.net/callback\"]}"})
     @ParameterizedTest
     void testValidInputs(String json)
     {
@@ -310,7 +312,7 @@ public class ApplicationEditActionTest extends RestActionTest
 
         assertThatRequestTo(newAction(modified))
                 .withRouteParams(APPLICATION_ID.toString())
-                .withJsonBody(body("name", "renamed", "description", "another", "icon_id", "another-cid", "flags", 8,
+                .withJsonBody(body("name", "renamed", "description", "another", "icon_id", "bafkqaac", "flags", 8,
                         "redirect_uris", uris("https://example.net/callback", "https://example.org/other")))
                 .hasStatus(StatusReason.NO_CONTENT.code)
                 .whenHandled();
@@ -422,7 +424,7 @@ public class ApplicationEditActionTest extends RestActionTest
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> newAction().modify(null, newData()));
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> newAction().modify(withApplication(APPLICATION_ID, USER_ID, "app", "description", "icon-cid", ORIGIN, 2, CALLBACK), null));
+                .isThrownBy(() -> newAction().modify(withApplication(APPLICATION_ID, USER_ID, "app", "description", "bafkqaab", ORIGIN, 2, CALLBACK), null));
     }
 
     @Test
@@ -443,7 +445,7 @@ public class ApplicationEditActionTest extends RestActionTest
                 .containsEntry("application_id", APPLICATION_ID)
                 .containsEntry("name", "app")
                 .containsEntry("description", "description")
-                .containsEntry("icon_id", "icon-cid")
+                .containsEntry("icon_id", "bafkqaab")
                 .containsEntry("flags", 4L)
                 .containsKey("redirect_uris");
     }

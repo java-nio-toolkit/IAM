@@ -100,7 +100,7 @@ public class ApplicationCreateActionTest extends RestActionTest
                 .setUniqueId(UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c"))
                 .setName("app")
                 .setDescription("description")
-                .setIconId("icon-cid")
+                .setIconId("bafkqaab")
                 .setOrigin(ORIGIN)
                 .setFlags(4)
                 .setRedirectUris(Collections.singletonList(CALLBACK))
@@ -148,10 +148,13 @@ public class ApplicationCreateActionTest extends RestActionTest
                 arguments("origin_empty", body("name", "app", "origin", "", "redirect_uris", uris(CALLBACK)), "origin=STRING_TYPE_MIN"),
                 arguments("origin_not_url", body("name", "app", "origin", "not-a-url", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
                 arguments("origin_not_https", body("name", "app", "origin", "http://example.org", "redirect_uris", uris(CALLBACK)), "origin=BASE_TYPE_CHOICES"),
+                arguments("origin_too_long", body("name", "app", "origin", "https://example.org/" + repeat(Application.MAX_URL_LENGTH), "redirect_uris", uris(CALLBACK)), "origin=STRING_TYPE_MAX"),
                 arguments("description_not_string", valid("description", 5), "description=STRING_TYPE_COERCE"),
                 arguments("description_too_long", valid("description", repeat(Application.MAX_DESCRIPTION_LENGTH + 1)), "description=STRING_TYPE_MAX"),
+                arguments("description_not_password", valid("description", "a\nb"), "description=STRING_TYPE_REGEX"),
                 arguments("icon_not_string", valid("icon_id", 5), "icon_id=STRING_TYPE_COERCE"),
                 arguments("icon_too_long", valid("icon_id", repeat(Application.ICON_CID_MAX_LENGTH + 1)), "icon_id=STRING_TYPE_MAX"),
+                arguments("icon_not_cid", valid("icon_id", "Qmcid"), "icon_id=STRING_TYPE_REGEX"),
                 arguments("flags_not_number", valid("flags", "all"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", valid("flags", -1), "flags=NUMBER_TYPE_MIN"),
                 arguments("flags_negative_long", valid("flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
@@ -243,7 +246,7 @@ public class ApplicationCreateActionTest extends RestActionTest
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"redirect_uris\":[\"https://example.org/1\",\"https://example.org/2\",\"https://example.org/3\",\"https://example.org/4\",\"https://example.org/5\"]}",
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"redirect_uris\":[\"https://example.org/callback\"],\"unknown\":true}",
             "{\"name\":\"app\",\"origin\":\"https://example.org\",\"redirect_uris\":[\"http://localhost:8080/callback\",\"http://127.0.0.1/callback\",\"http://[::1]:8080/callback\"]}",
-            "{\"name\":\"app\",\"origin\":\"https://example.org\",\"description\":\"description\",\"icon_id\":\"icon-cid\",\"flags\":4,\"redirect_uris\":[\"https://example.org/callback\"]}"})
+            "{\"name\":\"app\",\"origin\":\"https://example.org\",\"description\":\"description\",\"icon_id\":\"bafkqaab\",\"flags\":4,\"redirect_uris\":[\"https://example.org/callback\"]}"})
     @ParameterizedTest
     void testValidInputs(String json)
     {

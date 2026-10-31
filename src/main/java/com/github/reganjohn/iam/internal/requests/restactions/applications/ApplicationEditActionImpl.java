@@ -163,6 +163,8 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         else if (body.getString("description").length() > Application.MAX_DESCRIPTION_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"description\" may not be longer than %d characters.", Application.MAX_DESCRIPTION_LENGTH));
+        else if (!UnicodeSanitizer.Format.PASSWORD.test(body.getString("description")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleIconId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -192,6 +194,8 @@ public class ApplicationEditActionImpl extends AbstractApplicationActionImpl imp
         else if (body.getString("icon_id").length() > Application.ICON_CID_MAX_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"icon_id\" may not be longer than %d characters.", Application.ICON_CID_MAX_LENGTH));
+        else if (!body.getString("icon_id").matches("(b[a-z2-7]+)?"))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

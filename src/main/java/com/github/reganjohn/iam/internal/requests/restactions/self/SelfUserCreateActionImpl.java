@@ -143,6 +143,8 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         else if (body.getString("avatar_id").length() > User.AVATAR_CID_MAX_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"avatar_id\" may not be longer than %d characters.", User.AVATAR_CID_MAX_LENGTH));
+        else if (!body.getString("avatar_id").matches("(b[a-z2-7]+)?"))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

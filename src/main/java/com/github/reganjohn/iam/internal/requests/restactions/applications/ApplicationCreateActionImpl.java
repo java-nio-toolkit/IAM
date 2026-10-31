@@ -132,6 +132,9 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
             throw new DataObjectParsingException(STRING_TYPE_COERCE, "The \"origin\" value is not string.");
         else if (body.isEmpty("origin"))
             throw new DataObjectParsingException(STRING_TYPE_MIN, "The \"origin\" value may not be empty.");
+        else if (body.getString("origin").length() > Application.MAX_URL_LENGTH)
+            throw new DataObjectParsingException(STRING_TYPE_MAX,
+                    Helpers.format("The \"origin\" may not be longer than %d characters.", Application.MAX_URL_LENGTH));
         else if (!OriginUtil.isURL(body.getString("origin"), false))
             throw new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"origin\" is not url.");
         else if (!OriginUtil.isURL(body.getString("origin"), true))
@@ -165,6 +168,8 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         else if (body.getString("description").length() > Application.MAX_DESCRIPTION_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"description\" may not be longer than %d characters.", Application.MAX_DESCRIPTION_LENGTH));
+        else if (!UnicodeSanitizer.Format.PASSWORD.test(body.getString("description")))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleIconId(@Nonnull ChannelHandlerContext context, @Nonnull Request request,
@@ -194,6 +199,8 @@ public class ApplicationCreateActionImpl extends AbstractApplicationActionImpl i
         else if (body.getString("icon_id").length() > Application.ICON_CID_MAX_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"icon_id\" may not be longer than %d characters.", Application.ICON_CID_MAX_LENGTH));
+        else if (!body.getString("icon_id").matches("(b[a-z2-7]+)?"))
+            throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 
     private void handleFlags(@Nonnull ChannelHandlerContext context, @Nonnull Request request,

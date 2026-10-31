@@ -37,6 +37,8 @@ public interface Webhook extends IUnique, SerializableData
     int MAX_NAME_LENGTH = 80;
     /** The maximum length for any Icon CID set on an hook ({@value}) */
     int ICON_CID_MAX_LENGTH = 128;
+    /** The maximum length for any URL set on an hook ({@value}) */
+    int MAX_URL_LENGTH = 1 << 11;
 
     @Nonnull
     IAM getIAM();

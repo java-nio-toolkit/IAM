@@ -83,6 +83,7 @@ public class SelfUserEditActionTest extends RestActionTest
                 arguments("username_not_username", body("username", "a b"), "username=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
+                arguments("avatar_not_cid", body("avatar_id", "Qmcid"), "avatar_id=STRING_TYPE_REGEX"),
                 arguments("flags_not_number", body("flags", "x"), "flags=NUMBER_TYPE_COERCE"),
                 arguments("flags_negative", body("flags", -1), "flags=NUMBER_TYPE_MIN"),
                 arguments("flags_negative_long", body("flags", -4294967295L), "flags=NUMBER_TYPE_MIN"),
@@ -96,9 +97,9 @@ public class SelfUserEditActionTest extends RestActionTest
                 body("username", "a"),
                 body("username", StringUtils.repeat('a', User.MAX_NAME_LENGTH)),
                 body("avatar_id", ""),
-                body("avatar_id", StringUtils.repeat('a', User.AVATAR_CID_MAX_LENGTH)),
+                body("avatar_id", "b" + StringUtils.repeat('a', User.AVATAR_CID_MAX_LENGTH - 1)),
                 body("flags", 0),
-                body("username", "alice", "avatar_id", "cid", "flags", 1),
+                body("username", "alice", "avatar_id", "bafkqaaa", "flags", 1),
                 body("session", session("flags", -1)),
                 body("unknown", "field"));
     }
@@ -160,7 +161,7 @@ public class SelfUserEditActionTest extends RestActionTest
     void testValidInputs(String json)
     {
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "avatar-cid", 0)));
+        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "bafkqaab", 0)));
 
         assertThatRequestTo(newAction(ArgumentCaptor.forClass(UserEditData.class)))
                 .withJsonBody(json)
@@ -188,7 +189,7 @@ public class SelfUserEditActionTest extends RestActionTest
     {
         ArgumentCaptor<UserEditData> edited = ArgumentCaptor.forClass(UserEditData.class);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "avatar-cid", 6)));
+        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "bafkqaab", 6)));
 
         assertThatRequestTo(newAction(edited))
                 .withJsonBody(body())
@@ -206,7 +207,7 @@ public class SelfUserEditActionTest extends RestActionTest
     {
         ArgumentCaptor<UserEditData> edited = ArgumentCaptor.forClass(UserEditData.class);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "avatar-cid", 6)));
+        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "bafkqaab", 6)));
 
         assertThatRequestTo(newAction(edited))
                 .withJsonBody(body("username", "bob"))
@@ -240,7 +241,7 @@ public class SelfUserEditActionTest extends RestActionTest
     {
         ArgumentCaptor<UserEditData> edited = ArgumentCaptor.forClass(UserEditData.class);
         withAccess(USER_ID);
-        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "avatar-cid", 0)));
+        withRetrieval(USER_ID, completed(withUser(USER_ID, "alice", "bafkqaab", 0)));
 
         assertThatRequestTo(newAction(edited))
                 .withJsonBody(body("flags", 2))
@@ -401,7 +402,7 @@ public class SelfUserEditActionTest extends RestActionTest
     void testModifyStatement()
     {
         withJCA();
-        UserEditData data = new UserEditBuilder().setUserId(USER_ID).setName("alice").setAvatarId("avatar-cid").setUserFlags(0).build();
+        UserEditData data = new UserEditBuilder().setUserId(USER_ID).setName("alice").setAvatarId("bafkqaab").setUserFlags(0).build();
         InteractionMappingActionImpl<Void> modification = (InteractionMappingActionImpl<Void>) newAction().modify(mock(User.class), data);
 
         assertThat(modification.getContent()).contains("username = :username", "avatar_id = :avatar_id", "flags = :flags", "user_id = :user_id");

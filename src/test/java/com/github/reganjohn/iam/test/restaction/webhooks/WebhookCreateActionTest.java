@@ -84,7 +84,7 @@ public class WebhookCreateActionTest extends RestActionTest
                 .setUniqueId(UUID.fromString("04d3c48c-1255-7041-8dc9-765df2ce977c"))
                 .setName("hook")
                 .setOwnerId(USER_ID)
-                .setAvatarId("avatar-cid")
+                .setAvatarId("bafkqaab")
                 .setUrl(URL)
                 .setTimeUpdated(OffsetDateTime.parse("2026-01-01T00:00:00Z"))
                 .setFlags(0)
@@ -181,7 +181,7 @@ public class WebhookCreateActionTest extends RestActionTest
         withStoredUser(1);
 
         assertThatRequestTo(newAction(created))
-                .withJsonBody(body("name", "hook", "avatar_id", "cid", "url", url, "scopes", 3))
+                .withJsonBody(body("name", "hook", "avatar_id", "bafkqaaa", "url", url, "scopes", 3))
                 .hasFailureOfType(ErrorResponseException.class)
                 .hasFormErrors("url", "BASE_TYPE_CHOICES")
                 .hasNoResponse()
@@ -192,9 +192,9 @@ public class WebhookCreateActionTest extends RestActionTest
 
     @ValueSource(strings = {
             "{\"name\":\"hook\",\"avatar_id\":\"\",\"url\":\"https://example.org/hook\",\"scopes\":0}",
-            "{\"name\":\"h\",\"avatar_id\":\"c\",\"url\":\"https://example.org\",\"scopes\":1}",
-            "{\"name\":\"hook\",\"avatar_id\":\"cid\",\"url\":\"https://example.org/hook\",\"scopes\":9223372036854775807}",
-            "{\"name\":\"hook\",\"avatar_id\":\"cid\",\"url\":\"https://example.org/hook\",\"scopes\":3,\"unknown\":true}"})
+            "{\"name\":\"h\",\"avatar_id\":\"bafkqaab\",\"url\":\"https://example.org\",\"scopes\":1}",
+            "{\"name\":\"hook\",\"avatar_id\":\"bafkqaab\",\"url\":\"https://example.org/hook\",\"scopes\":9223372036854775807}",
+            "{\"name\":\"hook\",\"avatar_id\":\"bafkqaab\",\"url\":\"https://example.org/hook\",\"scopes\":3,\"unknown\":true}"})
     @ParameterizedTest
     void testValidInputs(String json)
     {
@@ -239,14 +239,14 @@ public class WebhookCreateActionTest extends RestActionTest
         assertThat(webhook.getOwnerId()).isEqualTo(USER_ID);
         assertThat(webhook.getUniqueId()).isNotNull();
         assertThat(webhook.getName()).isEqualTo("hook");
-        assertThat(webhook.getAvatarId()).isEqualTo("avatar-cid");
+        assertThat(webhook.getAvatarId()).isEqualTo("bafkqaab");
         assertThat(webhook.getUrl()).isEqualTo(URL);
         assertThat(webhook.getScopesRaw()).isEqualTo(3);
         assertThat(webhook.getFlagsRaw()).isZero();
         assertThat(webhook.getTimeUpdated()).isNotNull();
     }
 
-    @ValueSource(longs = {0, 1, 4, 1L << 34, (1L << 34) | 4, -1})
+    @ValueSource(longs = {0, 1, 4, 1L << 9, (1L << 9) | 4, -1})
     @ParameterizedTest
     void testSystemFlagsAreIgnored(long flags)
     {
@@ -254,7 +254,7 @@ public class WebhookCreateActionTest extends RestActionTest
         withStoredUser(1);
 
         assertThatRequestTo(newAction(created))
-                .withJsonBody(body("name", "hook", "avatar_id", "cid", "url", URL, "scopes", 3, "flags", flags))
+                .withJsonBody(body("name", "hook", "avatar_id", "bafkqaaa", "url", URL, "scopes", 3, "flags", flags))
                 .hasStatus(StatusReason.CREATED.code)
                 .whenHandled();
 
