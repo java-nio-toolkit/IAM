@@ -239,7 +239,7 @@ public class WebhookEditActionTest extends RestActionTest
         verify(action).modify(webhook, modified.getValue());
     }
 
-    @ValueSource(strings = {"https://localhost/hook", "https://127.0.0.1/hook", "https://192.168.0.1/hook"})
+    @ValueSource(strings = {"https://localhost/hook", "https://127.0.0.1/hook", "https://192.168.0.1/hook", "https://unknown.invalid/hook"})
     @ParameterizedTest
     void testUnsafeUrl(String url)
     {

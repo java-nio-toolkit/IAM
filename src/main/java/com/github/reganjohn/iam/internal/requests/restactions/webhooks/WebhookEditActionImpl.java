@@ -46,11 +46,12 @@ import com.reganjohn.c4j.internal.interactions.InteractionImpl;
 import com.reganjohn.c4j.internal.requests.objaction.InteractionMappingActionImpl;
 import com.reganjohn.c4j.internal.utils.InteractionUtil;
 import com.reganjohn.jdt.internal.utils.OriginUtil;
-import com.reganjohn.jdt.internal.utils.StackUtil;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.concurrent.FutureListener;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
+import java.net.InetAddress;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -242,9 +243,26 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
         Map<String, String> params = request.getRoute().getMajorParameters();
         UUID userId = retrieveSelfUserId(context);
         UUID webhookId = UUID.fromString(params.get("webhook_id"));
-        api.retrieveWebhookById(userId, webhookId)
-                .flatMap(webhook -> modify(webhook, rawBody))
-                .queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        api.retrieveWebhookById(userId, webhookId).queue(webhook -> handleAccess(context, webhook, rawBody), context::fireExceptionCaught);
+    }
+
+    private void handleAccess(@Nonnull ChannelHandlerContext context, @Nonnull Webhook webhook, @Nonnull DataObject rawBody)
+    {
+        if (!rawBody.hasKey("url"))
+            modify(webhook, rawBody).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        else
+            checkAccess(context, webhook, rawBody);
+    }
+
+    private void checkAccess(@Nonnull ChannelHandlerContext context, @Nonnull Webhook webhook, @Nonnull DataObject body)
+    {
+        api.getJDT().retrieveSafe(URI.create(body.getString("url")).getHost()).addListener((FutureListener<InetAddress>) future ->
+        {
+            if (future.getNow() == null)
+                context.fireExceptionCaught(createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe.")));
+            else
+                modify(webhook, body).queue(success -> handleSuccess(context), context::fireExceptionCaught);
+        });
     }
 
     @Nonnull
@@ -253,8 +271,6 @@ public class WebhookEditActionImpl extends AbstractWebhookActionImpl implements 
     {
         Checks.notNull(webhook, "Webhook");
         Checks.notNull(rawBody, "Body");
-        if (rawBody.hasKey("url") && StackUtil.isUnsafeURL(URI.create(rawBody.getString("url"))))
-            throw createErrorResponse("url", new DataObjectParsingException(BASE_TYPE_CHOICES, "Value \"url\" is not safe."));
         return new InteractionMappingActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET name = :name, avatar_id = :avatar_id, endpoint = :endpoint, scopes = :scopes, updated_at = :updated_at WHERE owner_id = :owner_id AND webhook_id = :webhook_id IF flags = :flags", fromData(webhook, rawBody))
         {
             @Override

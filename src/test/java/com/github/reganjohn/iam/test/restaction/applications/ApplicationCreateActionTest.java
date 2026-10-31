@@ -222,7 +222,7 @@ public class ApplicationCreateActionTest extends RestActionTest
         verify(api, never()).retrieveApplicationCount(any());
     }
 
-    @ValueSource(strings = {"https://localhost", "https://127.0.0.1", "https://192.168.0.1"})
+    @ValueSource(strings = {"https://localhost", "https://127.0.0.1", "https://192.168.0.1", "https://unknown.invalid"})
     @ParameterizedTest
     void testUnsafeOrigin(String origin)
     {
