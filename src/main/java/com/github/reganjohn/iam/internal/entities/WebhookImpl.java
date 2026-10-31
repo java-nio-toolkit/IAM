@@ -125,7 +125,7 @@ public class WebhookImpl implements Webhook
     @Override
     public InteractionCallbackAction<Void> delete()
     {
-        long flags = getFlagsRaw() | WebhookFlag.DELETED.getRawValue();
+        long flags = getFlagsRaw() | WebhookFlag.SCHEDULED_FOR_DELETION.getRawValue();
         return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.webhooks SET flags = ? WHERE owner_id = ? AND webhook_id = ? IF EXISTS", Arrays.asList(flags, userId, id))
         {
             @Override

@@ -86,7 +86,7 @@ public interface Webhook extends IUnique, SerializableData
      */
     enum WebhookFlag
     {
-        DELETED(34, false),
+        SCHEDULED_FOR_DELETION(9, false),
         UNKNOWN(-1, false);
 
         /**

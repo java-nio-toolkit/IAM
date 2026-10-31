@@ -155,7 +155,7 @@ public class UserImplTest extends RestActionTest
         when(api.retrieveWebhookById(any(), any())).thenCallRealMethod();
 
         assertFails((InteractionContextActionImpl<Webhook>) new UserImpl(api, USER_ID, "alice", null, 0).retrieveWebhookById(UUID.randomUUID()),
-                newRows(1L << 34), ErrorResponse.UNKNOWN_WEBHOOK);
+                newRows(1L << 9), ErrorResponse.UNKNOWN_WEBHOOK);
     }
 
     @Test

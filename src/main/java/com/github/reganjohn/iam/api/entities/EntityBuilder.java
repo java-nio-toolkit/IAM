@@ -50,7 +50,7 @@ import java.util.*;
 
 public class EntityBuilder extends AbstractEntityBuilder
 {
-    private static final long DELETED = 1L << 34;
+    private static final long DELETED = 1L << 9 | 1L << 34 | 1L << 36;
 
     private final IAMImpl api;
 

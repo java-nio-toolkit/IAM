@@ -197,7 +197,7 @@ public class UserImpl implements User
     @Override
     public InteractionCallbackAction<Void> delete()
     {
-        long flags = getFlagsRaw() | UserFlag.DELETED.getRawValue();
+        long flags = getFlagsRaw() | UserFlag.SELF_DELETED.getRawValue();
         return new InteractionContextActionImpl<>(api.getJCA(), "UPDATE users.accounts SET flags = ? WHERE user_id = ? IF EXISTS", Arrays.asList(flags, userId))
         {
             @Override

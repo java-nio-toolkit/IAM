@@ -308,7 +308,7 @@ public class EntityBuilderTest
         return array;
     }
 
-    @ValueSource(longs = {1L << 34, (1L << 34) | 2L, -1L})
+    @ValueSource(longs = {1L << 9, 1L << 34, (1L << 34) | 2L, 1L << 36, -1L})
     @ParameterizedTest
     void testDeletedRow(long flags)
     {

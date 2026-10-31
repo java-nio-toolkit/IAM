@@ -142,7 +142,7 @@ public interface User extends IUnique
      */
     enum UserFlag
     {
-        DELETED(34, "User's account is deleted", false),
+        SELF_DELETED(36, "User's account is deleted", false),
         UNKNOWN(-1, "Unknown", false);
 
         /**
