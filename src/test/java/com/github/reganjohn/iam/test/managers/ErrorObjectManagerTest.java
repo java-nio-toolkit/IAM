@@ -27,6 +27,7 @@ import com.github.adamorgan.jnt.api.requests.MediaType;
 import com.github.adamorgan.jnt.api.requests.Response;
 import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponseException;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
@@ -66,16 +67,11 @@ public class ErrorObjectManagerTest extends IntegrationTest
         return (Response) outbound;
     }
 
-    private static String read(Response response)
+    private static String read(Response response) throws Exception
     {
-        BufferedResponseBody body = (BufferedResponseBody) response.getBody();
-        try
+        try (BufferedResponseBody body = (BufferedResponseBody) response.getBody())
         {
             return body.next().toString(CharsetUtil.UTF_8);
-        }
-        finally
-        {
-            body.close();
         }
     }
 
@@ -110,7 +106,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
 
     @MethodSource
     @ParameterizedTest
-    void testMissingAccess(ProofAccessException error, ErrorResponse errorResponse)
+    void testMissingAccess(ProofAccessException error, ErrorResponse errorResponse) throws Exception
     {
         Response response = handle(error);
 
@@ -120,7 +116,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testUnknownFailure()
+    void testUnknownFailure() throws Exception
     {
         Response response = handle(new NullPointerException("secret detail"));
 
@@ -129,7 +125,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testInputOutputFailure()
+    void testInputOutputFailure() throws Exception
     {
         Response response = handle(new IOException("secret detail"));
 
@@ -138,7 +134,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testWrappedJsonFailure()
+    void testWrappedJsonFailure() throws Exception
     {
         Response response = handle(new IllegalStateException(new JsonParseException(null, "Unrecognized token")));
 
@@ -147,7 +143,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testJsonFailure()
+    void testJsonFailure() throws Exception
     {
         Response response = handle(new JsonParseException(null, "Unrecognized token"));
 
@@ -169,13 +165,9 @@ public class ErrorObjectManagerTest extends IntegrationTest
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);
-        try
+        try (CallbackContext<ListAppender<ILoggingEvent>> resource = new CallbackContext<>(appender, logger::detachAppender))
         {
             new ErrorObjectManagerImpl(true).exceptionCaught(context, error);
-        }
-        finally
-        {
-            logger.detachAppender(appender);
         }
         return appender.list;
     }
@@ -233,7 +225,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testUnsupportedDigestMode()
+    void testUnsupportedDigestMode() throws Exception
     {
         Response response = handle(new UnsupportedOperationException("The used digest mode is not supported."));
 
@@ -242,7 +234,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testDigestMismatch()
+    void testDigestMismatch() throws Exception
     {
         Response response = handle(new DigestException("Content-Digest did not match the expected."));
 
@@ -251,7 +243,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
     }
 
     @Test
-    void testKeySpecFailure()
+    void testKeySpecFailure() throws Exception
     {
         Response response = handle(new InvalidKeySpecException("Unsupported access type: ES256"));
 
@@ -267,7 +259,7 @@ public class ErrorObjectManagerTest extends IntegrationTest
 
     @EnumSource(InteractionResponse.class)
     @ParameterizedTest
-    void testInteractionResponse(InteractionResponse error)
+    void testInteractionResponse(InteractionResponse error) throws Exception
     {
         Response response = handle(new InteractionResponseException(error, ErrorResponse.UNKNOWN_TOKEN));
 

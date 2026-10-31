@@ -79,28 +79,20 @@ public class GlobalAccessManagerImpl extends AccessEntryManagerImpl implements G
     }
 
     @Override
-    public void handlerAdded(@Nonnull ChannelHandlerContext context)
+    public void handlerAdded(@Nonnull ChannelHandlerContext context) throws Exception
     {
-        try
+        try (CallbackContext<ChannelHandlerContext> resource = new CallbackContext<>(context, super::handlerAdded))
         {
             context.channel().attr(IDENTIFIER).set(this);
-        }
-        finally
-        {
-            super.handlerAdded(context);
         }
     }
 
     @Override
     public void handlerRemoved(@Nonnull ChannelHandlerContext context) throws Exception
     {
-        try
+        try (CallbackContext<ChannelHandlerContext> resource = new CallbackContext<>(context, super::handlerRemoved))
         {
             context.channel().attr(IDENTIFIER).set(null);
-        }
-        finally
-        {
-            super.handlerRemoved(context);
         }
     }
 

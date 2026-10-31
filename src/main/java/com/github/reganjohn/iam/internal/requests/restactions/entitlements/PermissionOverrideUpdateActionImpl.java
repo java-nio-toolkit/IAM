@@ -31,6 +31,7 @@ import com.github.adamorgan.jnt.api.utils.jose.*;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.adamorgan.jnt.internal.utils.IOUtil;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -50,6 +51,7 @@ import com.github.reganjohn.iam.internal.utils.PermissionUtil;
 import com.reganjohn.c4j.api.requests.objaction.InteractionCallbackAction;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+import io.netty.util.ReferenceCounted;
 import org.apache.commons.codec.digest.DigestUtils;
 import io.netty.channel.ChannelHandlerContext;
 import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
@@ -229,14 +231,14 @@ public class PermissionOverrideUpdateActionImpl extends AbstractApplicationActio
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData data)
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), data.getRaw());
-        try
+        try (CallbackContext<ByteBuf> resource = new CallbackContext<>(successObj, ReferenceCounted::release))
         {
             BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
             context.writeAndFlush(new Response(context, StatusReason.OK, new CaseInsensitiveMap<>(), body));
         }
-        finally
+        catch (Exception ex)
         {
-            successObj.release();
+            throw new RuntimeException(ex); //todo:... add exception and message
         }
     }
 

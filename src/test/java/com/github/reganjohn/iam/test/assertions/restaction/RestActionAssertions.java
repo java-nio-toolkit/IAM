@@ -24,6 +24,7 @@ import com.github.adamorgan.jnt.api.utils.data.DataObject;
 import com.github.adamorgan.jnt.api.utils.requestbody.JacksonRequestBody;
 import com.github.adamorgan.jnt.api.utils.requestbody.RequestBody;
 import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
+import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.reganjohn.iam.api.exceptions.ErrorResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponse;
 import com.github.reganjohn.iam.api.exceptions.InteractionResponseException;
@@ -35,6 +36,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.util.CharsetUtil;
 import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
+import io.netty.util.ReferenceCounted;
 import org.jetbrains.annotations.Contract;
 import org.mockito.ThrowingConsumer;
 
@@ -335,17 +337,13 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
         onHandled.run();
 
         Outcome outcome = new Outcome(outbound instanceof Response ? (Response) outbound : null, thrown != null ? thrown : piped);
-        try
+        try (CallbackContext<Outcome> resource = new CallbackContext<>(outcome, RestActionAssertions::closeResource))
         {
             acceptThrows(outcome);
         }
         catch (Throwable error)
         {
             throw RestActionAssertions.sneakyThrow(error);
-        }
-        finally
-        {
-            release(outcome);
         }
         for (ByteBuf component : components)
             assertThat(component.refCnt()).isZero();
@@ -359,7 +357,7 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
     }
 
     @Nonnull
-    private String readBody(@Nonnull Outcome outcome)
+    private String readBody(@Nonnull Outcome outcome) throws Exception
     {
         assertThat(outcome.response)
                 .as("RestAction should answer with a response, but failed with %s", outcome.failure)
@@ -367,17 +365,13 @@ public class RestActionAssertions implements ThrowingConsumer<RestActionAssertio
         assertThat(outcome.response.getBody()).isInstanceOf(BufferedResponseBody.class);
         BufferedResponseBody responseBody = (BufferedResponseBody) outcome.response.getBody();
         ByteBuf content = responseBody.next();
-        try
+        try (CallbackContext<ByteBuf> context = new CallbackContext<>(content, ReferenceCounted::release))
         {
             return content.toString(CharsetUtil.UTF_8);
         }
-        finally
-        {
-            content.release();
-        }
     }
 
-    private static void release(@Nonnull Outcome outcome)
+    private static void closeResource(@Nonnull Outcome outcome)
     {
         if (outcome.response != null && outcome.response.getBody() instanceof BufferedResponseBody)
             ((BufferedResponseBody) outcome.response.getBody()).close();

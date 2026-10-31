@@ -17,6 +17,7 @@
 package com.github.reganjohn.iam.test;
 
 import com.github.adamorgan.jnt.internal.JNTImpl;
+import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.config.RestConfig;
 import com.github.reganjohn.iam.internal.IAMImpl;
 import com.github.reganjohn.iam.internal.requests.restactions.AbstractOverrideActionImpl;
@@ -99,16 +100,11 @@ public class IntegrationTest extends AbstractSnapshotTest
     @AfterEach
     protected final void teardown(TestInfo testInfo) throws Exception
     {
-        try
+        try (CallbackContext<EmbeddedChannel> context = new CallbackContext<>(channel, this::closeResource))
         {
             assertThat(actualHandlingCount)
                     .as("Requests handled by " + testInfo.getDisplayName())
                     .isEqualTo(expectedHandlingCount);
-        }
-        finally
-        {
-            channel.finishAndReleaseAll();
-            closeable.close();
         }
     }
 
@@ -122,5 +118,11 @@ public class IntegrationTest extends AbstractSnapshotTest
     protected void assertThatNoRequestsWereHandled()
     {
         assertThat(actualHandlingCount).isZero();
+    }
+
+    private void closeResource(EmbeddedChannel channel) throws Exception
+    {
+        channel.finishAndReleaseAll();
+        closeable.close();
     }
 }

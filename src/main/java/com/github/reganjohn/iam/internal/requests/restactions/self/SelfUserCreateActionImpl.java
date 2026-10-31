@@ -31,6 +31,7 @@ import com.github.adamorgan.jnt.api.utils.responsebody.BufferedResponseBody;
 import com.github.adamorgan.jnt.api.utils.unicode.UnicodeSanitizer;
 import com.github.adamorgan.jnt.internal.managers.AccessEntryManagerImpl;
 import com.github.adamorgan.jnt.internal.managers.ProofOverrideManagerImpl;
+import com.github.adamorgan.jnt.internal.utils.CallbackContext;
 import com.github.adamorgan.jnt.internal.utils.Checks;
 import com.github.adamorgan.jnt.internal.utils.Helpers;
 import com.github.reganjohn.iam.api.audit.ThreadLocalReason;
@@ -58,6 +59,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import com.github.adamorgan.jnt.api.utils.collection.CaseInsensitiveMap;
+import io.netty.util.ReferenceCounted;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
@@ -278,14 +280,14 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
     private void handleSuccess(@Nonnull ChannelHandlerContext context, @Nonnull AccessObjectData objectData)
     {
         ByteBuf successObj = ByteBufUtil.writeUtf8(context.alloc(), objectData.getRaw());
-        try
+        try (CallbackContext<ByteBuf> resource = new CallbackContext<>(successObj, ReferenceCounted::release))
         {
             BufferedResponseBody body = new BufferedResponseBody(MEDIA_TYPE_ACCESS, successObj, true);
             context.writeAndFlush(new Response(context, StatusReason.CREATED, new CaseInsensitiveMap<>(), body));
         }
-        finally
+        catch (Exception ex)
         {
-            successObj.release();
+            throw new RuntimeException(ex); //todo:... add exception and message
         }
     }
 }
