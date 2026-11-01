@@ -285,7 +285,7 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
                 .hasStatus(StatusReason.OK.code), accessObject());
     }
 
-    @ValueSource(longs = {0, 1, 15, 60, 43200})
+    @ValueSource(longs = {0, 1, 15, 60, 43200, 525600, 5256000})
     @ParameterizedTest
     void testExpiredToken(long minutes)
     {
@@ -298,6 +298,8 @@ public class PermissionOverrideUpdateActionTest extends RestActionTest
         whenHandled(assertThatUpdating()
                 .hasStatus(StatusReason.OK.code)
                 .hasBodyEqualTo(ISSUED_OBJECT), access);
+
+        verify(access, never()).getTimeExpiresAt();
     }
 
     @Test
