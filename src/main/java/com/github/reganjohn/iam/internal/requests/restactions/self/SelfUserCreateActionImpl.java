@@ -114,7 +114,7 @@ public class SelfUserCreateActionImpl extends AbstractUserActionImpl implements 
         else if (body.getString("username").length() > User.MAX_NAME_LENGTH)
             throw new DataObjectParsingException(STRING_TYPE_MAX,
                     Helpers.format("The \"username\" may not be longer than %d characters.", User.MAX_NAME_LENGTH));
-        else if (!UnicodeSanitizer.Format.USERNAME.test(body.getString("username")))
+        else if (!UnicodeSanitizer.Format.NICKNAME.test(body.getString("username")))
             throw new DataObjectParsingException(STRING_TYPE_REGEX, "String value did not match validation regex.");
     }
 

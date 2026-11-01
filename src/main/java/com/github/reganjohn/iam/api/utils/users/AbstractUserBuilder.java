@@ -56,7 +56,7 @@ public abstract class AbstractUserBuilder<T, R extends AbstractUserBuilder<T, R>
     {
         Checks.notEmpty(name, "Name");
         Checks.notLonger(name, User.MAX_NAME_LENGTH, "Name");
-        this.name = UnicodeSanitizer.Format.USERNAME.format(name);
+        this.name = UnicodeSanitizer.Format.NICKNAME.format(name);
         return (R) this;
     }
 

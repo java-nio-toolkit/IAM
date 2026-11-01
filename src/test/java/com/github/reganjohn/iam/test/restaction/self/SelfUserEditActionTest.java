@@ -80,7 +80,7 @@ public class SelfUserEditActionTest extends RestActionTest
                 arguments("username_not_string", body("username", 5), "username=STRING_TYPE_COERCE"),
                 arguments("username_empty", body("username", ""), "username=STRING_TYPE_MIN"),
                 arguments("username_too_long", body("username", username), "username=STRING_TYPE_MAX"),
-                arguments("username_not_username", body("username", "a b"), "username=STRING_TYPE_REGEX"),
+                arguments("username_not_nickname", body("username", "a\u0378"), "username=STRING_TYPE_REGEX"),
                 arguments("avatar_not_string", body("avatar_id", 5), "avatar_id=STRING_TYPE_COERCE"),
                 arguments("avatar_too_long", body("avatar_id", avatar), "avatar_id=STRING_TYPE_MAX"),
                 arguments("avatar_not_cid", body("avatar_id", "Qmcid"), "avatar_id=STRING_TYPE_REGEX"),
@@ -95,6 +95,7 @@ public class SelfUserEditActionTest extends RestActionTest
         return Stream.of(
                 body(),
                 body("username", "a"),
+                body("username", "a b"),
                 body("username", StringUtils.repeat('a', User.MAX_NAME_LENGTH)),
                 body("avatar_id", ""),
                 body("avatar_id", "b" + StringUtils.repeat('a', User.AVATAR_CID_MAX_LENGTH - 1)),
